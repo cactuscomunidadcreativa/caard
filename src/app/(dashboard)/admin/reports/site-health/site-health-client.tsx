@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 
 // Types
 interface StorageInfo {
@@ -99,6 +100,7 @@ interface ErrorLog {
 }
 
 export function SiteHealthClient() {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
@@ -186,7 +188,7 @@ export function SiteHealthClient() {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setLastRefresh(new Date());
     setIsRefreshing(false);
-    toast.success("Health status refreshed");
+    toast.success(t.siteHealth.refreshed);
   };
 
   const formatBytes = (bytes: number) => {
@@ -204,10 +206,10 @@ export function SiteHealthClient() {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return "Just now";
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
+    if (minutes < 1) return t.siteHealth.justNow;
+    if (minutes < 60) return t.siteHealth.minutesAgo.replace("{n}", String(minutes));
+    if (hours < 24) return t.siteHealth.hoursAgo.replace("{n}", String(hours));
+    return t.siteHealth.daysAgo.replace("{n}", String(days));
   };
 
   const getStatusColor = (status: string) => {
@@ -247,7 +249,7 @@ export function SiteHealthClient() {
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#D66829]" />
-          <p className="text-muted-foreground">Loading health status...</p>
+          <p className="text-muted-foreground">{t.siteHealth.loading}</p>
         </div>
       </div>
     );
@@ -277,9 +279,9 @@ export function SiteHealthClient() {
                 )} />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold">Site Health</h1>
+                <h1 className="text-xl sm:text-2xl font-bold">{t.siteHealth.title}</h1>
                 <p className="text-sm text-muted-foreground">
-                  System monitoring and status
+                  {t.siteHealth.subtitle}
                 </p>
               </div>
             </div>
@@ -288,7 +290,7 @@ export function SiteHealthClient() {
 
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">
-            Last updated: {formatDate(lastRefresh)}
+            {t.siteHealth.lastUpdated}: {formatDate(lastRefresh)}
           </span>
           <Button
             variant="outline"
@@ -301,7 +303,7 @@ export function SiteHealthClient() {
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            Refresh
+            {t.siteHealth.refresh}
           </Button>
         </div>
       </div>
@@ -325,20 +327,20 @@ export function SiteHealthClient() {
               )}
               <div>
                 <h2 className="font-semibold text-lg">
-                  {overallHealth === "healthy" ? "All Systems Operational" :
-                   overallHealth === "degraded" ? "Partial System Degradation" :
-                   "System Critical"}
+                  {overallHealth === "healthy" ? t.siteHealth.allSystemsOperational :
+                   overallHealth === "degraded" ? t.siteHealth.partialDegradation :
+                   t.siteHealth.systemCritical}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {overallHealth === "healthy"
-                    ? "All services are running normally"
-                    : incidents.filter((i) => !i.resolved).length + " active incidents"}
+                    ? t.siteHealth.allServicesRunning
+                    : incidents.filter((i) => !i.resolved).length + " " + t.siteHealth.activeIncidents}
                 </p>
               </div>
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold">{metrics.uptime}%</p>
-              <p className="text-sm text-muted-foreground">30-day uptime</p>
+              <p className="text-sm text-muted-foreground">{t.siteHealth.dayUptime}</p>
             </div>
           </div>
         </CardContent>
@@ -350,10 +352,10 @@ export function SiteHealthClient() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
               <Timer className="h-4 w-4 text-muted-foreground" />
-              <Badge variant="outline" className="text-xs">Avg</Badge>
+              <Badge variant="outline" className="text-xs">{t.siteHealth.avg}</Badge>
             </div>
             <p className="text-2xl font-bold">{metrics.avgResponseTime}ms</p>
-            <p className="text-sm text-muted-foreground">Response time</p>
+            <p className="text-sm text-muted-foreground">{t.siteHealth.responseTime}</p>
           </CardContent>
         </Card>
         <Card>
@@ -363,7 +365,7 @@ export function SiteHealthClient() {
               <Badge variant="outline" className="text-xs text-green-600">+12%</Badge>
             </div>
             <p className="text-2xl font-bold">{metrics.requestsToday.toLocaleString()}</p>
-            <p className="text-sm text-muted-foreground">Requests today</p>
+            <p className="text-sm text-muted-foreground">{t.siteHealth.requestsToday}</p>
           </CardContent>
         </Card>
         <Card>
@@ -373,27 +375,27 @@ export function SiteHealthClient() {
               <Badge variant="outline" className="text-xs text-red-600">{metrics.errorsToday}</Badge>
             </div>
             <p className="text-2xl font-bold">{metrics.errorsToday}</p>
-            <p className="text-sm text-muted-foreground">Errors today</p>
+            <p className="text-sm text-muted-foreground">{t.siteHealth.errorsToday}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
               <Globe className="h-4 w-4 text-muted-foreground" />
-              <Badge variant="outline" className="text-xs">Live</Badge>
+              <Badge variant="outline" className="text-xs">{t.siteHealth.live}</Badge>
             </div>
             <p className="text-2xl font-bold">{metrics.activeUsers}</p>
-            <p className="text-sm text-muted-foreground">Active users</p>
+            <p className="text-sm text-muted-foreground">{t.siteHealth.activeUsers}</p>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="storage">Storage</TabsTrigger>
-          <TabsTrigger value="incidents">Incidents</TabsTrigger>
-          <TabsTrigger value="logs">Error Logs</TabsTrigger>
+          <TabsTrigger value="overview">{t.siteHealth.overview}</TabsTrigger>
+          <TabsTrigger value="storage">{t.siteHealth.storage}</TabsTrigger>
+          <TabsTrigger value="incidents">{t.siteHealth.incidents}</TabsTrigger>
+          <TabsTrigger value="logs">{t.siteHealth.errorLogs}</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -404,9 +406,9 @@ export function SiteHealthClient() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Server className="h-5 w-5" />
-                  Service Status
+                  {t.siteHealth.serviceStatus}
                 </CardTitle>
-                <CardDescription>Real-time health of all services</CardDescription>
+                <CardDescription>{t.siteHealth.servicesDescription}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -453,13 +455,13 @@ export function SiteHealthClient() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5" />
-                      Recent Incidents
+                      {t.siteHealth.recentIncidents}
                     </CardTitle>
-                    <CardDescription>Latest system events</CardDescription>
+                    <CardDescription>{t.siteHealth.latestEvents}</CardDescription>
                   </div>
                   <Link href="#incidents">
                     <Button variant="ghost" size="sm">
-                      View All
+                      {t.siteHealth.viewAll}
                       <ChevronRight className="h-4 w-4 ml-1" />
                     </Button>
                   </Link>
@@ -483,7 +485,7 @@ export function SiteHealthClient() {
                             <p className="font-medium text-sm">{incident.title}</p>
                             {incident.resolved && (
                               <Badge variant="outline" className="text-xs text-green-600">
-                                Resolved
+                                {t.siteHealth.resolved}
                               </Badge>
                             )}
                           </div>
@@ -511,16 +513,16 @@ export function SiteHealthClient() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <HardDrive className="h-5 w-5" />
-                  Storage Usage
+                  {t.siteHealth.storageUsage}
                 </CardTitle>
                 <CardDescription>
-                  {formatBytes(storage.used)} of {formatBytes(storage.total)} used
+                  {formatBytes(storage.used)} {t.siteHealth.of} {formatBytes(storage.total)} {t.siteHealth.used}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Storage Used</span>
+                    <span>{t.siteHealth.storageUsed}</span>
                     <span className="font-medium">{storage.percentage}%</span>
                   </div>
                   <Progress
@@ -543,11 +545,13 @@ export function SiteHealthClient() {
                         {key === "backups" && <Cloud className="h-4 w-4 text-green-500" />}
                         {key === "logs" && <FileWarning className="h-4 w-4 text-yellow-500" />}
                         {key === "other" && <HardDrive className="h-4 w-4 text-gray-500" />}
-                        <span className="capitalize text-sm font-medium">{key}</span>
+                        <span className="capitalize text-sm font-medium">
+                          {t.siteHealth[key as keyof typeof t.siteHealth] || key}
+                        </span>
                       </div>
                       <p className="text-lg font-bold">{formatBytes(value)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {((value / storage.total) * 100).toFixed(1)}% of total
+                        {((value / storage.total) * 100).toFixed(1)}% {t.siteHealth.ofTotal}
                       </p>
                     </div>
                   ))}
@@ -558,28 +562,27 @@ export function SiteHealthClient() {
             {/* Storage Actions */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Storage Management</CardTitle>
-                <CardDescription>Optimize your storage</CardDescription>
+                <CardTitle className="text-base">{t.siteHealth.storageManagement}</CardTitle>
+                <CardDescription>{t.siteHealth.optimizeStorage}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button variant="outline" className="w-full justify-start">
                   <Download className="h-4 w-4 mr-2" />
-                  Download Backup
+                  {t.siteHealth.downloadBackup}
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
                   <FileWarning className="h-4 w-4 mr-2" />
-                  Clear Old Logs
+                  {t.siteHealth.clearOldLogs}
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
                   <Database className="h-4 w-4 mr-2" />
-                  Optimize Database
+                  {t.siteHealth.optimizeDatabase}
                 </Button>
                 <Separator className="my-4" />
                 <div className="p-3 rounded-lg bg-muted/50">
-                  <p className="text-sm font-medium mb-1">Storage Limit</p>
+                  <p className="text-sm font-medium mb-1">{t.siteHealth.storageLimit}</p>
                   <p className="text-xs text-muted-foreground">
-                    Your current plan allows up to {formatBytes(storage.total)} of storage.
-                    Upgrade for more space.
+                    {t.siteHealth.storageLimitDesc.replace("{size}", formatBytes(storage.total))}
                   </p>
                 </div>
               </CardContent>
@@ -595,16 +598,16 @@ export function SiteHealthClient() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5" />
-                    Incident History
+                    {t.siteHealth.incidentHistory}
                   </CardTitle>
-                  <CardDescription>System events and alerts</CardDescription>
+                  <CardDescription>{t.siteHealth.systemEvents}</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">
-                    {incidents.filter((i) => !i.resolved).length} Active
+                    {incidents.filter((i) => !i.resolved).length} {t.siteHealth.active}
                   </Badge>
                   <Badge variant="secondary">
-                    {incidents.length} Total
+                    {incidents.length} {t.siteHealth.total}
                   </Badge>
                 </div>
               </div>
@@ -642,11 +645,11 @@ export function SiteHealthClient() {
                               {incident.resolved ? (
                                 <Badge variant="outline" className="text-green-600">
                                   <CheckCircle className="h-3 w-3 mr-1" />
-                                  Resolved
+                                  {t.siteHealth.resolved}
                                 </Badge>
                               ) : (
                                 <Badge variant="destructive" className="text-xs">
-                                  Active
+                                  {t.siteHealth.active}
                                 </Badge>
                               )}
                             </div>
@@ -683,13 +686,13 @@ export function SiteHealthClient() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Bug className="h-5 w-5" />
-                    Error Logs
+                    {t.siteHealth.errorLogsTitle}
                   </CardTitle>
-                  <CardDescription>Recent errors and warnings</CardDescription>
+                  <CardDescription>{t.siteHealth.recentErrors}</CardDescription>
                 </div>
                 <Button variant="outline" size="sm">
                   <Download className="h-4 w-4 mr-2" />
-                  Export Logs
+                  {t.siteHealth.exportLogs}
                 </Button>
               </div>
             </CardHeader>
@@ -697,11 +700,11 @@ export function SiteHealthClient() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[100px]">Level</TableHead>
-                    <TableHead>Message</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead className="w-[80px]">Count</TableHead>
-                    <TableHead className="w-[120px]">Time</TableHead>
+                    <TableHead className="w-[100px]">{t.siteHealth.level}</TableHead>
+                    <TableHead>{t.siteHealth.message}</TableHead>
+                    <TableHead>{t.siteHealth.source}</TableHead>
+                    <TableHead className="w-[80px]">{t.siteHealth.count}</TableHead>
+                    <TableHead className="w-[120px]">{t.siteHealth.time}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -750,14 +753,14 @@ export function SiteHealthClient() {
               <Shield className="h-6 w-6 text-orange-600" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold">Enable Cloudflare Protection</h3>
+              <h3 className="font-semibold">{t.siteHealth.enableCloudflare}</h3>
               <p className="text-sm text-muted-foreground">
-                Improve security, performance, and DDoS protection with Cloudflare integration.
+                {t.siteHealth.cloudflareDescription}
               </p>
             </div>
             <Button className="bg-[#D66829] hover:bg-[#c45a22]">
               <Zap className="h-4 w-4 mr-2" />
-              Configure Cloudflare
+              {t.siteHealth.configureCloudflare}
             </Button>
           </div>
         </CardContent>

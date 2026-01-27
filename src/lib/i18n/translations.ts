@@ -1451,6 +1451,232 @@ export const translations = {
       paymentRegistered: "Pago registrado exitosamente",
       confirmDelete: "¿Está seguro de eliminar esta liquidación?",
     },
+
+    // Site Health - Estado del Sistema
+    siteHealth: {
+      title: "Estado del Sistema",
+      subtitle: "Monitoreo del sistema y estado en tiempo real",
+      loading: "Cargando estado del sistema...",
+      lastUpdated: "Última actualización",
+      refresh: "Actualizar",
+      refreshed: "Estado actualizado",
+
+      // Overall Status
+      allSystemsOperational: "Todos los Sistemas Operativos",
+      partialDegradation: "Degradación Parcial del Sistema",
+      systemCritical: "Sistema Crítico",
+      allServicesRunning: "Todos los servicios funcionando normalmente",
+      activeIncidents: "incidentes activos",
+      uptime: "Disponibilidad",
+      dayUptime: "Disponibilidad 30 días",
+
+      // Quick Stats
+      avgResponseTime: "Tiempo de respuesta",
+      responseTime: "Tiempo de Respuesta",
+      requestsToday: "Solicitudes hoy",
+      errorsToday: "Errores hoy",
+      activeUsers: "Usuarios activos",
+      avg: "Prom",
+      live: "En vivo",
+
+      // Tabs
+      overview: "Resumen",
+      storage: "Almacenamiento",
+      incidents: "Incidentes",
+      errorLogs: "Logs de Errores",
+
+      // Services
+      serviceStatus: "Estado de Servicios",
+      servicesDescription: "Estado en tiempo real de todos los servicios",
+      healthy: "Saludable",
+      degraded: "Degradado",
+      down: "Caído",
+      latency: "Latencia",
+
+      // Storage
+      storageUsage: "Uso de Almacenamiento",
+      storageUsed: "Almacenamiento Usado",
+      of: "de",
+      used: "usado",
+      documents: "Documentos",
+      images: "Imágenes",
+      backups: "Respaldos",
+      logs: "Logs",
+      other: "Otros",
+      ofTotal: "del total",
+      storageManagement: "Gestión de Almacenamiento",
+      optimizeStorage: "Optimiza tu almacenamiento",
+      downloadBackup: "Descargar Respaldo",
+      clearOldLogs: "Limpiar Logs Antiguos",
+      optimizeDatabase: "Optimizar Base de Datos",
+      storageLimit: "Límite de Almacenamiento",
+      storageLimitDesc: "Tu plan actual permite hasta {size} de almacenamiento. Actualiza para más espacio.",
+
+      // Incidents
+      recentIncidents: "Incidentes Recientes",
+      incidentHistory: "Historial de Incidentes",
+      latestEvents: "Últimos eventos del sistema",
+      systemEvents: "Eventos y alertas del sistema",
+      viewAll: "Ver Todo",
+      active: "Activo",
+      resolved: "Resuelto",
+      total: "Total",
+      error: "Error",
+      warning: "Advertencia",
+      info: "Información",
+
+      // Error Logs
+      errorLogsTitle: "Logs de Errores",
+      recentErrors: "Errores y advertencias recientes",
+      exportLogs: "Exportar Logs",
+      level: "Nivel",
+      message: "Mensaje",
+      source: "Fuente",
+      count: "Cantidad",
+      time: "Tiempo",
+
+      // Time
+      justNow: "Ahora mismo",
+      minutesAgo: "hace {n}m",
+      hoursAgo: "hace {n}h",
+      daysAgo: "hace {n}d",
+
+      // Cloudflare
+      enableCloudflare: "Habilitar Protección Cloudflare",
+      cloudflareDescription: "Mejora la seguridad, rendimiento y protección DDoS con la integración de Cloudflare.",
+      configureCloudflare: "Configurar Cloudflare",
+    },
+
+    // Cloudflare Integration Page
+    cloudflare: {
+      title: "Integración Cloudflare",
+      subtitle: "CDN, Seguridad y Rendimiento",
+      connected: "Conectado",
+      notConnected: "No Conectado",
+
+      // Info Banner
+      whyCloudflare: "¿Por qué Cloudflare?",
+      whyCloudflareDesc: "Cloudflare proporciona CDN gratuito, protección DDoS, certificados SSL y seguridad web para tu sitio. Puede mejorar significativamente el rendimiento y proteger contra ataques.",
+
+      // Tabs
+      setupGuide: "Guía de Configuración",
+      configuration: "Configuración",
+      features: "Características",
+
+      // Setup Progress
+      setupProgress: "Progreso de Configuración",
+      completeSteps: "Completa estos pasos para integrar Cloudflare",
+      stepsCompleted: "{completed} de {total} pasos completados",
+
+      // Setup Steps
+      step1Title: "Crear Cuenta Cloudflare",
+      step1Desc: "Regístrate para una cuenta Cloudflare gratuita",
+      step2Title: "Agregar tu Dominio",
+      step2Desc: "Agrega tu dominio a Cloudflare",
+      step3Title: "Actualizar Servidores DNS",
+      step3Desc: "Apunta tu dominio a los servidores Cloudflare",
+      step4Title: "Configurar Modo SSL",
+      step4Desc: "Configura el modo de encriptación SSL/TLS a Full (Strict)",
+      step5Title: "Habilitar Reglas de Página",
+      step5Desc: "Configura reglas de caché y seguridad",
+      signUp: "Registrarse",
+
+      // Quick Start Guide
+      quickStartGuide: "Guía de Inicio Rápido",
+      createAccount: "Crear una Cuenta Cloudflare",
+      createAccountDesc: "Visita dash.cloudflare.com/sign-up para crear una cuenta gratuita.",
+      enterEmail: "Ingresa tu correo electrónico",
+      createPassword: "Crea una contraseña segura",
+      verifyEmail: "Verifica tu correo",
+
+      addDomain: "Agregar tu Dominio",
+      addDomainDesc: "En el panel de Cloudflare, haz clic en \"Agregar un Sitio\" e ingresa tu nombre de dominio.",
+      cloudflareWillScan: "Cloudflare escaneará tus registros DNS existentes automáticamente.",
+
+      updateNameservers: "Actualizar Servidores DNS",
+      updateNameserversDesc: "Actualiza los servidores DNS de tu dominio en tu registrador para apuntar a Cloudflare:",
+      dnsPropagation: "La propagación DNS puede tomar hasta 48 horas. La mayoría de los cambios surten efecto en pocas horas.",
+
+      configureSSL: "Configurar SSL/TLS",
+      configureSSLDesc: "En Cloudflare, ve a configuración SSL/TLS y establece el modo de encriptación a Full (Strict).",
+      recommended: "Recomendado",
+
+      enableSecurity: "Habilitar Características de Seguridad",
+      enableSecurityDesc: "Habilita estas configuraciones de seguridad recomendadas:",
+      alwaysUseHTTPS: "Siempre Usar HTTPS",
+      automaticHTTPS: "Reescrituras HTTPS Automáticas",
+      browserIntegrityCheck: "Verificación de Integridad del Navegador",
+      hotlinkProtection: "Protección de Hotlink",
+
+      // API Configuration
+      apiConfiguration: "Configuración API",
+      apiConfigDesc: "Conecta CAARD a Cloudflare usando tus credenciales API",
+      cloudflareEmail: "Correo de Cloudflare",
+      globalApiKey: "Clave API Global",
+      enterApiKey: "Ingresa tu clave API de Cloudflare",
+      findApiKey: "Encuéntrala en Cloudflare bajo Mi Perfil → Tokens API → Clave API Global",
+      zoneId: "Zone ID",
+      enterZoneId: "Ingresa tu Zone ID",
+      findZoneId: "Se encuentra en el panel de Cloudflare → Resumen → sección API",
+      accountId: "Account ID (Opcional)",
+      enterAccountId: "Ingresa tu Account ID",
+
+      connectionStatus: "Estado de Conexión",
+      connectedToCloudflare: "Conectado a Cloudflare",
+      notConnectedStatus: "No conectado",
+      testConnection: "Probar Conexión",
+      testSuccess: "¡Conectado exitosamente a Cloudflare!",
+      testError: "Por favor ingresa las credenciales API primero",
+
+      // Environment Variables
+      environmentVariables: "Variables de Entorno",
+      addToEnv: "Agrega estas a tu archivo .env",
+      copied: "copiado al portapapeles",
+
+      // Features
+      cdnName: "CDN (Red de Distribución de Contenido)",
+      cdnDesc: "Distribuye contenido globalmente para tiempos de carga más rápidos",
+      cdnBenefit1: "Cargas de página más rápidas",
+      cdnBenefit2: "Carga reducida del servidor",
+      cdnBenefit3: "Cobertura global",
+
+      ddosName: "Protección DDoS",
+      ddosDesc: "Protege contra ataques de denegación de servicio distribuido",
+      ddosBenefit1: "Protección 24/7",
+      ddosBenefit2: "Mitigación automática",
+      ddosBenefit3: "Sin costo adicional",
+
+      wafName: "Firewall de Aplicación Web",
+      wafDesc: "Bloquea vulnerabilidades web comunes y ataques",
+      wafBenefit1: "Protección contra inyección SQL",
+      wafBenefit2: "Prevención XSS",
+      wafBenefit3: "Mitigación de bots",
+
+      sslName: "Encriptación SSL/TLS",
+      sslDesc: "Conexiones seguras con HTTPS",
+      sslBenefit1: "Certificado SSL gratuito",
+      sslBenefit2: "Renovación automática",
+      sslBenefit3: "Encriptación completa",
+
+      cacheName: "Caché Inteligente",
+      cacheDesc: "Cachea activos estáticos para mejor rendimiento",
+      cacheBenefit1: "Ancho de banda reducido",
+      cacheBenefit2: "Respuestas más rápidas",
+      cacheBenefit3: "Menores costos",
+
+      analyticsName: "Analíticas Web",
+      analyticsDesc: "Información de tráfico y seguridad",
+      analyticsBenefit1: "Datos en tiempo real",
+      analyticsBenefit2: "Analíticas de amenazas",
+      analyticsBenefit3: "Métricas de rendimiento",
+
+      // Resources
+      helpfulResources: "Recursos Útiles",
+      cloudflareDocs: "Documentación Cloudflare",
+      dnsSetupGuide: "Guía de Configuración DNS",
+      sslGuide: "Guía SSL/TLS",
+      securityBestPractices: "Mejores Prácticas de Seguridad",
+    },
   },
 
   en: {
@@ -2896,6 +3122,232 @@ export const translations = {
       liquidationUpdated: "Liquidation updated successfully",
       paymentRegistered: "Payment registered successfully",
       confirmDelete: "Are you sure you want to delete this liquidation?",
+    },
+
+    // Site Health
+    siteHealth: {
+      title: "Site Health",
+      subtitle: "System monitoring and real-time status",
+      loading: "Loading health status...",
+      lastUpdated: "Last updated",
+      refresh: "Refresh",
+      refreshed: "Health status refreshed",
+
+      // Overall Status
+      allSystemsOperational: "All Systems Operational",
+      partialDegradation: "Partial System Degradation",
+      systemCritical: "System Critical",
+      allServicesRunning: "All services are running normally",
+      activeIncidents: "active incidents",
+      uptime: "Uptime",
+      dayUptime: "30-day uptime",
+
+      // Quick Stats
+      avgResponseTime: "Response time",
+      responseTime: "Response Time",
+      requestsToday: "Requests today",
+      errorsToday: "Errors today",
+      activeUsers: "Active users",
+      avg: "Avg",
+      live: "Live",
+
+      // Tabs
+      overview: "Overview",
+      storage: "Storage",
+      incidents: "Incidents",
+      errorLogs: "Error Logs",
+
+      // Services
+      serviceStatus: "Service Status",
+      servicesDescription: "Real-time health of all services",
+      healthy: "Healthy",
+      degraded: "Degraded",
+      down: "Down",
+      latency: "Latency",
+
+      // Storage
+      storageUsage: "Storage Usage",
+      storageUsed: "Storage Used",
+      of: "of",
+      used: "used",
+      documents: "Documents",
+      images: "Images",
+      backups: "Backups",
+      logs: "Logs",
+      other: "Other",
+      ofTotal: "of total",
+      storageManagement: "Storage Management",
+      optimizeStorage: "Optimize your storage",
+      downloadBackup: "Download Backup",
+      clearOldLogs: "Clear Old Logs",
+      optimizeDatabase: "Optimize Database",
+      storageLimit: "Storage Limit",
+      storageLimitDesc: "Your current plan allows up to {size} of storage. Upgrade for more space.",
+
+      // Incidents
+      recentIncidents: "Recent Incidents",
+      incidentHistory: "Incident History",
+      latestEvents: "Latest system events",
+      systemEvents: "System events and alerts",
+      viewAll: "View All",
+      active: "Active",
+      resolved: "Resolved",
+      total: "Total",
+      error: "Error",
+      warning: "Warning",
+      info: "Info",
+
+      // Error Logs
+      errorLogsTitle: "Error Logs",
+      recentErrors: "Recent errors and warnings",
+      exportLogs: "Export Logs",
+      level: "Level",
+      message: "Message",
+      source: "Source",
+      count: "Count",
+      time: "Time",
+
+      // Time
+      justNow: "Just now",
+      minutesAgo: "{n}m ago",
+      hoursAgo: "{n}h ago",
+      daysAgo: "{n}d ago",
+
+      // Cloudflare
+      enableCloudflare: "Enable Cloudflare Protection",
+      cloudflareDescription: "Improve security, performance, and DDoS protection with Cloudflare integration.",
+      configureCloudflare: "Configure Cloudflare",
+    },
+
+    // Cloudflare Integration Page
+    cloudflare: {
+      title: "Cloudflare Integration",
+      subtitle: "CDN, Security, and Performance",
+      connected: "Connected",
+      notConnected: "Not Connected",
+
+      // Info Banner
+      whyCloudflare: "Why Cloudflare?",
+      whyCloudflareDesc: "Cloudflare provides free CDN, DDoS protection, SSL certificates, and web security for your site. It can significantly improve performance and protect against attacks.",
+
+      // Tabs
+      setupGuide: "Setup Guide",
+      configuration: "Configuration",
+      features: "Features",
+
+      // Setup Progress
+      setupProgress: "Setup Progress",
+      completeSteps: "Complete these steps to integrate Cloudflare",
+      stepsCompleted: "{completed} of {total} steps completed",
+
+      // Setup Steps
+      step1Title: "Create Cloudflare Account",
+      step1Desc: "Sign up for a free Cloudflare account",
+      step2Title: "Add Your Domain",
+      step2Desc: "Add your domain to Cloudflare",
+      step3Title: "Update DNS Nameservers",
+      step3Desc: "Point your domain to Cloudflare nameservers",
+      step4Title: "Configure SSL Mode",
+      step4Desc: "Set SSL/TLS encryption mode to Full (Strict)",
+      step5Title: "Enable Page Rules",
+      step5Desc: "Configure caching and security rules",
+      signUp: "Sign Up",
+
+      // Quick Start Guide
+      quickStartGuide: "Quick Start Guide",
+      createAccount: "Create a Cloudflare Account",
+      createAccountDesc: "Visit dash.cloudflare.com/sign-up to create a free account.",
+      enterEmail: "Enter your email address",
+      createPassword: "Create a strong password",
+      verifyEmail: "Verify your email",
+
+      addDomain: "Add Your Domain",
+      addDomainDesc: "In the Cloudflare dashboard, click \"Add a Site\" and enter your domain name.",
+      cloudflareWillScan: "Cloudflare will scan your existing DNS records automatically.",
+
+      updateNameservers: "Update DNS Nameservers",
+      updateNameserversDesc: "Update your domain's nameservers at your registrar to point to Cloudflare:",
+      dnsPropagation: "DNS propagation can take up to 48 hours. Most changes take effect within a few hours.",
+
+      configureSSL: "Configure SSL/TLS",
+      configureSSLDesc: "In Cloudflare, go to SSL/TLS settings and set encryption mode to Full (Strict).",
+      recommended: "Recommended",
+
+      enableSecurity: "Enable Security Features",
+      enableSecurityDesc: "Enable these recommended security settings:",
+      alwaysUseHTTPS: "Always Use HTTPS",
+      automaticHTTPS: "Automatic HTTPS Rewrites",
+      browserIntegrityCheck: "Browser Integrity Check",
+      hotlinkProtection: "Hotlink Protection",
+
+      // API Configuration
+      apiConfiguration: "API Configuration",
+      apiConfigDesc: "Connect CAARD to Cloudflare using your API credentials",
+      cloudflareEmail: "Cloudflare Email",
+      globalApiKey: "Global API Key",
+      enterApiKey: "Enter your Cloudflare API key",
+      findApiKey: "Find this in Cloudflare under My Profile → API Tokens → Global API Key",
+      zoneId: "Zone ID",
+      enterZoneId: "Enter your Zone ID",
+      findZoneId: "Found in Cloudflare dashboard → Overview → API section",
+      accountId: "Account ID (Optional)",
+      enterAccountId: "Enter your Account ID",
+
+      connectionStatus: "Connection Status",
+      connectedToCloudflare: "Connected to Cloudflare",
+      notConnectedStatus: "Not connected",
+      testConnection: "Test Connection",
+      testSuccess: "Successfully connected to Cloudflare!",
+      testError: "Please enter API credentials first",
+
+      // Environment Variables
+      environmentVariables: "Environment Variables",
+      addToEnv: "Add these to your .env file",
+      copied: "copied to clipboard",
+
+      // Features
+      cdnName: "CDN (Content Delivery Network)",
+      cdnDesc: "Distribute content globally for faster load times",
+      cdnBenefit1: "Faster page loads",
+      cdnBenefit2: "Reduced server load",
+      cdnBenefit3: "Global coverage",
+
+      ddosName: "DDoS Protection",
+      ddosDesc: "Protect against distributed denial-of-service attacks",
+      ddosBenefit1: "24/7 protection",
+      ddosBenefit2: "Automatic mitigation",
+      ddosBenefit3: "No extra cost",
+
+      wafName: "Web Application Firewall",
+      wafDesc: "Block common web vulnerabilities and attacks",
+      wafBenefit1: "SQL injection protection",
+      wafBenefit2: "XSS prevention",
+      wafBenefit3: "Bot mitigation",
+
+      sslName: "SSL/TLS Encryption",
+      sslDesc: "Secure connections with HTTPS",
+      sslBenefit1: "Free SSL certificate",
+      sslBenefit2: "Automatic renewal",
+      sslBenefit3: "Full encryption",
+
+      cacheName: "Intelligent Caching",
+      cacheDesc: "Cache static assets for improved performance",
+      cacheBenefit1: "Reduced bandwidth",
+      cacheBenefit2: "Faster responses",
+      cacheBenefit3: "Lower costs",
+
+      analyticsName: "Web Analytics",
+      analyticsDesc: "Traffic and security insights",
+      analyticsBenefit1: "Real-time data",
+      analyticsBenefit2: "Threat analytics",
+      analyticsBenefit3: "Performance metrics",
+
+      // Resources
+      helpfulResources: "Helpful Resources",
+      cloudflareDocs: "Cloudflare Docs",
+      dnsSetupGuide: "DNS Setup Guide",
+      sslGuide: "SSL/TLS Guide",
+      securityBestPractices: "Security Best Practices",
     },
   },
 };

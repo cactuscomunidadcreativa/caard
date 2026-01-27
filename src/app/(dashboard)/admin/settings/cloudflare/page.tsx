@@ -52,94 +52,96 @@ import {
 } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
-// Cloudflare Features
-const CLOUDFLARE_FEATURES = [
-  {
-    id: "cdn",
-    name: "CDN (Content Delivery Network)",
-    description: "Distribute content globally for faster load times",
-    icon: Globe,
-    benefits: ["Faster page loads", "Reduced server load", "Global coverage"],
-    enabled: true,
-  },
-  {
-    id: "ddos",
-    name: "DDoS Protection",
-    description: "Protect against distributed denial-of-service attacks",
-    icon: Shield,
-    benefits: ["24/7 protection", "Automatic mitigation", "No extra cost"],
-    enabled: true,
-  },
-  {
-    id: "waf",
-    name: "Web Application Firewall",
-    description: "Block common web vulnerabilities and attacks",
-    icon: Lock,
-    benefits: ["SQL injection protection", "XSS prevention", "Bot mitigation"],
-    enabled: false,
-  },
-  {
-    id: "ssl",
-    name: "SSL/TLS Encryption",
-    description: "Secure connections with HTTPS",
-    icon: Lock,
-    benefits: ["Free SSL certificate", "Automatic renewal", "Full encryption"],
-    enabled: true,
-  },
-  {
-    id: "cache",
-    name: "Intelligent Caching",
-    description: "Cache static assets for improved performance",
-    icon: Zap,
-    benefits: ["Reduced bandwidth", "Faster responses", "Lower costs"],
-    enabled: true,
-  },
-  {
-    id: "analytics",
-    name: "Web Analytics",
-    description: "Traffic and security insights",
-    icon: BarChart3,
-    benefits: ["Real-time data", "Threat analytics", "Performance metrics"],
-    enabled: false,
-  },
-];
-
-// Setup steps
-const SETUP_STEPS = [
-  {
-    id: 1,
-    title: "Create Cloudflare Account",
-    description: "Sign up for a free Cloudflare account",
-    completed: false,
-  },
-  {
-    id: 2,
-    title: "Add Your Domain",
-    description: "Add your domain to Cloudflare",
-    completed: false,
-  },
-  {
-    id: 3,
-    title: "Update DNS Nameservers",
-    description: "Point your domain to Cloudflare nameservers",
-    completed: false,
-  },
-  {
-    id: 4,
-    title: "Configure SSL Mode",
-    description: "Set SSL/TLS encryption mode to Full (Strict)",
-    completed: false,
-  },
-  {
-    id: 5,
-    title: "Enable Page Rules",
-    description: "Configure caching and security rules",
-    completed: false,
-  },
-];
+import { useTranslation } from "@/lib/i18n";
 
 export default function CloudflareSetupPage() {
+  const { t } = useTranslation();
+
+  // Cloudflare Features (translated)
+  const CLOUDFLARE_FEATURES = [
+    {
+      id: "cdn",
+      name: t.cloudflare.cdnName,
+      description: t.cloudflare.cdnDesc,
+      icon: Globe,
+      benefits: [t.cloudflare.cdnBenefit1, t.cloudflare.cdnBenefit2, t.cloudflare.cdnBenefit3],
+      enabled: true,
+    },
+    {
+      id: "ddos",
+      name: t.cloudflare.ddosName,
+      description: t.cloudflare.ddosDesc,
+      icon: Shield,
+      benefits: [t.cloudflare.ddosBenefit1, t.cloudflare.ddosBenefit2, t.cloudflare.ddosBenefit3],
+      enabled: true,
+    },
+    {
+      id: "waf",
+      name: t.cloudflare.wafName,
+      description: t.cloudflare.wafDesc,
+      icon: Lock,
+      benefits: [t.cloudflare.wafBenefit1, t.cloudflare.wafBenefit2, t.cloudflare.wafBenefit3],
+      enabled: false,
+    },
+    {
+      id: "ssl",
+      name: t.cloudflare.sslName,
+      description: t.cloudflare.sslDesc,
+      icon: Lock,
+      benefits: [t.cloudflare.sslBenefit1, t.cloudflare.sslBenefit2, t.cloudflare.sslBenefit3],
+      enabled: true,
+    },
+    {
+      id: "cache",
+      name: t.cloudflare.cacheName,
+      description: t.cloudflare.cacheDesc,
+      icon: Zap,
+      benefits: [t.cloudflare.cacheBenefit1, t.cloudflare.cacheBenefit2, t.cloudflare.cacheBenefit3],
+      enabled: true,
+    },
+    {
+      id: "analytics",
+      name: t.cloudflare.analyticsName,
+      description: t.cloudflare.analyticsDesc,
+      icon: BarChart3,
+      benefits: [t.cloudflare.analyticsBenefit1, t.cloudflare.analyticsBenefit2, t.cloudflare.analyticsBenefit3],
+      enabled: false,
+    },
+  ];
+
+  // Setup steps (translated)
+  const SETUP_STEPS = [
+    {
+      id: 1,
+      title: t.cloudflare.step1Title,
+      description: t.cloudflare.step1Desc,
+      completed: false,
+    },
+    {
+      id: 2,
+      title: t.cloudflare.step2Title,
+      description: t.cloudflare.step2Desc,
+      completed: false,
+    },
+    {
+      id: 3,
+      title: t.cloudflare.step3Title,
+      description: t.cloudflare.step3Desc,
+      completed: false,
+    },
+    {
+      id: 4,
+      title: t.cloudflare.step4Title,
+      description: t.cloudflare.step4Desc,
+      completed: false,
+    },
+    {
+      id: 5,
+      title: t.cloudflare.step5Title,
+      description: t.cloudflare.step5Desc,
+      completed: false,
+    },
+  ];
   const [isConnected, setIsConnected] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
@@ -152,12 +154,12 @@ export default function CloudflareSetupPage() {
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast.success(`${label} copied to clipboard`);
+    toast.success(`${label} ${t.cloudflare.copied}`);
   };
 
   const handleTestConnection = async () => {
     if (!config.apiKey || !config.zoneId) {
-      toast.error("Please enter API credentials first");
+      toast.error(t.cloudflare.testError);
       return;
     }
 
@@ -166,7 +168,7 @@ export default function CloudflareSetupPage() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     setIsConnected(true);
     setIsTesting(false);
-    toast.success("Successfully connected to Cloudflare!");
+    toast.success(t.cloudflare.testSuccess);
   };
 
   const completedSteps = SETUP_STEPS.filter((s) => s.completed).length;
@@ -187,9 +189,9 @@ export default function CloudflareSetupPage() {
               <Cloud className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold">Cloudflare Integration</h1>
+              <h1 className="text-xl sm:text-2xl font-bold">{t.cloudflare.title}</h1>
               <p className="text-sm text-muted-foreground">
-                CDN, Security, and Performance
+                {t.cloudflare.subtitle}
               </p>
             </div>
           </div>
@@ -197,11 +199,11 @@ export default function CloudflareSetupPage() {
         {isConnected ? (
           <Badge className="bg-green-100 text-green-700">
             <Check className="h-3 w-3 mr-1" />
-            Connected
+            {t.cloudflare.connected}
           </Badge>
         ) : (
           <Badge variant="secondary">
-            Not Connected
+            {t.cloudflare.notConnected}
           </Badge>
         )}
       </div>
@@ -209,18 +211,17 @@ export default function CloudflareSetupPage() {
       {/* Info Banner */}
       <Alert className="mb-6 border-orange-200 bg-orange-50">
         <Info className="h-4 w-4 text-orange-600" />
-        <AlertTitle className="text-orange-800">Why Cloudflare?</AlertTitle>
+        <AlertTitle className="text-orange-800">{t.cloudflare.whyCloudflare}</AlertTitle>
         <AlertDescription className="text-orange-700">
-          Cloudflare provides free CDN, DDoS protection, SSL certificates, and web security for your site.
-          It can significantly improve performance and protect against attacks.
+          {t.cloudflare.whyCloudflareDesc}
         </AlertDescription>
       </Alert>
 
       <Tabs defaultValue="setup" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="setup">Setup Guide</TabsTrigger>
-          <TabsTrigger value="config">Configuration</TabsTrigger>
-          <TabsTrigger value="features">Features</TabsTrigger>
+          <TabsTrigger value="setup">{t.cloudflare.setupGuide}</TabsTrigger>
+          <TabsTrigger value="config">{t.cloudflare.configuration}</TabsTrigger>
+          <TabsTrigger value="features">{t.cloudflare.features}</TabsTrigger>
         </TabsList>
 
         {/* Setup Tab */}
@@ -228,13 +229,13 @@ export default function CloudflareSetupPage() {
           {/* Progress */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Setup Progress</CardTitle>
-              <CardDescription>Complete these steps to integrate Cloudflare</CardDescription>
+              <CardTitle className="text-base">{t.cloudflare.setupProgress}</CardTitle>
+              <CardDescription>{t.cloudflare.completeSteps}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 mb-6">
                 <div className="flex justify-between text-sm">
-                  <span>{completedSteps} of {SETUP_STEPS.length} steps completed</span>
+                  <span>{t.cloudflare.stepsCompleted.replace("{completed}", String(completedSteps)).replace("{total}", String(SETUP_STEPS.length))}</span>
                   <span className="font-medium">{Math.round(progressPercent)}%</span>
                 </div>
                 <Progress value={progressPercent} className="h-2" />
@@ -282,7 +283,7 @@ export default function CloudflareSetupPage() {
           {/* Quick Start Guide */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Quick Start Guide</CardTitle>
+              <CardTitle className="text-base">{t.cloudflare.quickStartGuide}</CardTitle>
             </CardHeader>
             <CardContent>
               <Accordion type="single" collapsible className="w-full">
@@ -290,17 +291,17 @@ export default function CloudflareSetupPage() {
                   <AccordionTrigger>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">Step 1</Badge>
-                      <span>Create a Cloudflare Account</span>
+                      <span>{t.cloudflare.createAccount}</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4">
                     <p>
-                      Visit <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener noreferrer" className="text-[#D66829] underline">dash.cloudflare.com/sign-up</a> to create a free account.
+                      {t.cloudflare.createAccountDesc}
                     </p>
                     <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
-                      <li>Enter your email address</li>
-                      <li>Create a strong password</li>
-                      <li>Verify your email</li>
+                      <li>{t.cloudflare.enterEmail}</li>
+                      <li>{t.cloudflare.createPassword}</li>
+                      <li>{t.cloudflare.verifyEmail}</li>
                     </ul>
                   </AccordionContent>
                 </AccordionItem>
@@ -309,18 +310,18 @@ export default function CloudflareSetupPage() {
                   <AccordionTrigger>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">Step 2</Badge>
-                      <span>Add Your Domain</span>
+                      <span>{t.cloudflare.addDomain}</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4">
                     <p>
-                      In the Cloudflare dashboard, click &quot;Add a Site&quot; and enter your domain name.
+                      {t.cloudflare.addDomainDesc}
                     </p>
                     <div className="p-3 bg-muted rounded-lg">
                       <p className="font-mono text-sm">yourdomain.com</p>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Cloudflare will scan your existing DNS records automatically.
+                      {t.cloudflare.cloudflareWillScan}
                     </p>
                   </AccordionContent>
                 </AccordionItem>
@@ -329,12 +330,12 @@ export default function CloudflareSetupPage() {
                   <AccordionTrigger>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">Step 3</Badge>
-                      <span>Update DNS Nameservers</span>
+                      <span>{t.cloudflare.updateNameservers}</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4">
                     <p>
-                      Update your domain&apos;s nameservers at your registrar to point to Cloudflare:
+                      {t.cloudflare.updateNameserversDesc}
                     </p>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
@@ -361,7 +362,7 @@ export default function CloudflareSetupPage() {
                     <Alert>
                       <AlertTriangle className="h-4 w-4" />
                       <AlertDescription>
-                        DNS propagation can take up to 48 hours. Most changes take effect within a few hours.
+                        {t.cloudflare.dnsPropagation}
                       </AlertDescription>
                     </Alert>
                   </AccordionContent>
@@ -371,12 +372,12 @@ export default function CloudflareSetupPage() {
                   <AccordionTrigger>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">Step 4</Badge>
-                      <span>Configure SSL/TLS</span>
+                      <span>{t.cloudflare.configureSSL}</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4">
                     <p>
-                      In Cloudflare, go to SSL/TLS settings and set encryption mode to <strong>Full (Strict)</strong>.
+                      {t.cloudflare.configureSSLDesc}
                     </p>
                     <div className="grid gap-3">
                       <div className="flex items-center justify-between p-3 rounded-lg border">
@@ -384,7 +385,7 @@ export default function CloudflareSetupPage() {
                           <Lock className="h-4 w-4 text-green-600" />
                           <span className="font-medium">Full (Strict)</span>
                         </div>
-                        <Badge className="bg-green-100 text-green-700">Recommended</Badge>
+                        <Badge className="bg-green-100 text-green-700">{t.cloudflare.recommended}</Badge>
                       </div>
                     </div>
                   </AccordionContent>
@@ -394,27 +395,27 @@ export default function CloudflareSetupPage() {
                   <AccordionTrigger>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">Step 5</Badge>
-                      <span>Enable Security Features</span>
+                      <span>{t.cloudflare.enableSecurity}</span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4">
-                    <p>Enable these recommended security settings:</p>
+                    <p>{t.cloudflare.enableSecurityDesc}</p>
                     <ul className="space-y-2 text-sm">
                       <li className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-600" />
-                        Always Use HTTPS
+                        {t.cloudflare.alwaysUseHTTPS}
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-600" />
-                        Automatic HTTPS Rewrites
+                        {t.cloudflare.automaticHTTPS}
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-600" />
-                        Browser Integrity Check
+                        {t.cloudflare.browserIntegrityCheck}
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="h-4 w-4 text-green-600" />
-                        Hotlink Protection
+                        {t.cloudflare.hotlinkProtection}
                       </li>
                     </ul>
                   </AccordionContent>
@@ -428,14 +429,14 @@ export default function CloudflareSetupPage() {
         <TabsContent value="config" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">API Configuration</CardTitle>
+              <CardTitle className="text-base">{t.cloudflare.apiConfiguration}</CardTitle>
               <CardDescription>
-                Connect CAARD to Cloudflare using your API credentials
+                {t.cloudflare.apiConfigDesc}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Cloudflare Email</Label>
+                <Label htmlFor="email">{t.cloudflare.cloudflareEmail}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -446,7 +447,7 @@ export default function CloudflareSetupPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="apiKey">Global API Key</Label>
+                <Label htmlFor="apiKey">{t.cloudflare.globalApiKey}</Label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Input
@@ -454,7 +455,7 @@ export default function CloudflareSetupPage() {
                       type={showApiKey ? "text" : "password"}
                       value={config.apiKey}
                       onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-                      placeholder="Enter your Cloudflare API key"
+                      placeholder={t.cloudflare.enterApiKey}
                     />
                     <Button
                       type="button"
@@ -468,30 +469,30 @@ export default function CloudflareSetupPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Find this in Cloudflare under My Profile → API Tokens → Global API Key
+                  {t.cloudflare.findApiKey}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="zoneId">Zone ID</Label>
+                <Label htmlFor="zoneId">{t.cloudflare.zoneId}</Label>
                 <Input
                   id="zoneId"
                   value={config.zoneId}
                   onChange={(e) => setConfig({ ...config, zoneId: e.target.value })}
-                  placeholder="Enter your Zone ID"
+                  placeholder={t.cloudflare.enterZoneId}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Found in Cloudflare dashboard → Overview → API section
+                  {t.cloudflare.findZoneId}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="accountId">Account ID (Optional)</Label>
+                <Label htmlFor="accountId">{t.cloudflare.accountId}</Label>
                 <Input
                   id="accountId"
                   value={config.accountId}
                   onChange={(e) => setConfig({ ...config, accountId: e.target.value })}
-                  placeholder="Enter your Account ID"
+                  placeholder={t.cloudflare.enterAccountId}
                 />
               </div>
 
@@ -499,9 +500,9 @@ export default function CloudflareSetupPage() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium">Connection Status</p>
+                  <p className="font-medium">{t.cloudflare.connectionStatus}</p>
                   <p className="text-sm text-muted-foreground">
-                    {isConnected ? "Connected to Cloudflare" : "Not connected"}
+                    {isConnected ? t.cloudflare.connectedToCloudflare : t.cloudflare.notConnectedStatus}
                   </p>
                 </div>
                 <Button
@@ -513,7 +514,7 @@ export default function CloudflareSetupPage() {
                   ) : (
                     <RefreshCw className="h-4 w-4 mr-2" />
                   )}
-                  Test Connection
+                  {t.cloudflare.testConnection}
                 </Button>
               </div>
             </CardContent>
@@ -522,8 +523,8 @@ export default function CloudflareSetupPage() {
           {/* Environment Variables */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Environment Variables</CardTitle>
-              <CardDescription>Add these to your .env file</CardDescription>
+              <CardTitle className="text-base">{t.cloudflare.environmentVariables}</CardTitle>
+              <CardDescription>{t.cloudflare.addToEnv}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -592,15 +593,15 @@ export default function CloudflareSetupPage() {
       {/* Resources */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle className="text-base">Helpful Resources</CardTitle>
+          <CardTitle className="text-base">{t.cloudflare.helpfulResources}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { name: "Cloudflare Docs", url: "https://developers.cloudflare.com" },
-              { name: "DNS Setup Guide", url: "https://developers.cloudflare.com/dns" },
-              { name: "SSL/TLS Guide", url: "https://developers.cloudflare.com/ssl" },
-              { name: "Security Best Practices", url: "https://developers.cloudflare.com/fundamentals/security" },
+              { name: t.cloudflare.cloudflareDocs, url: "https://developers.cloudflare.com" },
+              { name: t.cloudflare.dnsSetupGuide, url: "https://developers.cloudflare.com/dns" },
+              { name: t.cloudflare.sslGuide, url: "https://developers.cloudflare.com/ssl" },
+              { name: t.cloudflare.securityBestPractices, url: "https://developers.cloudflare.com/fundamentals/security" },
             ].map((resource) => (
               <a
                 key={resource.name}
