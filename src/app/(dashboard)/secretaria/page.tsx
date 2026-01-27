@@ -374,6 +374,12 @@ export default async function SecretariaPage() {
               Solicitudes
             </Link>
           </Button>
+          <Button variant="outline" asChild>
+            <Link href="/secretaria/notificaciones">
+              <Bell className="h-4 w-4 mr-2" />
+              Notificaciones
+            </Link>
+          </Button>
           <Button asChild>
             <Link href="/cases/new">
               <FileText className="h-4 w-4 mr-2" />
@@ -485,9 +491,9 @@ export default async function SecretariaPage() {
               </Link>
             </Button>
             <Button variant="outline" className="h-auto py-4" asChild>
-              <Link href="/secretaria/arbitros" className="flex flex-col items-center gap-2">
-                <Users className="h-6 w-6" />
-                <span>Registro de Árbitros</span>
+              <Link href="/secretaria/notificaciones/nueva" className="flex flex-col items-center gap-2">
+                <Bell className="h-6 w-6" />
+                <span>Correr Traslado</span>
               </Link>
             </Button>
           </div>

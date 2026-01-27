@@ -439,10 +439,10 @@ export default async function ArbitroPage() {
               </Link>
             </Button>
             <Button variant="outline" className="h-auto py-4 flex-col items-center gap-2" asChild>
-              <Link href="/arbitro/audiencias/programar">
+              <Link href="/arbitro/audiencias/sugerir">
                 <Calendar className="h-5 w-5 text-green-600" />
-                <span className="font-medium">Programar Audiencia</span>
-                <span className="text-xs text-muted-foreground">Virtual o presencial</span>
+                <span className="font-medium">Sugerir Audiencia</span>
+                <span className="text-xs text-muted-foreground">Proponer fecha al Centro</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto py-4 flex-col items-center gap-2" asChild>
