@@ -395,6 +395,39 @@ function useNavigationItems() {
       icon: FileText,
       roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
     },
+    // El Centro - Submenu
+    {
+      title: t.sidebar.theCenter || "El Centro",
+      href: "/admin/cms/center",
+      icon: Building2,
+      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+      children: [
+        {
+          title: t.sidebar.team,
+          href: "/admin/cms/team",
+          icon: UsersRound,
+          roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+        },
+        {
+          title: t.sidebar.arbitratorRegistry || "Registro de Árbitros",
+          href: "/admin/cms/arbitrators",
+          icon: Gavel,
+          roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+        },
+        {
+          title: t.sidebar.locations,
+          href: "/admin/cms/locations",
+          icon: MapPin,
+          roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+        },
+        {
+          title: t.sidebar.regulations,
+          href: "/admin/cms/regulations",
+          icon: BookOpen,
+          roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+        },
+      ],
+    },
     {
       title: t.sidebar.articlesBlog,
       href: "/admin/cms/articles",
@@ -414,33 +447,9 @@ function useNavigationItems() {
       roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
     },
     {
-      title: t.sidebar.team,
-      href: "/admin/cms/team",
-      icon: UsersRound,
-      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
-    },
-    {
       title: t.sidebar.testimonials,
       href: "/admin/cms/testimonials",
       icon: Quote,
-      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
-    },
-    {
-      title: t.sidebar.mediaFiles,
-      href: "/admin/cms/media",
-      icon: Image,
-      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
-    },
-    {
-      title: t.sidebar.publicArbitrators,
-      href: "/admin/cms/arbitrators",
-      icon: Gavel,
-      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
-    },
-    {
-      title: t.sidebar.locations,
-      href: "/admin/cms/locations",
-      icon: MapPin,
       roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
     },
     {
@@ -456,9 +465,9 @@ function useNavigationItems() {
       roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
     },
     {
-      title: t.sidebar.regulations,
-      href: "/admin/cms/regulations",
-      icon: BookOpen,
+      title: t.sidebar.mediaFiles,
+      href: "/admin/cms/media",
+      icon: Image,
       roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
     },
     {

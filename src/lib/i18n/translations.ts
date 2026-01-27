@@ -1257,6 +1257,7 @@ export const translations = {
       mediaFiles: "Archivos Multimedia",
       configuration: "Configuración",
       translations: "Traducciones",
+      theCenter: "El Centro",
       // Administración
       users: "Usuarios",
       rolesPermissions: "Roles y Permisos",
@@ -2702,6 +2703,7 @@ export const translations = {
       mediaFiles: "Media Files",
       configuration: "Configuration",
       translations: "Translations",
+      theCenter: "The Center",
       // Administration
       users: "Users",
       rolesPermissions: "Roles and Permissions",
