@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Send, Loader2, CheckCircle, Users, Bell, FileText, Clock, Upload, File } from "lucide-react";
+import { ArrowLeft, Send, Loader2, CheckCircle, Bell, FileText, Clock, Upload, File } from "lucide-react";
 import Link from "next/link";
 import { useTranslation } from "@/lib/i18n";
 
@@ -73,7 +72,7 @@ const templates: Record<string, { title: string; message: string }> = {
   },
 };
 
-export default function NuevaNotificacionSecretariaPage() {
+function NuevaNotificacionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useTranslation();
@@ -479,5 +478,13 @@ export default function NuevaNotificacionSecretariaPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function NuevaNotificacionSecretariaPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto py-6 max-w-3xl"><div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-[#D66829]" /></div></div>}>
+      <NuevaNotificacionContent />
+    </Suspense>
   );
 }
