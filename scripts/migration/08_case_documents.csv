@@ -1,0 +1,33 @@
+id,caseId*,folderId,uploadedById,documentType*,description,originalFileName*,storedFileName,mimeType*,sizeBytes*,checksumSha256,driveFileId*,driveWebViewLink,driveDownloadLink,version,status
+DOC_001,CASO_001,FOLDER_001,EJEMPLO_USR_005,Demanda,Escrito de demanda principal,demanda_caso_001.pdf,demanda_caso_001_v1.pdf,application/pdf,1548000,abc123hash,DRIVE_FILE_001,https://drive.google.com/view/001,https://drive.google.com/download/001,1,ACTIVE
+DOC_002,CASO_001,FOLDER_001,EJEMPLO_USR_005,Anexo,Contrato materia de controversia,contrato_original.pdf,contrato_original_v1.pdf,application/pdf,2356000,def456hash,DRIVE_FILE_002,https://drive.google.com/view/002,https://drive.google.com/download/002,1,ACTIVE
+DOC_003,CASO_001,FOLDER_002,EJEMPLO_USR_004,Contestación,Escrito de contestación de demanda,contestacion_demanda.pdf,contestacion_demanda_v1.pdf,application/pdf,1890000,ghi789hash,DRIVE_FILE_003,https://drive.google.com/view/003,https://drive.google.com/download/003,1,ACTIVE
+DOC_004,CASO_001,FOLDER_003,EJEMPLO_USR_003,Resolución,Resolución de admisión,resolucion_admision.pdf,resolucion_admision_v1.pdf,application/pdf,456000,jkl012hash,DRIVE_FILE_004,https://drive.google.com/view/004,https://drive.google.com/download/004,1,ACTIVE
+
+# DOCUMENT_TYPE (Tipos de Documento):
+# Demanda - Escrito de demanda
+# Contestación - Contestación de demanda
+# Reconvención - Escrito de reconvención
+# Contestación Reconvención - Contestación a la reconvención
+# Anexo - Documento anexo
+# Prueba Documental - Prueba documental
+# Poder - Poder de representación
+# Contrato - Contrato relacionado
+# Resolución - Resolución del tribunal/secretaría
+# Alegatos - Escrito de alegatos
+# Laudo - Laudo arbitral
+# Acta - Acta de audiencia
+# Voucher de Pago - Comprobante de pago
+# Otro - Otros documentos
+
+# STATUS (Estado del Documento):
+# ACTIVE - Activo
+# REPLACED - Reemplazado por nueva versión
+# VOID - Anulado
+
+# MIME_TYPES comunes:
+# application/pdf - PDF
+# application/msword - DOC
+# application/vnd.openxmlformats-officedocument.wordprocessingml.document - DOCX
+# image/jpeg - JPG
+# image/png - PNG

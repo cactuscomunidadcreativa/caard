@@ -1,0 +1,109 @@
+/**
+ * CAARD - Middleware para protección de rutas
+ */
+
+import { auth } from "@/lib/auth";
+import { NextResponse } from "next/server";
+
+// Rutas públicas que no requieren autenticación
+const publicRoutes = [
+  "/",
+  "/login",
+  "/register",
+  "/api/auth",
+  "/api/public",
+  "/pago", // Páginas de pago público
+  // Páginas públicas del website (CMS)
+  "/presentacion",
+  "/secretaria-general",
+  "/consejo-superior",
+  "/sedes",
+  "/arbitraje",
+  "/arbitraje-emergencia",
+  "/servicios-ad-hoc",
+  "/registro-arbitros",
+  "/reglamentos",
+  "/clausula-arbitral",
+  "/calculadora",
+  "/contacto",
+  "/solicitud-arbitral",
+  "/noticias",
+  "/eventos",
+  "/articulos",
+  "/nosotros",
+  "/servicios",
+  "/mediacion",
+  "/arancelario",
+  "/reglamento",
+  "/faqs",
+  "/transparencia",
+  "/politica-privacidad",
+  "/terminos-condiciones",
+];
+
+// Rutas que requieren rol de admin
+const adminRoutes = ["/admin"];
+
+// Rutas que requieren rol de secretaría o superior
+const staffRoutes = ["/secretaria", "/staff"];
+
+export default auth((req) => {
+  const { pathname } = req.nextUrl;
+
+  // Permitir rutas públicas
+  if (publicRoutes.some((route) => pathname === route || pathname.startsWith(route + "/"))) {
+    return NextResponse.next();
+  }
+
+  // Permitir archivos estáticos y API routes públicas
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon") ||
+    pathname.startsWith("/uploads") ||
+    pathname.startsWith("/images") ||
+    pathname.startsWith("/patterns") ||
+    pathname.includes(".")
+  ) {
+    return NextResponse.next();
+  }
+
+  // Verificar autenticación para rutas protegidas
+  if (!req.auth) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  const userRole = req.auth.user.role;
+
+  // Verificar acceso a rutas de admin
+  if (adminRoutes.some((route) => pathname.startsWith(route))) {
+    const adminAllowedRoles = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"];
+    if (!adminAllowedRoles.includes(userRole)) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+  }
+
+  // Verificar acceso a rutas de staff (secretaría)
+  if (staffRoutes.some((route) => pathname.startsWith(route))) {
+    const allowedRoles = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"];
+    if (!allowedRoles.includes(userRole)) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+  }
+
+  return NextResponse.next();
+});
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
+  ],
+};

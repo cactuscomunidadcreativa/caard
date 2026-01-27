@@ -1,0 +1,18 @@
+id,caseId*,userId,role*,displayName,email,phoneE164,isPrimary
+MEMBER_001,CASO_001,EJEMPLO_USR_005,DEMANDANTE,Empresa Comercial A S.A.C.,contacto@empresaa.pe,+51999111222,true
+MEMBER_002,CASO_001,,DEMANDADO,Empresa Industrial B S.A.,legal@empresab.pe,+51999333444,true
+MEMBER_003,CASO_001,EJEMPLO_USR_003,ARBITRO,Carlos Rodríguez Sánchez,arbitro1@gmail.com,+51999888555,true
+MEMBER_004,CASO_001,EJEMPLO_USR_002,SECRETARIA,María López Díaz,secretaria@caard.pe,+51999888666,true
+MEMBER_005,CASO_002,,DEMANDANTE,International Corp Inc.,legal@intcorp.com,+1555666777,true
+MEMBER_006,CASO_002,,DEMANDADO,Peruvian Company S.A.C.,gerencia@peruvianco.pe,+51999444555,true
+
+# ROLES DISPONIBLES PARA MIEMBROS DEL CASO:
+# DEMANDANTE - Parte demandante
+# DEMANDADO - Parte demandada
+# ARBITRO - Árbitro asignado al caso
+# SECRETARIA - Secretaría arbitral del caso
+
+# NOTAS:
+# - userId puede estar vacío si la parte no tiene cuenta en el sistema
+# - isPrimary indica si es el representante principal de esa parte
+# - displayName es el nombre que se muestra en el expediente

@@ -1,0 +1,2 @@
+id,code*,name*,legalName,taxId,driveRootFolderId,driveSharedDriveId,primaryColorHex,accentColorHex,neutralColorHex
+EJEMPLO_001,CAARD,Centro de Arbitraje CAARD,Centro de Administración de Arbitrajes y Resolución de Disputas S.A.C.,20123456789,1ABC123xyz,SharedDrive123,#0B2A5B,#D66829,#9A9A9E

@@ -1,26 +1,267 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * CAARD - Sistema Integral de Control de Arbitrajes
+ * Tema institucional basado en Manual de Identidad
+ *
+ * Colores principales:
+ * - Azul institucional: #0B2A5B (confianza, solidez, justicia)
+ * - Naranja acción: #D66829 (llamados a acción, estados activos)
+ * - Grises neutros: para soporte y lectura
+ */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.5rem;
+
+  /* CAARD Light Theme - Institucional */
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.15 0.02 250);
+
+  /* Cards & Popovers */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.02 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.02 250);
+
+  /* Primary - Azul CAARD institucional (#0B2A5B) */
+  --primary: oklch(0.30 0.08 250);
+  --primary-foreground: oklch(0.98 0 0);
+
+  /* Secondary - Naranja CAARD (#D66829) */
+  --secondary: oklch(0.60 0.16 45);
+  --secondary-foreground: oklch(0.98 0 0);
+
+  /* Muted */
+  --muted: oklch(0.96 0.01 250);
+  --muted-foreground: oklch(0.50 0.02 250);
+
+  /* Accent - Azul claro */
+  --accent: oklch(0.94 0.03 250);
+  --accent-foreground: oklch(0.25 0.06 250);
+
+  /* States */
+  --destructive: oklch(0.55 0.22 25);
+  --warning: oklch(0.75 0.15 75);
+  --warning-foreground: oklch(0.25 0.05 75);
+  --success: oklch(0.60 0.15 145);
+  --success-foreground: oklch(0.98 0 0);
+
+  /* Borders & Inputs */
+  --border: oklch(0.90 0.01 250);
+  --input: oklch(0.90 0.01 250);
+  --ring: oklch(0.45 0.08 250);
+
+  /* Charts - Paleta institucional */
+  --chart-1: oklch(0.30 0.08 250); /* Azul principal */
+  --chart-2: oklch(0.60 0.16 45);  /* Naranja */
+  --chart-3: oklch(0.45 0.06 250); /* Azul medio */
+  --chart-4: oklch(0.70 0.12 45);  /* Naranja claro */
+  --chart-5: oklch(0.55 0.04 250); /* Azul gris */
+
+  /* Sidebar - Azul institucional */
+  --sidebar: oklch(0.22 0.06 250);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.60 0.16 45);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.30 0.06 250);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --sidebar-border: oklch(0.35 0.05 250);
+  --sidebar-ring: oklch(0.60 0.16 45);
+}
+
+.dark {
+  /* CAARD Dark Theme */
+  --background: oklch(0.14 0.02 250);
+  --foreground: oklch(0.95 0 0);
+
+  /* Cards & Popovers */
+  --card: oklch(0.18 0.02 250);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.18 0.02 250);
+  --popover-foreground: oklch(0.95 0 0);
+
+  /* Primary - Azul claro en dark mode */
+  --primary: oklch(0.65 0.12 250);
+  --primary-foreground: oklch(0.12 0.02 250);
+
+  /* Secondary - Naranja */
+  --secondary: oklch(0.65 0.18 45);
+  --secondary-foreground: oklch(0.12 0.02 250);
+
+  /* Muted */
+  --muted: oklch(0.22 0.02 250);
+  --muted-foreground: oklch(0.65 0 0);
+
+  /* Accent */
+  --accent: oklch(0.25 0.04 250);
+  --accent-foreground: oklch(0.90 0 0);
+
+  /* States */
+  --destructive: oklch(0.65 0.20 25);
+  --warning: oklch(0.70 0.15 75);
+  --warning-foreground: oklch(0.15 0.02 75);
+  --success: oklch(0.65 0.15 145);
+  --success-foreground: oklch(0.15 0.02 145);
+
+  /* Borders & Inputs */
+  --border: oklch(0.30 0.02 250);
+  --input: oklch(0.25 0.02 250);
+  --ring: oklch(0.55 0.10 250);
+
+  /* Charts */
+  --chart-1: oklch(0.55 0.12 250);
+  --chart-2: oklch(0.65 0.18 45);
+  --chart-3: oklch(0.50 0.08 250);
+  --chart-4: oklch(0.70 0.14 45);
+  --chart-5: oklch(0.60 0.06 250);
+
+  /* Sidebar */
+  --sidebar: oklch(0.12 0.02 250);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.65 0.18 45);
+  --sidebar-primary-foreground: oklch(0.12 0.02 250);
+  --sidebar-accent: oklch(0.20 0.03 250);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --sidebar-border: oklch(0.25 0.02 250);
+  --sidebar-ring: oklch(0.65 0.18 45);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* CAARD Custom utilities */
+@layer utilities {
+  /* Focus ring institucional */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  /* Status badges */
+  .badge-draft {
+    @apply bg-muted text-muted-foreground;
+  }
+  .badge-submitted {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200;
+  }
+  .badge-under-review {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+  }
+  .badge-observed {
+    @apply bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200;
+  }
+  .badge-admitted {
+    @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+  }
+  .badge-rejected {
+    @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+  }
+  .badge-in-process {
+    @apply bg-primary/10 text-primary;
+  }
+  .badge-closed {
+    @apply bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200;
+  }
+}
+
+/* Carousel/Slider Animations */
+@keyframes carousel-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.carousel-progress {
+  animation-fill-mode: forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-400 {
+  animation-delay: 400ms;
+}
+
+.animation-delay-600 {
+  animation-delay: 600ms;
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
 }

@@ -1,0 +1,25 @@
+# =====================================================
+# CAARD - PLANTILLA DE MIGRACIÓN DE DATOS
+# =====================================================
+#
+# INSTRUCCIONES:
+# 1. Copie este archivo y ábralo en Excel/Google Sheets
+# 2. Cada sección representa una tabla de la base de datos
+# 3. Los campos marcados con * son OBLIGATORIOS
+# 4. Los campos marcados con [AUTO] se generan automáticamente
+# 5. Use el formato indicado en cada columna
+# 6. No modifique las cabeceras
+#
+# ORDEN DE IMPORTACIÓN:
+# 1. Centers (Centros de Arbitraje)
+# 2. Users (Usuarios)
+# 3. ArbitratorRegistry (Registro de Árbitros)
+# 4. ArbitrationTypes (Tipos de Arbitraje)
+# 5. Cases (Expedientes)
+# 6. CaseMembers (Miembros del Caso)
+# 7. CaseLawyers (Abogados del Caso)
+# 8. CaseDocuments (Documentos)
+# 9. Payments (Pagos)
+# 10. Holidays (Feriados)
+# =====================================================
+

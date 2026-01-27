@@ -1,0 +1,16 @@
+id,centerId*,code*,name*,description,kind,tribunalMode,baseFeeCents,currency,isActive
+TIPO_001,EJEMPLO_001,COMERCIAL_NAC,Arbitraje Comercial Nacional,Controversias comerciales entre empresas nacionales,INSTITUTIONAL,SOLE_ARBITRATOR,50000,PEN,true
+TIPO_002,EJEMPLO_001,COMERCIAL_INT,Arbitraje Comercial Internacional,Controversias con elementos de internacionalidad,INSTITUTIONAL,TRIBUNAL_3,100000,USD,true
+TIPO_003,EJEMPLO_001,CONTRATACIONES,Contrataciones del Estado,Controversias con entidades del Estado peruano,INSTITUTIONAL,TRIBUNAL_3,75000,PEN,true
+TIPO_004,EJEMPLO_001,EMERGENCIA,Arbitraje de Emergencia,Medidas cautelares urgentes,INSTITUTIONAL,SOLE_ARBITRATOR,200000,PEN,true
+TIPO_005,EJEMPLO_001,AD_HOC,Arbitraje Ad Hoc,Arbitraje no administrado,AD_HOC,SOLE_ARBITRATOR,25000,PEN,true
+
+# KIND (Tipo de Arbitraje):
+# INSTITUTIONAL - Arbitraje institucional
+# AD_HOC - Arbitraje ad hoc
+
+# TRIBUNAL_MODE:
+# SOLE_ARBITRATOR - Árbitro único
+# TRIBUNAL_3 - Tribunal de 3 árbitros
+
+# baseFeeCents: Monto en céntimos (50000 = S/. 500.00)

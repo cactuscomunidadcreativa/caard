@@ -1,0 +1,3150 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//
+// ENUMS
+//
+
+enum Role {
+  SUPER_ADMIN     // Administrador del sistema completo
+  ADMIN           // Administrador general del centro
+  CENTER_STAFF    // Personal del centro (staff administrativo)
+  SECRETARIA      // Secretaría arbitral
+  ARBITRO         // Árbitro
+  ABOGADO         // Abogado (puede representar demandantes o demandados)
+  DEMANDANTE      // Parte demandante
+  DEMANDADO       // Parte demandada
+}
+
+enum CaseStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  OBSERVED
+  ADMITTED
+  REJECTED
+  IN_PROCESS
+  AWAITING_PAYMENT
+  PAYMENT_OVERDUE
+  SUSPENDED
+  CLOSED
+  ARCHIVED
+  // Estados de emergencia
+  EMERGENCY_REQUESTED
+  EMERGENCY_IN_PROCESS
+  EMERGENCY_RESOLVED
+  EMERGENCY_EXPIRED
+}
+
+enum ArbitrationScope {
+  NACIONAL
+  INTERNACIONAL
+}
+
+enum ProcedureType {
+  REGULAR
+  EMERGENCY
+}
+
+enum ProcessStage {
+  DEMANDA
+  CONTESTACION
+  RECONVENCION
+  PROBATORIA
+  AUDIENCIA_PRUEBAS
+  INFORMES_ORALES
+  LAUDO
+}
+
+enum DeadlineType {
+  PAYMENT
+  CONTESTACION
+  RECONVENCION
+  CONTESTACION_RECONVENCION
+  ALEGATOS
+  RECUSACION_ABSOLUCION
+  DESIGNACION_ARBITRO
+  SUBSANACION
+  EMERGENCY_VERIFICATION
+  EMERGENCY_PAYMENT
+  EMERGENCY_DESIGNATION
+  EMERGENCY_RESOLUTION
+  EMERGENCY_PRINCIPAL_REQUEST
+  CUSTOM
+}
+
+enum DeadlineStatus {
+  ACTIVE
+  COMPLETED
+  OVERDUE
+  CANCELLED
+  EXTENDED
+}
+
+enum PaymentOrderStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentConcept {
+  TASA_PRESENTACION
+  GASTOS_ADMINISTRATIVOS
+  HONORARIOS_ARBITRO_UNICO
+  HONORARIOS_TRIBUNAL
+  TASA_EMERGENCIA
+  GASTOS_RECONVENCION
+  RELIQUIDACION
+  OTROS
+}
+
+enum ArbitratorStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+  SANCTIONED
+  RETIRED
+  REJECTED
+}
+
+enum EmergencyStatus {
+  REQUESTED
+  PENDING_VERIFICATION
+  VERIFICATION_FAILED
+  PENDING_PAYMENT
+  PAYMENT_OVERDUE
+  PENDING_DESIGNATION
+  DESIGNATION_OVERDUE
+  PENDING_ACCEPTANCE
+  IN_PROCESS
+  RESOLVED
+  PENDING_MAIN_CASE
+  COMPLETED
+  EXPIRED
+  ARCHIVED
+}
+
+enum RecusationStatus {
+  FILED
+  TRANSFERRED
+  PENDING_RESPONSE
+  RESPONSE_RECEIVED
+  PENDING_COUNCIL_DECISION
+  ACCEPTED
+  REJECTED
+}
+
+enum SanctionType {
+  WARNING
+  SUSPENSION
+  REMOVAL
+}
+
+enum ArbitrationKind {
+  INSTITUTIONAL
+  AD_HOC
+}
+
+enum TribunalMode {
+  SOLE_ARBITRATOR
+  TRIBUNAL_3
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  PUSH
+  IN_APP
+}
+
+enum NotificationEventType {
+  // Solicitud / Admisión
+  CASE_SUBMITTED
+  CASE_OBSERVED
+  CASE_ADMITTED
+  CASE_REJECTED
+
+  // Documentos
+  DOCUMENT_UPLOADED
+  DOCUMENT_REPLACED
+
+  // Plazos
+  DEADLINE_UPCOMING
+  DEADLINE_OVERDUE
+
+  // Audiencias
+  HEARING_SCHEDULED
+  HEARING_UPDATED
+  HEARING_REMINDER
+
+  // Pagos
+  PAYMENT_REQUIRED
+  PAYMENT_PENDING
+  PAYMENT_CONFIRMED
+  PAYMENT_FAILED
+  PAYMENT_OVERDUE
+
+  // Laudo / Cierre
+  AWARD_ISSUED
+  CASE_CLOSED
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum PaymentProvider {
+  CULQI
+  MANUAL_VOUCHER
+}
+
+enum PaymentStatus {
+  REQUIRED
+  PENDING
+  CONFIRMED
+  FAILED
+  CANCELLED
+  OVERDUE
+  REFUNDED
+}
+
+enum DocumentStatus {
+  ACTIVE
+  REPLACED
+  VOID
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  DOWNLOAD
+  LOGIN
+  LOGOUT
+  SEND_NOTIFICATION
+  PAYMENT_UPDATE
+  CASE_STATUS_CHANGE
+  // User management actions
+  UPDATE_PROFILE
+  CHANGE_PASSWORD
+  CREATE_USER
+  UPDATE_USER
+  DEACTIVATE_USER
+  UPDATE_NOTIFICATION_PREFERENCES
+}
+
+//
+// CORE MULTI-CENTER
+//
+
+model Center {
+  id          String   @id @default(cuid())
+  code        String   @unique // e.g., "CAARD"
+  name        String
+  legalName   String?
+  taxId       String?
+
+  // Google Drive root (Shared Drive / folder ids)
+  driveRootFolderId   String?
+  driveSharedDriveId  String?
+
+  // Branding / UI tokens (opcional, para multi-centro)
+  primaryColorHex     String? // e.g., "#0B2A5B"
+  accentColorHex      String? // e.g., "#D66829"
+  neutralColorHex     String? // e.g., "#9A9A9E"
+
+  // Configuracion de notificaciones (Email, SMS, WhatsApp)
+  notificationSettings Json?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  arbitrationTypes ArbitrationType[]
+  users            User[]
+  cases            Case[]
+  auditLogs        AuditLog[]
+
+  // CMS Relations
+  cmsPages         CmsPage[]
+  cmsMenuItems     CmsMenuItem[]
+  cmsArticles      CmsArticle[]
+  cmsCategories    CmsCategory[]
+  cmsEvents        CmsEvent[]
+  cmsAnnouncements CmsAnnouncement[]
+  cmsMedia         CmsMedia[]
+  cmsSiteConfig    CmsSiteConfig?
+}
+
+//
+// AUTH + USERS
+//
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  image        String?
+  phoneE164    String?  // +51...
+  passwordHash String?  // For credentials auth
+
+  role      Role     @default(DEMANDANTE)
+  isActive  Boolean  @default(true)
+
+  centerId  String?
+  center    Center?  @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
+  // NextAuth standard tables relation
+  accounts  Account[]
+  sessions  Session[]
+
+  // Relations
+  caseMemberships CaseMember[]
+  lawyerCases     CaseLawyer[]   @relation("LawyerCases") // Casos donde actúa como abogado
+  documents       CaseDocument[] @relation("UploadedDocuments")
+  auditLogs       AuditLog[]
+  notifications   NotificationQueue[]
+  caseNotes       CaseNote[]
+
+  // CMS Relations
+  cmsArticles     CmsArticle[]
+  cmsMedia        CmsMedia[]
+
+  // User Preferences
+  notificationPreference NotificationPreference?
+
+  // AI Relations
+  aiQuota         AIUserQuota?
+  aiConversations AIConversation[]
+  aiUsageLogs     AIUsageLog[]
+
+  // Fraccionamiento de pagos
+  installmentRequests  PaymentInstallmentPlan[] @relation("InstallmentRequester")
+  installmentReviews   PaymentInstallmentPlan[] @relation("InstallmentReviewer")
+
+  // Árbitros
+  arbitratorRegistry   ArbitratorRegistry?
+
+  // Notificaciones in-app
+  inAppNotifications   Notification[]
+
+  // System integrations
+  organizedMeetings    ScheduledMeeting[] @relation("MeetingOrganizer")
+  meetingParticipations MeetingParticipant[]
+  systemAuditLogs      SystemAuditLog[]
+
+  // OTP tokens
+  otpTokens            OtpToken[]
+
+  // 2FA settings
+  twoFactorEnabled     Boolean @default(false)
+  twoFactorChannel     String? // EMAIL, SMS, WHATSAPP
+  phone                String? // Número de teléfono para SMS/WhatsApp
+
+  // Email verification
+  emailVerified        DateTime?  // Fecha de verificación del email
+  emailVerificationToken String?  // Token temporal para verificación
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([role])
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+//
+// OTP - One Time Password para autenticación de dos factores
+//
+model OtpToken {
+  id        String @id @default(cuid())
+
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  code      String    // Código OTP (6 dígitos)
+  type      OtpType   // LOGIN, PASSWORD_RESET, VERIFICATION
+  channel   OtpChannel // EMAIL, SMS, WHATSAPP
+
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0) // Intentos fallidos
+
+  // Metadata
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([code, type])
+  @@index([expiresAt])
+}
+
+enum OtpType {
+  LOGIN
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+  PHONE_VERIFICATION
+  ACTION_CONFIRMATION
+}
+
+enum OtpChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+//
+// ROLE CONFIG - Configuración dinámica de roles
+//
+model RoleConfig {
+  id          String @id @default(cuid())
+
+  role        Role   @unique
+  displayName String          // Nombre para mostrar: "Administrador General"
+  description String?         // Descripción del rol
+  color       String?         // Color para badges: "bg-red-100 text-red-700"
+  icon        String?         // Icono lucide: "Shield", "User", etc.
+
+  // Permisos generales
+  permissions Json?           // Array de permisos: ["users.create", "cases.view", etc.]
+
+  // Configuración de acceso
+  canAccessAdmin      Boolean @default(false)
+  canAccessCMS        Boolean @default(false)
+  canAccessAI         Boolean @default(false)
+  canManageUsers      Boolean @default(false)
+  canManageCases      Boolean @default(false)
+  canManageDocuments  Boolean @default(false)
+  canViewReports      Boolean @default(false)
+
+  // Límites
+  maxCasesAssigned    Int?    // Máximo de casos asignados (para árbitros, abogados)
+
+  // Estado
+  isActive            Boolean @default(true)
+  isSystemRole        Boolean @default(false) // Roles del sistema no se pueden eliminar
+
+  sortOrder           Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+//
+// ARBITRATION TYPE CONFIG (per Center)
+//
+
+model ArbitrationType {
+  id           String @id @default(cuid())
+  centerId     String
+  center       Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  code         String // e.g., "COMERCIAL", "CONSTRUCCION", "EMERGENCIA"
+  name         String
+  description  String?
+  kind         ArbitrationKind @default(INSTITUTIONAL)
+  tribunalMode TribunalMode    @default(SOLE_ARBITRATOR)
+
+  // Notification rules & templates per type
+  notificationRules NotificationRule[]
+
+  // Pricing config (simple v1)
+  baseFeeCents     Int? // e.g., 50000 = 500.00
+  currency         String @default("PEN")
+
+  isActive     Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  cases Case[]
+
+  @@unique([centerId, code])
+  @@index([centerId])
+}
+
+//
+// CASE / EXPEDIENTE
+//
+
+model Case {
+  id              String @id @default(cuid())
+  centerId        String
+  center          Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  arbitrationTypeId String
+  arbitrationType   ArbitrationType @relation(fields: [arbitrationTypeId], references: [id], onDelete: Restrict)
+
+  // Correlative code: EXP-2026-CAARD-000123
+  year           Int
+  sequence       Int
+  code           String @unique
+
+  title          String?
+  status         CaseStatus @default(SUBMITTED)
+
+  // Scope and procedure type
+  scope          ArbitrationScope @default(NACIONAL)
+  procedureType  ProcedureType    @default(REGULAR)
+  tribunalMode   TribunalMode     @default(SOLE_ARBITRATOR)
+
+  // Current process stage
+  currentStage   ProcessStage?
+
+  // Blocking control
+  isBlocked      Boolean @default(false)
+  blockReason    String?
+  blockedAt      DateTime?
+  blockedBy      String?
+
+  // Dispute amount (for fee calculation)
+  disputeAmountCents BigInt?
+  currency           String @default("PEN")
+
+  // Parties summary (canonical; detailed in CaseMember)
+  claimantName   String?
+  respondentName String?
+
+  // Drive folder root for expediente
+  driveFolderId  String?
+  driveFolderPath String? // optional cached display path
+
+  submittedAt    DateTime?
+  admittedAt     DateTime?
+  closedAt       DateTime?
+
+  // Relations
+  members     CaseMember[]
+  lawyers     CaseLawyer[]   // Abogados asignados al caso
+  folders     CaseFolder[]
+  documents   CaseDocument[]
+  deadlines   CaseDeadline[]
+  hearings    CaseHearing[]
+  payments    Payment[]
+  notes       CaseNote[]
+  auditLogs   AuditLog[]
+  notifications NotificationQueue[]
+
+  // New rules system relations
+  paymentOrders     PaymentOrder[]
+  processDeadlines  ProcessDeadline[]
+  stageHistory      CaseStageHistory[]
+  emergencyRequests EmergencyRequest[]
+  recusations       Recusation[]
+  installmentPlans  PaymentInstallmentPlan[]
+
+  // Liquidación de gastos
+  liquidations      CaseLiquidation[]
+
+  // Reuniones programadas
+  scheduledMeetings ScheduledMeeting[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId, year, sequence])
+  @@index([centerId, status])
+  @@index([arbitrationTypeId])
+  @@index([isBlocked])
+  @@index([currentStage])
+}
+
+model CaseMember {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  userId    String?
+  user      User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  role      Role   // DEMANDANTE / DEMANDADO / ARBITRO / SECRETARIA (por caso)
+  displayName String?
+  email      String?
+  phoneE164  String?
+
+  isPrimary  Boolean @default(false) // p.ej., representante principal
+  createdAt  DateTime @default(now())
+
+  // Relación con abogados que representan a este miembro
+  lawyerRepresentations CaseLawyer[] @relation("RepresentedMember")
+
+  @@index([caseId])
+  @@index([userId])
+  @@index([caseId, role])
+}
+
+//
+// ABOGADOS EN CASOS
+// Vincula abogados con casos y las partes que representan
+//
+model CaseLawyer {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  lawyerId  String
+  lawyer    User   @relation("LawyerCases", fields: [lawyerId], references: [id], onDelete: Cascade)
+
+  // A quién representa en este caso
+  representedMemberId String?
+  representedMember   CaseMember? @relation("RepresentedMember", fields: [representedMemberId], references: [id], onDelete: SetNull)
+
+  // Tipo de representación
+  representationType  LawyerRepresentationType @default(DEMANDANTE)
+
+  // Información adicional
+  caseNumber          String?   // Número de colegiatura
+  barAssociation      String?   // Colegio de Abogados
+  powerOfAttorneyDoc  String?   // Referencia al documento de poder
+
+  // Estado
+  isActive            Boolean @default(true)
+  isLead              Boolean @default(false) // Abogado principal
+  authorizedAt        DateTime?
+  revokedAt           DateTime?
+
+  // Metadata
+  notes               String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([caseId, lawyerId, representationType])
+  @@index([caseId])
+  @@index([lawyerId])
+  @@index([representedMemberId])
+  @@index([representationType])
+}
+
+enum LawyerRepresentationType {
+  DEMANDANTE  // Representa al demandante
+  DEMANDADO   // Representa al demandado
+  AMBOS       // Representa a ambas partes (casos especiales)
+}
+
+//
+// FOLDERS + DOCUMENTS (Google Drive-backed)
+//
+
+model CaseFolder {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  key       String // "01_Solicitud", "02_Admisión", etc.
+  name      String
+  parentId  String?
+  parent    CaseFolder? @relation("FolderTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  CaseFolder[] @relation("FolderTree")
+
+  // Drive mapping
+  driveFolderId String?
+  drivePath     String?
+
+  documents CaseDocument[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([caseId, key])
+  @@index([caseId])
+  @@index([parentId])
+}
+
+model CaseDocument {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  folderId  String?
+  folder    CaseFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  uploadedById String?
+  uploadedBy   User? @relation("UploadedDocuments", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  // Classification
+  documentType String // "Demanda", "Contestación", "Prueba", ...
+  description  String?
+
+  // File meta
+  originalFileName String
+  storedFileName   String? // sanitized
+  mimeType         String
+  sizeBytes        BigInt
+  checksumSha256   String?
+
+  // Drive pointers (source of truth)
+  driveFileId      String
+  driveWebViewLink String?
+  driveDownloadLink String?
+
+  // Versioning
+  version     Int @default(1)
+  status      DocumentStatus @default(ACTIVE)
+  replacedById String?
+  replacedBy   CaseDocument? @relation("DocReplace", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces     CaseDocument[] @relation("DocReplace")
+
+  // Payment voucher relation
+  paymentVouchers Payment[]
+
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([folderId])
+  @@index([uploadedById])
+  @@index([driveFileId])
+  @@index([caseId, documentType])
+}
+
+//
+// DEADLINES / PLAZOS
+//
+
+model CaseDeadline {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  title     String
+  description String?
+  dueAt     DateTime
+  timezone  String @default("America/Lima")
+
+  isCompleted Boolean @default(false)
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([dueAt])
+  @@index([caseId, isCompleted])
+}
+
+//
+// HEARINGS / AUDIENCIAS
+//
+
+model CaseHearing {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  title     String
+  hearingAt DateTime
+  timezone  String @default("America/Lima")
+  location  String?
+  meetingUrl String?
+
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([hearingAt])
+}
+
+//
+// PAYMENTS (Culqi + manual voucher)
+//
+
+model Payment {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  provider  PaymentProvider @default(CULQI)
+  status    PaymentStatus   @default(PENDING)
+
+  currency  String @default("PEN")
+  amountCents Int
+
+  concept   String // "Tasa arbitral", "Honorarios", etc.
+  description String?
+
+  // Culqi references
+  culqiChargeId String?
+  culqiOrderId  String?
+  culqiPaymentMethod String?
+  culqiRaw      Json?
+
+  // Manual voucher
+  voucherDocumentId String?
+  voucherDocument   CaseDocument? @relation(fields: [voucherDocumentId], references: [id], onDelete: SetNull)
+
+  dueAt     DateTime?
+  paidAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([status])
+  @@index([provider])
+}
+
+//
+// NOTES / INTERNAL COMMENTS (optional but useful)
+//
+
+model CaseNote {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  authorId  String?
+  author    User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  title     String?
+  content   String
+
+  isPrivate Boolean @default(true) // visible only to secretaría/admin, configurable
+
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([authorId])
+}
+
+//
+// NOTIFICATIONS ENGINE
+//
+
+model NotificationRule {
+  id        String @id @default(cuid())
+  arbitrationTypeId String
+  arbitrationType   ArbitrationType @relation(fields: [arbitrationTypeId], references: [id], onDelete: Cascade)
+
+  eventType  NotificationEventType
+  channel    NotificationChannel
+
+  // who gets it (by case roles)
+  // e.g. ["DEMANDANTE","DEMANDADO","SECRETARIA"]
+  targetRoles Role[]
+
+  // template keys (resolved in app layer)
+  templateKey String
+  subjectTemplate String?
+  bodyTemplate    String? // store text/html or key only
+
+  // scheduling rules
+  // e.g. for deadline reminders: {"hoursBefore": 48}
+  ruleConfig Json?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([arbitrationTypeId])
+  @@index([eventType])
+}
+
+model NotificationQueue {
+  id        String @id @default(cuid())
+
+  caseId    String?
+  case      Case?   @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  channel   NotificationChannel
+  eventType NotificationEventType
+  status    NotificationStatus @default(QUEUED)
+
+  toEmail   String?
+  toPhoneE164 String?
+
+  subject   String?
+  body      String?
+
+  providerMessageId String?
+  providerResponse  Json?
+
+  errorMessage String?
+
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([channel])
+  @@index([eventType])
+  @@index([caseId])
+  @@index([userId])
+}
+
+//
+// NOTIFICACIONES IN-APP (para el usuario)
+//
+model Notification {
+  id        String @id @default(cuid())
+
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      String   // "PAYMENT", "CASE", "DEADLINE", "SYSTEM"
+  title     String
+  message   String
+  metadata  Json?
+
+  isRead    Boolean @default(false)
+  readAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+}
+
+//
+// AUDIT LOG
+//
+
+model AuditLog {
+  id        String @id @default(cuid())
+
+  centerId  String?
+  center    Center? @relation(fields: [centerId], references: [id], onDelete: SetNull)
+
+  caseId    String?
+  case      Case?   @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action    AuditAction
+  entity    String // "Case", "CaseDocument", "Payment", ...
+  entityId  String?
+  meta      Json?
+
+  ip        String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([centerId])
+  @@index([caseId])
+  @@index([userId])
+  @@index([action])
+}
+
+// =============================================================================
+// CMS - CONTENT MANAGEMENT SYSTEM
+// =============================================================================
+
+//
+// CMS - PÁGINAS
+//
+model CmsPage {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  slug      String // "inicio", "el-centro", "arbitraje"
+  title     String
+  metaTitle String?
+  metaDescription String?
+
+  isPublished Boolean @default(false)
+  publishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sections  CmsSection[]
+
+  @@unique([centerId, slug])
+  @@index([centerId])
+  @@index([isPublished])
+}
+
+//
+// CMS - SECCIONES (bloques de contenido en páginas)
+//
+enum CmsSectionType {
+  // Secciones principales
+  HERO           // Banner principal con imagen/video
+  SLIDER         // Carrusel de banners
+  BANNER         // Banner múltiple
+  // Contenido
+  TEXT           // Texto rico (markdown/HTML)
+  CARDS          // Tarjetas (servicios, equipo, etc.)
+  FEATURE_GRID   // Grid de características
+  SPLIT_CONTENT  // Contenido dividido (imagen + texto)
+  // Media
+  VIDEO          // Video embebido (YouTube, Vimeo)
+  GALLERY        // Galería de imágenes
+  EMBED          // Contenido embebido (video, mapa)
+  // Interactivo
+  ACCORDION      // Preguntas frecuentes
+  CTA            // Call to action
+  STATS          // Estadísticas
+  PRICING        // Tabla de precios
+  // Personas
+  TEAM           // Equipo/directivos
+  TESTIMONIALS   // Testimonios
+  // Formularios
+  CONTACT_FORM   // Formulario de contacto
+  DYNAMIC_FORM   // Formulario dinámico
+  // Otros
+  TIMELINE       // Línea de tiempo
+  LOGO_CLOUD     // Logos de clientes/partners
+  CUSTOM         // HTML personalizado
+}
+
+model CmsSection {
+  id        String @id @default(cuid())
+  pageId    String
+  page      CmsPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  type      CmsSectionType
+  title     String?
+  subtitle  String?
+  content   Json?   // Contenido según el tipo de sección
+
+  // Estilo y configuración
+  bgColor   String? // Color de fondo
+  textColor String?
+  bgImage   String? // URL de imagen de fondo
+  padding   String? // "sm", "md", "lg", "xl"
+
+  sortOrder Int @default(0)
+  isVisible Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId])
+  @@index([sortOrder])
+}
+
+//
+// CMS - MENÚ DE NAVEGACIÓN
+//
+model CmsMenuItem {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  parentId  String?
+  parent    CmsMenuItem?  @relation("MenuChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children  CmsMenuItem[] @relation("MenuChildren")
+
+  label     String
+  url       String?       // URL externa o interna
+  pageSlug  String?       // Slug de página interna
+  target    String?       // "_blank", "_self"
+  icon      String?
+
+  sortOrder Int @default(0)
+  isVisible Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([parentId])
+  @@index([sortOrder])
+}
+
+//
+// CMS - ARTÍCULOS/BLOG
+//
+model CmsArticle {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  authorId  String?
+  author    User?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  slug      String
+  title     String
+  excerpt   String?       // Resumen corto
+  content   String        // Contenido completo (markdown/HTML)
+  coverImage String?      // Imagen de portada
+
+  categoryId String?
+  category   CmsCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags      String[]      // Tags como array
+
+  isPublished Boolean @default(false)
+  isFeatured  Boolean @default(false)
+  publishedAt DateTime?
+  viewCount   Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, slug])
+  @@index([centerId])
+  @@index([categoryId])
+  @@index([isPublished])
+  @@index([isFeatured])
+}
+
+//
+// CMS - CATEGORÍAS (para artículos y eventos)
+//
+model CmsCategory {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  slug      String
+  name      String
+  description String?
+  color     String?
+
+  articles  CmsArticle[]
+  events    CmsEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, slug])
+  @@index([centerId])
+}
+
+//
+// CMS - EVENTOS
+//
+enum CmsEventType {
+  WEBINAR
+  CONFERENCE
+  WORKSHOP
+  COURSE
+  SEMINAR
+  OTHER
+}
+
+model CmsEvent {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  slug      String
+  title     String
+  description String?
+  content   String?       // Contenido completo
+  coverImage String?
+
+  type      CmsEventType @default(OTHER)
+  categoryId String?
+  category   CmsCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Fechas y ubicación
+  startDate DateTime
+  endDate   DateTime?
+  timezone  String @default("America/Lima")
+  location  String?       // Ubicación física
+  isOnline  Boolean @default(false)
+  onlineUrl String?       // URL de evento virtual
+
+  // Registro
+  registrationUrl String?
+  maxAttendees    Int?
+  currentAttendees Int @default(0)
+  price           Int? // En céntimos
+  currency        String @default("PEN")
+
+  isPublished Boolean @default(false)
+  isFeatured  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, slug])
+  @@index([centerId])
+  @@index([categoryId])
+  @@index([startDate])
+  @@index([isPublished])
+}
+
+//
+// CMS - AVISOS/ANUNCIOS
+//
+enum CmsAnnouncementType {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+  NEWS
+}
+
+// Formato de visualización del anuncio
+enum CmsAnnouncementDisplayFormat {
+  BANNER        // Barra superior simple
+  POPUP         // Popup pequeño (esquina)
+  MODAL         // Modal central grande
+  FULLSCREEN    // Modal a pantalla completa
+  FLOATING      // Flotante en esquina (tipo ad)
+}
+
+model CmsAnnouncement {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  type      CmsAnnouncementType @default(INFO)
+  title     String
+  titleEn   String?  // Traducción al inglés
+  content   String?
+  contentEn String?  // Traducción al inglés
+  linkUrl   String?
+  linkText  String?
+
+  // Formato de visualización
+  displayFormat     CmsAnnouncementDisplayFormat @default(BANNER)
+
+  // Estilo visual
+  backgroundColor   String?  // Color de fondo (hex)
+  backgroundImage   String?  // URL de imagen de fondo
+  textColor         String?  // Color del texto (hex)
+  buttonColor       String?  // Color del botón (hex)
+  overlayOpacity    Float?   // Opacidad del overlay (0-1)
+
+  // Comportamiento
+  dismissable       Boolean @default(true)   // Si el usuario puede cerrar
+  dismissCooldown   Int?    // Horas antes de volver a mostrar (null = mostrar siempre)
+  requireInteraction Boolean @default(false) // Si requiere clic para cerrar
+
+  // Animación
+  animation         String?  // Tipo de animación (fade, slide, bounce)
+
+  // Dónde mostrar
+  showOnHomepage  Boolean @default(true)
+  showOnAllPages  Boolean @default(false)
+  showAsPopup     Boolean @default(false)
+  showAsBanner    Boolean @default(true)
+
+  // Vigencia
+  startDate DateTime @default(now())
+  endDate   DateTime?
+
+  isActive  Boolean @default(true)
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([isActive])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([displayFormat])
+}
+
+//
+// CMS - ARCHIVOS/MEDIA
+//
+model CmsMedia {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  uploadedById String?
+  uploadedBy   User?  @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  filename    String
+  originalName String?
+  mimeType    String
+  size        Int       // En bytes
+  url         String    // URL del archivo
+  thumbnailUrl String?  // URL del thumbnail (para imágenes)
+  width       Int?      // Ancho de imagen en px
+  height      Int?      // Alto de imagen en px
+
+  alt         String?   // Texto alternativo
+  caption     String?
+  folder      String?   // Carpeta organizativa
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([folder])
+  @@index([mimeType])
+}
+
+//
+// CMS - CONFIGURACIÓN DEL SITIO
+//
+model CmsSiteConfig {
+  id        String @id @default(cuid())
+  centerId  String @unique
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  // Branding
+  siteName    String?
+  siteTagline String?
+  logoUrl     String?
+  faviconUrl  String?
+
+  // Colores
+  primaryColor   String?
+  secondaryColor String?
+  accentColor    String?
+
+  // Redes sociales
+  facebookUrl   String?
+  instagramUrl  String?
+  linkedinUrl   String?
+  twitterUrl    String?
+  youtubeUrl    String?
+  whatsappNumber String?
+
+  // Contacto
+  contactEmail  String?
+  contactPhone  String?
+  contactAddress String?
+  googleMapsEmbed String?
+
+  // SEO
+  defaultMetaTitle String?
+  defaultMetaDescription String?
+  googleAnalyticsId String?
+
+  // Footer
+  footerText    String?
+  copyrightText String?
+
+  // Configuración extendida (JSON para campos adicionales)
+  extendedConfig String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+//
+// USER NOTIFICATION PREFERENCES
+//
+model NotificationPreference {
+  id        String @id @default(cuid())
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Channels
+  emailEnabled    Boolean @default(true)
+  smsEnabled      Boolean @default(false)
+  whatsappEnabled Boolean @default(true)
+  pushEnabled     Boolean @default(true)
+  inAppEnabled    Boolean @default(true)
+
+  // Event types
+  caseUpdates           Boolean @default(true)
+  documentNotifications Boolean @default(true)
+  deadlineReminders     Boolean @default(true)
+  paymentAlerts         Boolean @default(true)
+  hearingReminders      Boolean @default(true)
+  marketingEmails       Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =============================================================================
+// AI SYSTEM - MODELOS, ROLES, CONSUMO Y CUOTAS
+// =============================================================================
+
+//
+// AI - PROVEEDORES (OpenAI, Anthropic, etc.)
+//
+enum AIProvider {
+  OPENAI
+  ANTHROPIC
+  GOOGLE
+  AZURE_OPENAI
+  CUSTOM
+}
+
+//
+// AI - MODELOS DISPONIBLES
+//
+model AIModel {
+  id          String @id @default(cuid())
+
+  provider    AIProvider
+  modelId     String      // "gpt-4-turbo", "claude-3-opus", etc.
+  name        String      // Nombre amigable: "GPT-4 Turbo"
+  description String?
+
+  // Costos por 1K tokens (en centavos USD)
+  inputCostPer1k   Int @default(0)
+  outputCostPer1k  Int @default(0)
+
+  // Límites del modelo
+  maxTokens        Int @default(4096)
+  maxContextWindow Int @default(128000)
+
+  // Configuración
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false)
+
+  // Capacidades
+  supportsVision    Boolean @default(false)
+  supportsFunctions Boolean @default(true)
+  supportsStreaming Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  roleAssignments AIRoleModel[]
+  usageLogs       AIUsageLog[]
+
+  @@unique([provider, modelId])
+  @@index([isActive])
+  @@index([provider])
+}
+
+//
+// AI - ASISTENTES/PROMPTS POR CONTEXTO
+//
+model AIAssistant {
+  id          String @id @default(cuid())
+
+  name        String
+  description String?
+  slug        String @unique
+
+  // Prompt del sistema
+  systemPrompt    String
+  welcomeMessage  String?
+
+  // Configuración
+  temperature     Float @default(0.7)
+  maxTokens       Int   @default(2048)
+
+  // Restricciones
+  allowedContexts String[]
+
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  roleAssignments AIRoleModel[]
+  conversations   AIConversation[]
+
+  @@index([isActive])
+  @@index([slug])
+}
+
+//
+// AI - CONFIGURACIÓN POR ROL
+//
+model AIRoleModel {
+  id        String @id @default(cuid())
+
+  role      Role
+
+  modelId   String
+  model     AIModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  assistantId String?
+  assistant   AIAssistant? @relation(fields: [assistantId], references: [id], onDelete: SetNull)
+
+  // Override del prompt para este rol
+  customSystemPrompt String?
+
+  // Límites específicos para este rol
+  maxTokensPerRequest  Int?
+  maxRequestsPerDay    Int?
+  maxTokensPerDay      Int?
+  maxTokensPerMonth    Int?
+
+  isActive    Boolean @default(true)
+  priority    Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([role, modelId, assistantId])
+  @@index([role])
+  @@index([isActive])
+}
+
+//
+// AI - CUOTAS DE USUARIO
+//
+model AIUserQuota {
+  id        String @id @default(cuid())
+
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Límites personalizados
+  maxRequestsPerDay    Int?
+  maxTokensPerDay      Int?
+  maxTokensPerMonth    Int?
+  maxCostPerMonth      Int?
+
+  // Créditos adicionales
+  bonusTokens          Int @default(0)
+  bonusTokensExpireAt  DateTime?
+
+  // Estado actual del período
+  currentPeriodStart   DateTime @default(now())
+  tokensUsedThisPeriod Int      @default(0)
+  requestsToday        Int      @default(0)
+  lastRequestAt        DateTime?
+
+  // Bloqueos
+  isBlocked       Boolean @default(false)
+  blockedReason   String?
+  blockedUntil    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isBlocked])
+}
+
+//
+// AI - CUOTAS GLOBALES DEL SISTEMA
+//
+model AISystemQuota {
+  id        String @id @default(cuid())
+
+  isActive  Boolean @default(true)
+
+  // Límites globales diarios
+  maxTotalRequestsPerDay  Int?
+  maxTotalTokensPerDay    Int?
+  maxTotalCostPerDay      Int?
+
+  // Límites globales mensuales
+  maxTotalTokensPerMonth  Int?
+  maxTotalCostPerMonth    Int?
+
+  // Alertas
+  alertAtPercentage       Int @default(80)
+  alertEmail              String?
+
+  // Estado actual
+  currentDayStart         DateTime @default(now())
+  tokensUsedToday         Int      @default(0)
+  requestsToday           Int      @default(0)
+  costToday               Int      @default(0)
+
+  currentMonthStart       DateTime @default(now())
+  tokensUsedThisMonth     Int      @default(0)
+  costThisMonth           Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+//
+// AI - CONVERSACIONES
+//
+model AIConversation {
+  id          String @id @default(cuid())
+
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  assistantId String?
+  assistant   AIAssistant? @relation(fields: [assistantId], references: [id], onDelete: SetNull)
+
+  // Contexto opcional
+  contextType String?
+  contextId   String?
+
+  title       String?
+
+  // Estadísticas
+  messageCount     Int @default(0)
+  totalTokensUsed  Int @default(0)
+  totalCost        Int @default(0)
+
+  isActive    Boolean @default(true)
+  lastMessageAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages    AIMessage[]
+
+  @@index([userId])
+  @@index([assistantId])
+  @@index([contextType, contextId])
+  @@index([isActive])
+}
+
+//
+// AI - MENSAJES DE CONVERSACIÓN
+//
+model AIMessage {
+  id              String @id @default(cuid())
+
+  conversationId  String
+  conversation    AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role            String
+  content         String
+
+  modelId         String?
+
+  promptTokens    Int @default(0)
+  completionTokens Int @default(0)
+  totalTokens     Int @default(0)
+
+  cost            Int @default(0)
+  latencyMs       Int?
+
+  metadata        Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([createdAt])
+}
+
+//
+// AI - LOG DE USO
+//
+model AIUsageLog {
+  id          String @id @default(cuid())
+
+  userId      String?
+  user        User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  modelId     String?
+  model       AIModel? @relation(fields: [modelId], references: [id], onDelete: SetNull)
+
+  endpoint        String?
+  requestType     String?
+
+  promptTokens     Int @default(0)
+  completionTokens Int @default(0)
+  totalTokens      Int @default(0)
+
+  cost            Int @default(0)
+  latencyMs       Int?
+
+  success         Boolean @default(true)
+  errorMessage    String?
+
+  conversationId  String?
+  contextType     String?
+  contextId       String?
+
+  ipAddress       String?
+  userAgent       String?
+  metadata        Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([modelId])
+  @@index([createdAt])
+  @@index([success])
+}
+
+// =============================================================================
+// SISTEMA DE LIQUIDACIÓN DE GASTOS ARBITRALES
+// =============================================================================
+
+//
+// LIQUIDACIÓN DE GASTOS ARBITRALES (Documento maestro)
+//
+model CaseLiquidation {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  // Número de liquidación
+  liquidationNumber   String @unique  // LIQ-001-2025-ARB/CAARD
+
+  // Partes
+  claimantName        String    // DTE (Demandante)
+  respondentName      String    // DDO (Demandado)
+
+  // Estado del proceso
+  processStatus       String @default("EN_PROCESO") // EN_PROCESO, LAUDADO, CONCLUIDO
+  awardDate           DateTime?  // Fecha del laudo
+
+  // Gastos preliminares (Arancel por presentación)
+  presentationFeeCents      Int @default(0)
+  presentationFeeIgvCents   Int @default(0)
+  presentationFeePaidAt     DateTime?
+  presentationFeeInvoiceDate DateTime?
+
+  // Totales calculados
+  totalArbitratorFeesCents  Int @default(0)    // Total honorarios árbitros
+  totalAdminFeesCents       Int @default(0)    // Total gastos administrativos
+  totalIgvCents             Int @default(0)    // Total IGV
+  grandTotalCents           Int @default(0)    // Gran total
+
+  // Moneda
+  currency            String @default("PEN")
+
+  // Estado de la liquidación
+  status              LiquidationStatus @default(DRAFT)
+
+  // Auditoría
+  createdById         String?
+  approvedById        String?
+  approvedAt          DateTime?
+
+  // Notas
+  notes               String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  arbitratorFees      LiquidationArbitratorFee[]
+  adminPayments       LiquidationAdminPayment[]
+  installmentPlan     LiquidationInstallmentPlan?
+
+  @@index([caseId])
+  @@index([status])
+}
+
+enum LiquidationStatus {
+  DRAFT           // Borrador
+  PENDING_PAYMENT // Pendiente de pago
+  PARTIAL_PAID    // Pago parcial
+  PAID            // Pagado completamente
+  CANCELLED       // Cancelado
+}
+
+//
+// HONORARIOS DE ÁRBITROS EN LIQUIDACIÓN
+// Un registro por cada árbitro en el caso
+//
+model LiquidationArbitratorFee {
+  id              String @id @default(cuid())
+  liquidationId   String
+  liquidation     CaseLiquidation @relation(fields: [liquidationId], references: [id], onDelete: Cascade)
+
+  // Árbitro
+  arbitratorName  String    // Nombre del árbitro
+  arbitratorId    String?   // Referencia a ArbitratorRegistry si existe
+
+  // Montos netos (lo que recibe el árbitro)
+  netAmountCents  Int       // Monto neto (sin retención)
+
+  // Retención 4ta categoría (8%)
+  retentionRate   Float @default(0.08)
+  retentionCents  Int @default(0)
+
+  // Monto bruto (neto + retención = lo que paga cada parte)
+  grossAmountCents Int      // Monto bruto por parte
+
+  // Estado de pago por parte (DTE = Demandante, DDO = Demandado)
+  dteStatus       PaymentItemStatus @default(PENDING)
+  dtePaidAt       DateTime?
+  dteReceiptNumber String?   // R.H. (Recibo por Honorarios)
+  dteReceiptDate   DateTime?
+
+  ddoStatus       PaymentItemStatus @default(PENDING)
+  ddoPaidAt       DateTime?
+  ddoReceiptNumber String?
+  ddoReceiptDate   DateTime?
+
+  // Pago en vía de subrogación (cuando una parte paga por la otra)
+  subrogationDte  Boolean @default(false)  // DTE pagó por DDO
+  subrogationDdo  Boolean @default(false)  // DDO pagó por DTE
+  subrogationDate DateTime?
+  subrogationReceiptNumber String?
+  subrogationReceiptDate   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([liquidationId])
+  @@index([arbitratorId])
+}
+
+//
+// GASTOS ADMINISTRATIVOS EN LIQUIDACIÓN
+//
+model LiquidationAdminPayment {
+  id              String @id @default(cuid())
+  liquidationId   String
+  liquidation     CaseLiquidation @relation(fields: [liquidationId], references: [id], onDelete: Cascade)
+
+  // Concepto
+  concept         String    // "Gastos administrativos del centro", "Gastos por notificación física", etc.
+  description     String?
+
+  // Monto base (sin IGV)
+  baseAmountCents Int
+
+  // IGV (18%)
+  igvRate         Float @default(0.18)
+  igvCents        Int @default(0)
+
+  // Total (base + IGV)
+  totalCents      Int
+
+  // A quién corresponde pagar
+  payer           LiquidationPayer @default(DTE)
+
+  // Estado de pago
+  status          PaymentItemStatus @default(PENDING)
+  paidAt          DateTime?
+  invoiceNumber   String?   // F.E (Factura Emitida)
+  invoiceDate     DateTime?
+
+  // Pago en vía de subrogación
+  subrogation     Boolean @default(false)
+  subrogationBy   LiquidationPayer?
+  subrogationDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([liquidationId])
+  @@index([payer])
+}
+
+enum LiquidationPayer {
+  DTE       // Demandante
+  DDO       // Demandado
+  BOTH      // Ambas partes (50/50)
+  ARBITRO   // Árbitro (para pagos al árbitro)
+}
+
+enum PaymentItemStatus {
+  PENDING         // Pendiente (P)
+  PARTIAL         // Pago Parcial (P.P)
+  PAID            // Pagado (verde)
+  PENDING_CREDIT  // Falta Acreditar (F.A)
+  INVOICE_ISSUED  // Factura Emitida (F.E)
+  RECEIPT_ISSUED  // Recibo Emitido (R.E)
+}
+
+//
+// PLAN DE FRACCIONAMIENTO EN LIQUIDACIÓN
+//
+model LiquidationInstallmentPlan {
+  id              String @id @default(cuid())
+  liquidationId   String @unique
+  liquidation     CaseLiquidation @relation(fields: [liquidationId], references: [id], onDelete: Cascade)
+
+  // Aprobación
+  approvalMethod  String    // "Comunicación", "Resolución", etc.
+  approvalRef     String?   // Número de comunicación/resolución
+  approvalDate    DateTime?
+
+  // Configuración
+  numberOfInstallments Int
+
+  // Cuotas
+  installments    LiquidationInstallment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LiquidationInstallment {
+  id        String @id @default(cuid())
+  planId    String
+  plan      LiquidationInstallmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  // Número de cuota
+  installmentNumber Int   // 1, 2, 3, 4...
+
+  // Honorarios arbitrales
+  arbitratorFeeCents    Int @default(0)
+  arbitratorRetentionCents Int @default(0)
+  arbitratorReceiptNumber String?
+
+  // Gastos administrativos
+  adminFeeCents         Int @default(0)
+  adminIgvCents         Int @default(0)
+  adminInvoiceNumber    String?
+
+  // Total de la cuota
+  totalCents            Int
+
+  // Estado
+  status                PaymentItemStatus @default(PENDING)
+  dueAt                 DateTime?
+  paidAt                DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planId])
+  @@index([installmentNumber])
+}
+
+// =============================================================================
+// SISTEMA DE REGLAS - PAGOS, PLAZOS, ÁRBITROS, EMERGENCIA
+// =============================================================================
+
+//
+// CONFIGURACIÓN DE TASAS Y ARANCELES
+//
+model FeeConfiguration {
+  id        String @id @default(cuid())
+  centerId  String
+
+  code      String    // "PRESENTACION_NACIONAL", "EMERGENCIA", etc.
+  name      String
+  description String?
+
+  scope     ArbitrationScope
+  concept   PaymentConcept
+
+  // Monto base en céntimos
+  amountCents     Int
+  currency        String @default("PEN")
+
+  // IGV
+  includesIGV     Boolean @default(false)
+  igvRate         Float   @default(0.18) // 18% en Perú
+
+  // Escalas por cuantía (JSON con rangos)
+  // { "ranges": [{ "from": 0, "to": 100000, "fee": 50000 }, ...] }
+  scaleConfig     Json?
+
+  isActive        Boolean @default(true)
+  effectiveFrom   DateTime @default(now())
+  effectiveUntil  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, code])
+  @@index([centerId])
+  @@index([scope])
+  @@index([concept])
+  @@index([isActive])
+}
+
+//
+// ÓRDENES DE PAGO
+//
+model PaymentOrder {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  orderNumber   String @unique // OP-2026-000001
+  concept       PaymentConcept
+  description   String
+
+  // Montos
+  amountCents   Int
+  igvCents      Int @default(0)
+  totalCents    Int
+  currency      String @default("PEN")
+
+  // Fechas
+  issuedAt      DateTime @default(now())
+  dueAt         DateTime
+  paidAt        DateTime?
+
+  // Estado
+  status        PaymentOrderStatus @default(PENDING)
+
+  // Pagos asociados
+  paymentId     String?
+
+  // Bloqueo automático
+  blocksCase    Boolean @default(true)
+
+  // Devolución
+  refundedAt    DateTime?
+  refundAmount  Int?
+  refundReason  String?
+
+  // Metadata
+  metadata      Json?
+
+  // Auditoría
+  createdById   String?
+  approvedById  String?
+  approvedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([status])
+  @@index([dueAt])
+  @@index([concept])
+}
+
+//
+// FRACCIONAMIENTO DE PAGOS
+//
+model PaymentInstallmentPlan {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  // Orden de pago original que se fracciona
+  paymentOrderId  String
+
+  // Solicitante
+  requestedById   String
+  requestedBy     User   @relation("InstallmentRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+  requestedAt     DateTime @default(now())
+
+  // Justificación del solicitante
+  reason          String
+  attachmentUrl   String?  // Documento de sustento opcional
+
+  // Configuración del fraccionamiento
+  totalAmountCents    Int      // Monto total a fraccionar
+  numberOfInstallments Int     // Número de cuotas (2-12)
+  installmentAmountCents Int   // Monto por cuota
+
+  // Estado de aprobación
+  status          InstallmentPlanStatus @default(PENDING)
+
+  // Aprobación/Rechazo por admin
+  reviewedById    String?
+  reviewedBy      User?   @relation("InstallmentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt      DateTime?
+  reviewNotes     String?  // Notas del admin
+  rejectionReason String?  // Si fue rechazado
+
+  // Fechas del plan
+  firstDueDate    DateTime  // Fecha de vencimiento primera cuota
+
+  // Cuotas individuales
+  installments    PaymentInstallment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([status])
+  @@index([requestedById])
+  @@index([paymentOrderId])
+}
+
+model PaymentInstallment {
+  id        String @id @default(cuid())
+  planId    String
+  plan      PaymentInstallmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  // Número de cuota
+  installmentNumber Int  // 1, 2, 3...
+
+  // Monto
+  amountCents       Int
+  currency          String @default("PEN")
+
+  // Fechas
+  dueAt             DateTime
+  paidAt            DateTime?
+
+  // Estado
+  status            PaymentInstallmentStatus @default(PENDING)
+
+  // Pago asociado (cuando se paga)
+  paymentId         String?
+
+  // Voucher (para pago manual)
+  voucherUrl        String?
+  voucherVerifiedAt DateTime?
+  voucherVerifiedById String?
+
+  // Recargo por mora (si aplica)
+  lateFeeApplied    Boolean @default(false)
+  lateFeeCents      Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planId])
+  @@index([status])
+  @@index([dueAt])
+}
+
+enum InstallmentPlanStatus {
+  PENDING      // Pendiente de aprobación
+  APPROVED     // Aprobado por admin
+  REJECTED     // Rechazado por admin
+  ACTIVE       // En curso (ya tiene cuotas programadas)
+  COMPLETED    // Todas las cuotas pagadas
+  DEFAULTED    // Incumplido (cuotas vencidas sin pagar)
+  CANCELLED    // Cancelado
+}
+
+enum PaymentInstallmentStatus {
+  PENDING      // Pendiente de pago
+  PAID         // Pagado
+  OVERDUE      // Vencido sin pagar
+  CANCELLED    // Cancelado
+}
+
+//
+// PLAZOS PROCESALES
+//
+model ProcessDeadline {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  type          DeadlineType
+  title         String
+  description   String?
+
+  // Cálculo
+  startsAt      DateTime
+  businessDays  Int
+  dueAt         DateTime
+  timezone      String @default("America/Lima")
+
+  // Estado
+  status        DeadlineStatus @default(ACTIVE)
+  completedAt   DateTime?
+
+  // Consecuencias
+  onOverdueAction   String? // "SUSPEND", "ARCHIVE", "NOTIFY", "ESCALATE"
+  changeStateTo     CaseStatus?
+  notifyRoles       String[] // ["SECRETARIA", "ADMIN"]
+
+  // Extensiones
+  originalDueAt     DateTime?
+  extensionReason   String?
+  extendedById      String?
+  extendedAt        DateTime?
+
+  // Recordatorios enviados
+  reminder3DaysSent   Boolean @default(false)
+  reminder1DaySent    Boolean @default(false)
+  reminderOverdueSent Boolean @default(false)
+
+  // Metadata
+  metadata      Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([type])
+  @@index([status])
+  @@index([dueAt])
+}
+
+//
+// HISTORIAL DE ETAPAS PROCESALES
+//
+model CaseStageHistory {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  fromStage     ProcessStage?
+  toStage       ProcessStage
+  fromStatus    CaseStatus?
+  toStatus      CaseStatus
+
+  reason        String?
+  triggeredBy   String // "USER", "SYSTEM", "CRON", "ADMIN_OVERRIDE"
+  userId        String?
+
+  // Para devoluciones
+  refundPercentage  Float?
+  refundCalculated  Int?
+
+  metadata      Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([toStage])
+  @@index([createdAt])
+}
+
+//
+// REGISTRO DE ÁRBITROS
+//
+model ArbitratorRegistry {
+  id        String @id @default(cuid())
+  centerId  String
+
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    ArbitratorStatus @default(PENDING_APPROVAL)
+
+  // Información profesional
+  barNumber       String?
+  barAssociation  String?
+  specializations String[]
+
+  // Fechas del registro
+  applicationDate   DateTime @default(now())
+  approvalDate      DateTime?
+  suspensionDate    DateTime?
+  suspensionEndDate DateTime?
+
+  // Documentos
+  ethicsDeclarationDocId  String?
+  cvDocId                 String?
+  independenceDocId       String?
+
+  // Estadísticas
+  casesAssigned     Int @default(0)
+  casesCompleted    Int @default(0)
+  casesInProgress   Int @default(0)
+  recusationsReceived Int @default(0)
+  sanctionsReceived   Int @default(0)
+
+  // Configuración
+  maxConcurrentCases  Int @default(10)
+  acceptsEmergency    Boolean @default(true)
+
+  // Notas internas
+  notes             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  sanctions   ArbitratorSanction[]
+  recusations Recusation[]
+
+  @@index([centerId])
+  @@index([userId])
+  @@index([status])
+}
+
+//
+// SANCIONES A ÁRBITROS
+//
+model ArbitratorSanction {
+  id        String @id @default(cuid())
+
+  arbitratorId    String
+  arbitrator      ArbitratorRegistry @relation(fields: [arbitratorId], references: [id], onDelete: Cascade)
+
+  type            SanctionType
+  reason          String
+  resolutionNumber String?
+
+  // Duración
+  startDate       DateTime
+  endDate         DateTime?
+
+  // Impacto
+  blocksNewAssignments    Boolean @default(true)
+  removesFromActiveCases  Boolean @default(false)
+
+  // Auditoría
+  issuedById      String?
+  appealedAt      DateTime?
+  appealResult    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([arbitratorId])
+  @@index([type])
+  @@index([startDate])
+}
+
+//
+// RECUSACIONES
+//
+model Recusation {
+  id        String @id @default(cuid())
+  caseId    String
+  case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  arbitratorId    String
+  arbitrator      ArbitratorRegistry @relation(fields: [arbitratorId], references: [id], onDelete: Cascade)
+
+  // Solicitante
+  requesterId     String
+  requesterRole   Role
+
+  // Motivo
+  reason          String
+  supportingDocuments String[]
+
+  // Estado
+  status          RecusationStatus @default(FILED)
+
+  // Fechas del flujo
+  filedAt         DateTime @default(now())
+  transferredAt   DateTime?
+  responseDueAt   DateTime?
+  arbitratorResponseAt DateTime?
+  resolvedAt      DateTime?
+
+  // Respuestas
+  arbitratorResponse  String?
+  otherPartyResponse  String?
+
+  // Resolución del Consejo
+  councilDecision     String? // "ACCEPTED", "REJECTED"
+  councilResolution   String?
+  resolvedById        String?
+
+  metadata        Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([arbitratorId])
+  @@index([status])
+}
+
+//
+// ARBITRAJE DE EMERGENCIA
+//
+model EmergencyRequest {
+  id        String @id @default(cuid())
+  centerId  String
+  caseId    String?
+  case      Case?   @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  requestNumber   String @unique // EMG-2026-000001
+
+  // Solicitante
+  requesterId     String
+  requesterName   String
+  requesterEmail  String
+  requesterPhone  String?
+
+  // Descripción
+  title               String
+  description         String
+  urgencyJustification String
+  requestedMeasures   String
+
+  // Estado
+  status          EmergencyStatus @default(REQUESTED)
+
+  // Fechas del flujo (plazos estrictos)
+  requestedAt         DateTime @default(now())
+  verificationDueAt   DateTime
+  paymentDueAt        DateTime?
+  designationDueAt    DateTime?
+  resolutionDueAt     DateTime?
+  principalRequestDueAt DateTime?
+
+  // Verificación formal
+  verificationCompletedAt DateTime?
+  verificationById        String?
+  verificationNotes       String?
+  missingRequirements     String[]
+
+  // Árbitro de emergencia
+  emergencyArbitratorId   String?
+  arbitratorDesignatedAt  DateTime?
+  arbitratorDesignatedById String?
+  arbitratorAcceptedAt    DateTime?
+  arbitratorRejectedAt    DateTime?
+  arbitratorRejectionReason String?
+
+  // Resolución
+  resolution          String?
+  resolvedAt          DateTime?
+
+  // Pago
+  paymentOrderId      String?
+  paymentConfirmedAt  DateTime?
+
+  // Caso principal
+  mainCaseId          String?
+  mainCaseSubmittedAt DateTime?
+
+  // Caducidad
+  expiredAt           DateTime?
+  expirationReason    String?
+
+  metadata            Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([caseId])
+  @@index([status])
+  @@index([requesterId])
+}
+
+//
+// REGLAS DEL SISTEMA (configurables)
+//
+model SystemRule {
+  id        String @id @default(cuid())
+  centerId  String?
+
+  code      String @unique
+  name      String
+  description String?
+
+  // Disparador
+  triggerType     String // "EVENT", "CRON", "STATE_CHANGE", "DEADLINE"
+  triggerEvent    String?
+  triggerCron     String?
+  triggerFromState String?
+  triggerToState  String?
+  triggerDeadlineType String?
+
+  // Condiciones (JSON)
+  conditions      Json?
+
+  // Acciones (JSON array)
+  actions         Json
+
+  // Configuración
+  isActive        Boolean @default(true)
+  priority        Int     @default(0)
+  isSystemRule    Boolean @default(false) // No se puede desactivar
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([triggerType])
+  @@index([isActive])
+}
+
+//
+// TABLA DE DEVOLUCIONES
+//
+model RefundRate {
+  id        String @id @default(cuid())
+  centerId  String?
+
+  stage           ProcessStage
+  stageName       String
+  refundPercentage Float
+  retainedPercentage Float
+
+  description     String?
+  isActive        Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, stage])
+  @@index([centerId])
+  @@index([stage])
+}
+
+//
+// FERIADOS (para cálculo de días hábiles)
+//
+model Holiday {
+  id        String @id @default(cuid())
+  centerId  String?
+
+  date        DateTime @db.Date
+  name        String
+  description String?
+
+  // Tipo de feriado
+  isNational  Boolean @default(true)
+  isRecurring Boolean @default(false) // Se repite cada año
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, date])
+  @@index([centerId])
+  @@index([date])
+}
+
+//
+// INTERVENCIONES ADMINISTRATIVAS (Admin Override Log)
+//
+model AdminIntervention {
+  id        String @id @default(cuid())
+  centerId  String?
+
+  // Quién y qué
+  adminUserId     String
+  action          String // "FORCE_STATE_CHANGE", "UNBLOCK_CASE", "EXTEND_DEADLINE", etc.
+  targetEntity    String // "Case", "PaymentOrder", "Deadline", etc.
+  targetEntityId  String
+
+  // Justificación (requerida)
+  justification   String
+  resolutionNumber String?
+
+  // Valores
+  previousValue   Json?
+  newValue        Json?
+
+  // Aprobación (para acciones críticas)
+  requiresApproval Boolean @default(false)
+  approvedById     String?
+  approvedAt       DateTime?
+
+  metadata        Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([centerId])
+  @@index([adminUserId])
+  @@index([action])
+  @@index([targetEntity])
+  @@index([createdAt])
+}
+
+// =============================================================================
+// SISTEMA DE IMPUESTOS - PERÚ
+// =============================================================================
+
+//
+// TIPOS DE IMPUESTO PERUANO
+//
+enum TaxType {
+  IGV               // Impuesto General a las Ventas (18%)
+  DETRACCION        // Detracción SPOT (12% servicios > S/. 700)
+  RETENCION_4TA     // Retención 4ta Categoría (8% honorarios > S/. 1,500)
+  RETENCION_IGV     // Retención de IGV (agentes designados)
+  IR                // Impuesto a la Renta
+}
+
+//
+// CONFIGURACIÓN DE IMPUESTOS
+//
+model TaxConfiguration {
+  id        String @id @default(cuid())
+  centerId  String
+
+  // Tipo de impuesto
+  taxType       TaxType
+  code          String    // "IGV_18", "DETRACCION_12", "RETENCION_4TA_8"
+  name          String    // "IGV 18%", "Detracción SPOT 12%"
+  description   String?
+
+  // Tasas
+  rate          Float     // 0.18 para 18%, 0.12 para 12%, 0.08 para 8%
+
+  // Umbrales de aplicación (en céntimos)
+  minimumAmountCents  Int?    // Monto mínimo para aplicar (ej: 70000 = S/. 700 para detracción)
+  currency            String @default("PEN")
+
+  // Configuración específica
+  appliesTo           String[]  // ["INSTITUCIONAL", "ARBITRO_PERSONA_NATURAL", "ARBITRO_PERSONA_JURIDICA"]
+
+  // Cuenta bancaria para detracciones (Banco de la Nación)
+  detractionAccountNumber String?  // Cuenta de detracciones
+  detractionBankCode      String?  // Código del banco
+
+  // Referencias normativas
+  legalBasis        String?   // "TUO IGV - D.S. 055-99-EF", "D.Leg. 940 - SPOT"
+  sunatCode         String?   // Código SUNAT si aplica
+
+  // Estado
+  isActive          Boolean @default(true)
+  effectiveFrom     DateTime @default(now())
+  effectiveUntil    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, code])
+  @@index([centerId])
+  @@index([taxType])
+  @@index([isActive])
+}
+
+//
+// TIPO DE CONTRIBUYENTE
+//
+enum TaxpayerType {
+  PERSONA_NATURAL       // Persona natural (RUC 10)
+  PERSONA_JURIDICA      // Empresa (RUC 20)
+  NO_DOMICILIADO        // No domiciliado en Perú
+}
+
+//
+// PAGOS A ÁRBITROS
+//
+model ArbitratorPayment {
+  id        String @id @default(cuid())
+  centerId  String
+
+  // Caso y árbitro
+  caseId            String
+  arbitratorId      String    // ArbitratorRegistry.id
+  arbitratorUserId  String    // User.id del árbitro
+
+  // Concepto del pago
+  concept           String    // "HONORARIOS_CASO", "HONORARIOS_EMERGENCIA"
+  description       String?
+
+  // Tipo de contribuyente del árbitro
+  taxpayerType      TaxpayerType @default(PERSONA_NATURAL)
+  arbitratorRuc     String?   // RUC del árbitro
+
+  // Montos brutos (en céntimos)
+  grossAmountCents      Int       // Monto bruto total
+  currency              String @default("PEN")
+
+  // Impuestos calculados
+  // Para persona natural: NO aplica IGV, SÍ aplica retención 4ta
+  // Para persona jurídica: SÍ aplica IGV si corresponde
+  igvCents              Int @default(0)     // IGV si es persona jurídica
+  igvRate               Float @default(0)   // Tasa IGV aplicada
+
+  // Retención 4ta categoría (8% sobre honorarios > S/. 1,500)
+  retencion4taCents     Int @default(0)     // Monto de retención
+  retencion4taRate      Float @default(0)   // Tasa aplicada (0.08)
+  retencion4taApplied   Boolean @default(false)
+
+  // Detracción (si aplica - usualmente para servicios > S/. 700)
+  detractionCents       Int @default(0)
+  detractionRate        Float @default(0)   // 0.12 = 12%
+  detractionApplied     Boolean @default(false)
+  detractionNumber      String?   // Número de constancia de detracción
+
+  // Cálculos finales
+  totalDeductionsCents  Int @default(0)     // Total de deducciones
+  netPaymentCents       Int       // Monto neto a pagar al árbitro
+
+  // Estado del pago
+  status            PaymentStatus @default(PENDING)
+
+  // Fechas
+  issuedAt          DateTime @default(now())
+  dueAt             DateTime?
+  paidAt            DateTime?
+
+  // Comprobante de pago (voucher o transferencia)
+  paymentMethod     String?   // "TRANSFERENCIA", "CHEQUE"
+  bankAccountNumber String?   // Cuenta del árbitro
+  bankName          String?
+  transactionRef    String?   // Referencia de la transferencia
+  voucherUrl        String?   // Comprobante adjunto
+
+  // Recibo por honorarios
+  reciboHonorariosNumber  String?   // Número del recibo emitido por el árbitro
+  reciboHonorariosDate    DateTime?
+  reciboHonorariosUrl     String?   // PDF del recibo
+
+  // Auditoría
+  createdById       String?
+  approvedById      String?
+  approvedAt        DateTime?
+  processedById     String?
+  processedAt       DateTime?
+
+  // Metadata
+  metadata          Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([caseId])
+  @@index([arbitratorId])
+  @@index([status])
+  @@index([taxpayerType])
+}
+
+//
+// CONFIRMACIÓN DE PAGOS RECIBIDOS
+//
+model PaymentConfirmation {
+  id        String @id @default(cuid())
+  centerId  String
+
+  // Tipo de pago confirmado
+  paymentType       String    // "PAYMENT_ORDER", "INSTALLMENT", "FEE"
+  paymentOrderId    String?   // Referencia a PaymentOrder si aplica
+  installmentId     String?   // Referencia a PaymentInstallment si aplica
+
+  // Información del pagador
+  payerName         String
+  payerRuc          String?
+  payerEmail        String?
+
+  // Montos
+  expectedAmountCents   Int       // Monto esperado
+  receivedAmountCents   Int       // Monto realmente recibido
+  currency              String @default("PEN")
+
+  // Diferencia (si hay)
+  differenceType        String?   // "EXACT", "OVERPAYMENT", "UNDERPAYMENT"
+  differenceCents       Int @default(0)
+  differenceReason      String?
+
+  // Datos del depósito/transferencia
+  paymentMethod         String    // "TRANSFERENCIA", "DEPOSITO", "ONLINE", "CHEQUE"
+  bankName              String?
+  accountNumber         String?   // Cuenta donde se depositó
+  transactionDate       DateTime
+  transactionRef        String?   // Número de operación
+
+  // Voucher
+  voucherUrl            String?
+  voucherVerified       Boolean @default(false)
+  voucherVerifiedAt     DateTime?
+  voucherVerifiedById   String?
+
+  // Impuestos asociados (si aplica)
+  igvIncluded           Boolean @default(false)
+  detractionApplied     Boolean @default(false)
+  detractionAmountCents Int @default(0)
+  detractionConstancia  String?   // Número de constancia
+
+  // Estado
+  status                String @default("PENDING_VERIFICATION")  // PENDING_VERIFICATION, VERIFIED, REJECTED, RECONCILED
+  verificationNotes     String?
+  rejectionReason       String?
+
+  // Conciliación contable
+  reconciledAt          DateTime?
+  reconciledById        String?
+  accountingRef         String?   // Referencia contable
+
+  // Auditoría
+  registeredById        String?
+  registeredAt          DateTime @default(now())
+
+  metadata              Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([paymentOrderId])
+  @@index([installmentId])
+  @@index([status])
+  @@index([transactionDate])
+}
+
+//
+// RESUMEN DE IMPUESTOS POR PERÍODO
+//
+model TaxSummary {
+  id        String @id @default(cuid())
+  centerId  String
+
+  // Período
+  periodType        String    // "MONTHLY", "QUARTERLY", "ANNUAL"
+  periodYear        Int
+  periodMonth       Int?      // 1-12 para mensual
+  periodQuarter     Int?      // 1-4 para trimestral
+
+  // IGV
+  igvCollectedCents     Int @default(0)   // IGV cobrado a clientes
+  igvPaidCents          Int @default(0)   // IGV pagado (crédito fiscal)
+  igvBalanceCents       Int @default(0)   // Saldo a pagar/favor
+
+  // Retenciones 4ta categoría
+  retencion4taWithheldCents  Int @default(0)  // Total retenido a árbitros
+  retencion4taPaidCents      Int @default(0)  // Pagado a SUNAT
+
+  // Detracciones
+  detractionReceivedCents    Int @default(0)  // Detracciones recibidas
+  detractionPaidCents        Int @default(0)  // Detracciones efectuadas
+
+  // Estado de declaración
+  isDeclared        Boolean @default(false)
+  declaredAt        DateTime?
+  declarationNumber String?   // Número de PDT u otro
+
+  // Estado de pago
+  isPaid            Boolean @default(false)
+  paidAt            DateTime?
+  paymentRef        String?
+
+  // Notas
+  notes             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, periodType, periodYear, periodMonth])
+  @@index([centerId])
+  @@index([periodYear])
+}
+
+//
+// CONFIGURACIÓN DE MIGRACIÓN/IMPORTACIÓN
+//
+model ImportBatch {
+  id        String @id @default(cuid())
+  centerId  String
+
+  // Info del lote
+  batchCode       String @unique
+  description     String?
+  sourceSystem    String?
+
+  // Estadísticas
+  totalRecords    Int @default(0)
+  successCount    Int @default(0)
+  errorCount      Int @default(0)
+  skippedCount    Int @default(0)
+
+  // Estado
+  status          String @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  // Errores
+  errorLog        Json?
+
+  // Auditoría
+  importedById    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([status])
+}
+
+// =============================================================================
+// SYSTEM INTEGRATIONS - Configuraciones, API Keys, Servicios Externos
+// =============================================================================
+
+//
+// INTEGRATION - CATEGORÍAS DE CONFIGURACIÓN
+//
+enum IntegrationType {
+  EMAIL       // Configuración de correo (SMTP, SendGrid, etc.)
+  SMS         // Servicios de SMS (Twilio, etc.)
+  CALENDAR    // Google Calendar, Outlook, etc.
+  MEETING     // Google Meet, Zoom, etc.
+  STORAGE     // Google Drive, S3, etc.
+  PAYMENT     // Pasarelas de pago
+  AUTH        // OAuth providers
+  AI          // OpenAI, Anthropic, etc.
+  DOMAIN      // Configuración de dominios
+  WEBHOOK     // Webhooks entrantes/salientes
+  ANALYTICS   // Google Analytics, etc.
+  CUSTOM      // Integraciones personalizadas
+}
+
+//
+// INTEGRATION - CONFIGURACIONES ENCRIPTADAS
+//
+model SystemIntegration {
+  id        String @id @default(cuid())
+  centerId  String?
+
+  // Identificación
+  type        IntegrationType
+  code        String          // Código único: "google-calendar", "smtp-email", etc.
+  name        String          // Nombre visible: "Google Calendar"
+  description String?
+
+  // Estado
+  isActive    Boolean @default(false)
+  isConfigured Boolean @default(false)
+
+  // Credenciales (ENCRIPTADAS - nunca se muestran completas)
+  // Almacenamos las credenciales encriptadas en JSON
+  credentials Json?   // { "apiKey": "encrypted...", "secret": "encrypted..." }
+
+  // Configuración adicional (no sensible)
+  settings    Json?   // { "webhookUrl": "...", "region": "...", etc. }
+
+  // Metadatos
+  lastTestedAt   DateTime?
+  lastTestStatus String?   // "success", "failed", "unknown"
+  lastTestError  String?
+
+  // Para OAuth
+  accessToken     String?  // Encriptado
+  refreshToken    String?  // Encriptado
+  tokenExpiresAt  DateTime?
+
+  // Auditoría
+  createdById     String?
+  lastModifiedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, code])
+  @@index([type])
+  @@index([isActive])
+}
+
+//
+// DOMAIN - CONFIGURACIÓN DE DOMINIOS Y SUBDOMINIOS
+//
+model DomainConfig {
+  id        String @id @default(cuid())
+  centerId  String
+
+  // Dominio
+  domain        String    // ejemplo: "caardpe.com"
+  subdomain     String?   // ejemplo: "app" (para app.caardpe.com)
+  fullDomain    String    // ejemplo: "app.caardpe.com" o "caardpe.com"
+
+  // Tipo
+  isPrimary     Boolean @default(false)
+  isVerified    Boolean @default(false)
+
+  // SSL
+  sslEnabled    Boolean @default(true)
+  sslExpiresAt  DateTime?
+
+  // DNS
+  dnsVerificationToken String?
+  dnsVerifiedAt       DateTime?
+
+  // Estado
+  status        String @default("PENDING") // PENDING, VERIFIED, ACTIVE, INACTIVE, ERROR
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([fullDomain])
+  @@index([centerId])
+  @@index([status])
+}
+
+//
+// SCHEDULED MEETINGS - Audiencias y Reuniones programadas
+//
+model ScheduledMeeting {
+  id        String @id @default(cuid())
+  centerId  String
+
+  // Referencia al caso (opcional)
+  caseId    String?
+  case      Case?  @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  // Tipo de reunión
+  type      String    // "AUDIENCIA", "REUNION", "CONFERENCIA", etc.
+  title     String
+  description String?
+
+  // Programación
+  startTime   DateTime
+  endTime     DateTime
+  timezone    String @default("America/Lima")
+
+  // Ubicación
+  isVirtual   Boolean @default(true)
+  location    String?  // Ubicación física
+
+  // Integración con servicios externos
+  meetingProvider String?  // "GOOGLE_MEET", "ZOOM", "TEAMS"
+  meetingUrl      String?  // URL de la reunión
+  meetingId       String?  // ID externo de la reunión
+  meetingPassword String?
+
+  // Google Calendar
+  googleCalendarEventId String?
+  googleCalendarLink    String?
+
+  // Participantes
+  organizerId   String?
+  organizer     User?  @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
+
+  // Estado
+  status        String @default("SCHEDULED") // SCHEDULED, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
+
+  // Notificaciones
+  reminderSent  Boolean @default(false)
+  reminderSentAt DateTime?
+
+  // Grabación
+  recordingUrl  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants MeetingParticipant[]
+
+  @@index([centerId])
+  @@index([caseId])
+  @@index([startTime])
+  @@index([status])
+}
+
+//
+// PARTICIPANTES DE REUNIONES
+//
+model MeetingParticipant {
+  id        String @id @default(cuid())
+
+  meetingId String
+  meeting   ScheduledMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  // Participante (puede ser usuario del sistema o externo)
+  userId    String?
+  user      User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Para participantes externos
+  name      String?
+  email     String?
+  phone     String?
+
+  // Rol en la reunión
+  role      String?   // "ARBITRO", "DEMANDANTE", "DEMANDADO", "ABOGADO", "SECRETARIA", "INVITADO"
+
+  // Estado
+  status    String @default("INVITED") // INVITED, CONFIRMED, DECLINED, ATTENDED, NO_SHOW
+
+  // Notificaciones
+  notifiedAt    DateTime?
+  confirmedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([meetingId, userId])
+  @@unique([meetingId, email])
+  @@index([meetingId])
+  @@index([userId])
+}
+
+//
+// NOTIFICATION TEMPLATES - Plantillas de notificación del centro
+//
+model NotificationTemplate {
+  id        String @id @default(cuid())
+  centerId  String?
+
+  // Información básica
+  name      String    // Nombre descriptivo
+  code      String    // Código único (ej: TRASLADO_DEMANDA)
+  type      String    // TRASLADO, ADMISION, RECHAZO, AUDIENCIA, LAUDO, RECORDATORIO, PAGO, etc.
+
+  // Contenido para cada canal
+  emailSubject    String?
+  emailBody       String?   @db.Text
+  emailHtmlBody   String?   @db.Text
+  smsBody         String?   @db.VarChar(320)  // Limitado para SMS
+  whatsappBody    String?   @db.Text
+
+  // Variables disponibles (JSON array)
+  availableVariables Json?  // ["{{caseNumber}}", "{{partyName}}", ...]
+
+  // Estado
+  isActive    Boolean @default(true)
+  isDefault   Boolean @default(false) // Plantilla por defecto del sistema
+
+  // Metadata
+  description String?
+  category    String?   // Para agrupar plantillas
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, code])
+  @@index([centerId])
+  @@index([type])
+  @@index([isActive])
+}
+
+//
+// SYSTEM AUDIT LOG - Para cambios en configuraciones del sistema
+//
+model SystemAuditLog {
+  id        String @id @default(cuid())
+
+  // Acción
+  action      String    // "CREATE", "UPDATE", "DELETE", "TEST", "ENABLE", "DISABLE"
+  entityType  String    // "SystemIntegration", "DomainConfig", etc.
+  entityId    String?
+
+  // Detalles
+  description String?
+  changes     Json?     // { "field": { "old": "...", "new": "..." } }
+  metadata    Json?
+
+  // Información de seguridad
+  ipAddress   String?
+  userAgent   String?
+
+  // Auditoría
+  userId      String?
+  user        User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+//
+// CONFIGURACIÓN DEL SISTEMA
+//
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,11 @@
+id,caseId*,authorId,title,content*,isPrivate
+NOTE_001,CASO_001,EJEMPLO_USR_002,Observación inicial,Se recibió la solicitud completa con todos los anexos requeridos.,true
+NOTE_002,CASO_001,EJEMPLO_USR_002,Verificación de pago,Se verificó el pago de la tasa de presentación. Voucher coincide con el monto requerido.,true
+NOTE_003,CASO_001,EJEMPLO_USR_003,Nota del árbitro,Se revisaron los escritos de ambas partes. Se programa audiencia de pruebas.,true
+NOTE_004,CASO_002,EJEMPLO_USR_002,Pendiente de pago,El caso está pendiente del pago de la tasa internacional. Se envió recordatorio.,true
+
+# NOTAS:
+# - authorId: ID del usuario que creó la nota
+# - isPrivate: true para notas internas (solo visibles para secretaría/admin)
+#              false para notas visibles por las partes
+# - content: Contenido de la nota (puede ser texto largo)

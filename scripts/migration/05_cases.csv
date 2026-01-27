@@ -1,0 +1,45 @@
+id,centerId*,arbitrationTypeId*,year*,sequence*,code*,title,status,scope,procedureType,tribunalMode,currentStage,isBlocked,blockReason,disputeAmountCents,currency,claimantName,respondentName,driveFolderId,submittedAt,admittedAt,closedAt
+CASO_001,EJEMPLO_001,TIPO_001,2024,1,EXP-2024-CAARD-000001,Controversia Empresa A vs Empresa B,IN_PROCESS,NACIONAL,REGULAR,SOLE_ARBITRATOR,PROBATORIA,false,,50000000,PEN,Empresa Comercial A S.A.C.,Empresa Industrial B S.A.,DRIVE_FOLDER_001,2024-01-15,2024-02-01,
+CASO_002,EJEMPLO_001,TIPO_002,2024,2,EXP-2024-CAARD-000002,Disputa Internacional XYZ,AWAITING_PAYMENT,INTERNACIONAL,REGULAR,TRIBUNAL_3,DEMANDA,true,Pendiente pago de honorarios,100000000,USD,International Corp Inc.,Peruvian Company S.A.C.,DRIVE_FOLDER_002,2024-02-20,,
+CASO_003,EJEMPLO_001,TIPO_003,2024,3,EXP-2024-CAARD-000003,Controversia Contratación Pública,CLOSED,NACIONAL,REGULAR,TRIBUNAL_3,LAUDO,false,,75000000,PEN,Constructora Nacional S.A.,Municipalidad de Lima,DRIVE_FOLDER_003,2024-01-05,2024-01-20,2024-06-15
+
+# STATUS (Estados del Expediente):
+# DRAFT - Borrador
+# SUBMITTED - Presentado
+# UNDER_REVIEW - En Revisión
+# OBSERVED - Observado
+# ADMITTED - Admitido
+# REJECTED - Rechazado
+# IN_PROCESS - En Trámite
+# AWAITING_PAYMENT - Pendiente de Pago
+# PAYMENT_OVERDUE - Pago Vencido
+# SUSPENDED - Suspendido
+# CLOSED - Cerrado
+# ARCHIVED - Archivado
+# EMERGENCY_REQUESTED - Emergencia Solicitada
+# EMERGENCY_IN_PROCESS - Emergencia en Proceso
+# EMERGENCY_RESOLVED - Emergencia Resuelta
+# EMERGENCY_EXPIRED - Emergencia Expirada
+
+# SCOPE (Ámbito):
+# NACIONAL - Nacional
+# INTERNACIONAL - Internacional
+
+# PROCEDURE_TYPE:
+# REGULAR - Regular
+# EMERGENCY - Emergencia
+
+# TRIBUNAL_MODE:
+# SOLE_ARBITRATOR - Árbitro único
+# TRIBUNAL_3 - Tribunal de 3 árbitros
+
+# CURRENT_STAGE (Etapa Procesal):
+# DEMANDA - Demanda
+# CONTESTACION - Contestación
+# RECONVENCION - Reconvención
+# PROBATORIA - Probatoria
+# AUDIENCIA_PRUEBAS - Audiencia de Pruebas
+# INFORMES_ORALES - Informes Orales
+# LAUDO - Laudo
+
+# disputeAmountCents: Monto en céntimos (50000000 = S/. 500,000.00)

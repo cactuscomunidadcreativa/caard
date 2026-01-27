@@ -1,0 +1,14 @@
+id,caseId*,lawyerId*,representedMemberId,representationType*,caseNumber,barAssociation,powerOfAttorneyDoc,isActive,isLead,authorizedAt,revokedAt,notes
+LAWYER_001,CASO_001,EJEMPLO_USR_004,MEMBER_001,DEMANDANTE,CAL-54321,Colegio de Abogados de Lima,DOC_PODER_001,true,true,2024-01-15,,Abogado principal del demandante
+LAWYER_002,CASO_001,EJEMPLO_USR_006,MEMBER_002,DEMANDADO,CAL-67890,Colegio de Abogados de Lima,DOC_PODER_002,true,true,2024-02-01,,Abogado principal del demandado
+
+# REPRESENTATION_TYPE (Tipo de Representación):
+# DEMANDANTE - Representa al demandante
+# DEMANDADO - Representa al demandado
+# AMBOS - Representa a ambas partes (casos especiales)
+
+# NOTAS:
+# - lawyerId debe corresponder a un usuario con rol ABOGADO
+# - representedMemberId vincula al abogado con el miembro específico que representa
+# - isLead indica si es el abogado principal del caso
+# - powerOfAttorneyDoc es la referencia al documento de poder

@@ -1,0 +1,11 @@
+id,caseId*,title*,description,dueAt*,timezone,isCompleted,completedAt
+DEADLINE_001,CASO_001,Plazo para contestación de demanda,La parte demandada debe presentar su contestación,2024-02-15,America/Lima,true,2024-02-10
+DEADLINE_002,CASO_001,Plazo para presentación de pruebas,Ambas partes deben presentar sus medios probatorios,2024-03-15,America/Lima,true,2024-03-14
+DEADLINE_003,CASO_001,Plazo para alegatos escritos,Presentación de alegatos finales,2024-04-30,America/Lima,false,
+DEADLINE_004,CASO_002,Plazo para pago de tasa de presentación,Pago pendiente para admisión del caso,2024-03-15,America/Lima,false,
+
+# NOTAS:
+# - dueAt: Fecha y hora límite en formato ISO 8601 (YYYY-MM-DD o YYYY-MM-DDTHH:MM:SS)
+# - timezone: Zona horaria (por defecto America/Lima para Perú)
+# - isCompleted: true si el plazo fue cumplido, false si está pendiente
+# - completedAt: Fecha en que se completó (dejar vacío si no se ha completado)

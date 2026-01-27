@@ -1,0 +1,30 @@
+id,caseId*,provider,status*,currency,amountCents*,concept*,description,culqiChargeId,culqiOrderId,voucherDocumentId,dueAt,paidAt
+PAY_001,CASO_001,CULQI,CONFIRMED,PEN,50000,Tasa de Presentación,Tasa de presentación de solicitud arbitral,ch_live_123456,ord_123456,,2024-01-20,2024-01-18
+PAY_002,CASO_001,MANUAL_VOUCHER,CONFIRMED,PEN,150000,Gastos Administrativos,Gastos administrativos del proceso,,,DOC_VOUCHER_001,2024-02-15,2024-02-10
+PAY_003,CASO_001,CULQI,CONFIRMED,PEN,500000,Honorarios de Árbitro,Honorarios del árbitro único,ch_live_789012,ord_789012,,2024-03-01,2024-02-28
+PAY_004,CASO_002,CULQI,PENDING,USD,100000,Tasa de Presentación,Tasa de presentación internacional,,,,2024-03-15,
+
+# PROVIDER (Proveedor de Pago):
+# CULQI - Pago con tarjeta vía Culqi
+# MANUAL_VOUCHER - Pago con voucher/transferencia manual
+
+# STATUS (Estado del Pago):
+# REQUIRED - Requerido
+# PENDING - Pendiente
+# CONFIRMED - Confirmado
+# FAILED - Fallido
+# CANCELLED - Cancelado
+# OVERDUE - Vencido
+# REFUNDED - Reembolsado
+
+# CONCEPT (Concepto del Pago):
+# Tasa de Presentación
+# Gastos Administrativos
+# Honorarios de Árbitro
+# Honorarios de Tribunal
+# Tasa de Emergencia
+# Gastos de Reconvención
+# Reliquidación
+# Otros
+
+# amountCents: Monto en céntimos (50000 = S/. 500.00 o $500.00)

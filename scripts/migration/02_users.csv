@@ -1,0 +1,16 @@
+id,email*,name,image,phoneE164,passwordHash,role*,isActive,centerId
+EJEMPLO_USR_001,admin@caard.pe,Juan Pérez García,https://example.com/photo.jpg,+51999888777,[HASH_BCRYPT],SUPER_ADMIN,true,EJEMPLO_001
+EJEMPLO_USR_002,secretaria@caard.pe,María López Díaz,,+51999888666,[HASH_BCRYPT],SECRETARIA,true,EJEMPLO_001
+EJEMPLO_USR_003,arbitro1@gmail.com,Carlos Rodríguez Sánchez,,+51999888555,[HASH_BCRYPT],ARBITRO,true,EJEMPLO_001
+EJEMPLO_USR_004,abogado1@estudio.pe,Ana Torres Mendoza,,+51999888444,[HASH_BCRYPT],ABOGADO,true,EJEMPLO_001
+EJEMPLO_USR_005,demandante@empresa.pe,Roberto Vargas Castro,,+51999888333,[HASH_BCRYPT],DEMANDANTE,true,EJEMPLO_001
+
+# ROLES DISPONIBLES:
+# SUPER_ADMIN - Administrador del sistema completo
+# ADMIN - Administrador general del centro
+# CENTER_STAFF - Personal del centro (staff administrativo)
+# SECRETARIA - Secretaría arbitral
+# ARBITRO - Árbitro
+# ABOGADO - Abogado (puede representar demandantes o demandados)
+# DEMANDANTE - Parte demandante
+# DEMANDADO - Parte demandada

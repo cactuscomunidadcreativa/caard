@@ -1,0 +1,28 @@
+id,centerId*,code*,name*,description,scope,concept*,amountCents*,currency,includesIGV,igvRate,isActive,effectiveFrom,effectiveUntil
+FEE_001,EJEMPLO_001,PRESENTACION_NACIONAL,Tasa de Presentación Nacional,Tasa para arbitrajes nacionales,NACIONAL,TASA_PRESENTACION,50000,PEN,true,0.18,true,2024-01-01,
+FEE_002,EJEMPLO_001,PRESENTACION_INTERNACIONAL,Tasa de Presentación Internacional,Tasa para arbitrajes internacionales,INTERNACIONAL,TASA_PRESENTACION,100000,USD,false,0,true,2024-01-01,
+FEE_003,EJEMPLO_001,GASTOS_ADMIN_NACIONAL,Gastos Administrativos Nacional,Gastos administrativos para arbitrajes nacionales,NACIONAL,GASTOS_ADMINISTRATIVOS,150000,PEN,true,0.18,true,2024-01-01,
+FEE_004,EJEMPLO_001,GASTOS_ADMIN_INTERNACIONAL,Gastos Administrativos Internacional,Gastos administrativos para arbitrajes internacionales,INTERNACIONAL,GASTOS_ADMINISTRATIVOS,200000,USD,false,0,true,2024-01-01,
+FEE_005,EJEMPLO_001,EMERGENCIA_NACIONAL,Tasa de Emergencia Nacional,Tasa para arbitraje de emergencia nacional,NACIONAL,TASA_EMERGENCIA,200000,PEN,true,0.18,true,2024-01-01,
+FEE_006,EJEMPLO_001,HONORARIOS_ARBITRO_UNICO,Honorarios Árbitro Único,Honorarios base para árbitro único (puede escalar por cuantía),NACIONAL,HONORARIOS_ARBITRO_UNICO,500000,PEN,true,0.18,true,2024-01-01,
+FEE_007,EJEMPLO_001,HONORARIOS_TRIBUNAL,Honorarios Tribunal,Honorarios base para tribunal de 3 árbitros (puede escalar por cuantía),NACIONAL,HONORARIOS_TRIBUNAL,1500000,PEN,true,0.18,true,2024-01-01,
+
+# SCOPE (Ámbito):
+# NACIONAL - Aplica a arbitrajes nacionales
+# INTERNACIONAL - Aplica a arbitrajes internacionales
+
+# CONCEPT (Concepto):
+# TASA_PRESENTACION - Tasa de Presentación
+# GASTOS_ADMINISTRATIVOS - Gastos Administrativos
+# HONORARIOS_ARBITRO_UNICO - Honorarios de Árbitro Único
+# HONORARIOS_TRIBUNAL - Honorarios de Tribunal
+# TASA_EMERGENCIA - Tasa de Emergencia
+# GASTOS_RECONVENCION - Gastos de Reconvención
+# RELIQUIDACION - Reliquidación
+# OTROS - Otros conceptos
+
+# NOTAS:
+# - amountCents: Monto base en céntimos (50000 = S/. 500.00)
+# - includesIGV: true si el monto ya incluye IGV, false si se debe agregar
+# - igvRate: Tasa de IGV (0.18 = 18%)
+# - effectiveFrom/effectiveUntil: Rango de vigencia de la tarifa

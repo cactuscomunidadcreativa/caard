@@ -1,0 +1,21 @@
+id,centerId,date*,name*,description,isNational,isRecurring
+HOL_001,,2024-01-01,Año Nuevo,Feriado por Año Nuevo,true,true
+HOL_002,,2024-03-28,Jueves Santo,Semana Santa - Jueves Santo,true,false
+HOL_003,,2024-03-29,Viernes Santo,Semana Santa - Viernes Santo,true,false
+HOL_004,,2024-05-01,Día del Trabajo,Feriado por Día del Trabajo,true,true
+HOL_005,,2024-06-29,San Pedro y San Pablo,Feriado por San Pedro y San Pablo,true,true
+HOL_006,,2024-07-28,Fiestas Patrias,Día de la Independencia del Perú,true,true
+HOL_007,,2024-07-29,Fiestas Patrias,Feriado por Fiestas Patrias,true,true
+HOL_008,,2024-08-30,Santa Rosa de Lima,Feriado por Santa Rosa de Lima,true,true
+HOL_009,,2024-10-08,Combate de Angamos,Feriado por Combate de Angamos,true,true
+HOL_010,,2024-11-01,Día de Todos los Santos,Feriado por Día de Todos los Santos,true,true
+HOL_011,,2024-12-08,Inmaculada Concepción,Feriado por Inmaculada Concepción,true,true
+HOL_012,,2024-12-09,Batalla de Ayacucho,Feriado por Batalla de Ayacucho,true,true
+HOL_013,,2024-12-25,Navidad,Feriado por Navidad,true,true
+
+# NOTAS:
+# - centerId: Dejar vacío para feriados nacionales (aplican a todos los centros)
+# - date: Fecha del feriado en formato YYYY-MM-DD
+# - isNational: true para feriados nacionales, false para locales
+# - isRecurring: true si el feriado se repite cada año en la misma fecha (Navidad, Año Nuevo, etc.)
+#              false si la fecha varía cada año (Semana Santa)

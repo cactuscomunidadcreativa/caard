@@ -1,0 +1,11 @@
+id,caseId*,title*,hearingAt*,timezone,location,meetingUrl,notes
+HEARING_001,CASO_001,Audiencia de Instalación,2024-02-20T10:00:00,America/Lima,Sala de Audiencias CAARD - Av. Ejemplo 123,https://meet.google.com/abc-defg-hij,Primera audiencia para instalación del tribunal arbitral
+HEARING_002,CASO_001,Audiencia de Pruebas,2024-04-15T15:00:00,America/Lima,,https://zoom.us/j/123456789,Audiencia virtual para actuación de pruebas testimoniales
+HEARING_003,CASO_001,Audiencia de Informes Orales,2024-05-20T09:00:00,America/Lima,Sala de Audiencias CAARD - Av. Ejemplo 123,,Audiencia presencial para informes orales de las partes
+
+# NOTAS:
+# - hearingAt: Fecha y hora de la audiencia en formato ISO 8601
+# - timezone: Zona horaria (por defecto America/Lima)
+# - location: Ubicación física de la audiencia (dejar vacío si es virtual)
+# - meetingUrl: URL de la reunión virtual (Google Meet, Zoom, Teams, etc.)
+# - Puede tener tanto location como meetingUrl para audiencias híbridas

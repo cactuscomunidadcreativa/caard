@@ -1,0 +1,29 @@
+id,caseId*,key*,name*,parentId,driveFolderId,drivePath
+FOLDER_001,CASO_001,01_Solicitud,01 - Solicitud y Demanda,,DRIVE_FOLDER_001_01,EXP-2024-CAARD-000001/01_Solicitud
+FOLDER_002,CASO_001,02_Contestacion,02 - Contestación,,DRIVE_FOLDER_001_02,EXP-2024-CAARD-000001/02_Contestacion
+FOLDER_003,CASO_001,03_Resoluciones,03 - Resoluciones,,DRIVE_FOLDER_001_03,EXP-2024-CAARD-000001/03_Resoluciones
+FOLDER_004,CASO_001,04_Pruebas,04 - Medios Probatorios,,DRIVE_FOLDER_001_04,EXP-2024-CAARD-000001/04_Pruebas
+FOLDER_005,CASO_001,04_Pruebas_Demandante,04.1 - Pruebas Demandante,FOLDER_004,DRIVE_FOLDER_001_04_01,EXP-2024-CAARD-000001/04_Pruebas/Demandante
+FOLDER_006,CASO_001,04_Pruebas_Demandado,04.2 - Pruebas Demandado,FOLDER_004,DRIVE_FOLDER_001_04_02,EXP-2024-CAARD-000001/04_Pruebas/Demandado
+FOLDER_007,CASO_001,05_Audiencias,05 - Actas de Audiencias,,DRIVE_FOLDER_001_05,EXP-2024-CAARD-000001/05_Audiencias
+FOLDER_008,CASO_001,06_Alegatos,06 - Alegatos,,DRIVE_FOLDER_001_06,EXP-2024-CAARD-000001/06_Alegatos
+FOLDER_009,CASO_001,07_Laudo,07 - Laudo Arbitral,,DRIVE_FOLDER_001_07,EXP-2024-CAARD-000001/07_Laudo
+FOLDER_010,CASO_001,08_Pagos,08 - Comprobantes de Pago,,DRIVE_FOLDER_001_08,EXP-2024-CAARD-000001/08_Pagos
+
+# ESTRUCTURA DE CARPETAS ESTÁNDAR:
+# 01 - Solicitud y Demanda
+# 02 - Contestación
+# 03 - Resoluciones
+# 04 - Medios Probatorios
+#    04.1 - Pruebas Demandante
+#    04.2 - Pruebas Demandado
+# 05 - Actas de Audiencias
+# 06 - Alegatos
+# 07 - Laudo Arbitral
+# 08 - Comprobantes de Pago
+
+# NOTAS:
+# - key: Identificador único de la carpeta dentro del caso
+# - parentId: ID de la carpeta padre (para subcarpetas)
+# - driveFolderId: ID de la carpeta en Google Drive
+# - drivePath: Ruta de la carpeta en Google Drive

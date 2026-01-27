@@ -1,0 +1,751 @@
+// =============================================================================
+// CAARD - EXTENSIONES DEL SCHEMA PARA SISTEMA DE REGLAS
+// =============================================================================
+// Este archivo contiene los modelos adicionales necesarios para implementar
+// la Matriz Maestra de Reglas de Control del Sistema CAARD.
+//
+// INSTRUCCIONES: Copiar este contenido al final del archivo schema.prisma
+// =============================================================================
+
+// =============================================================================
+// NUEVOS ENUMS PARA SISTEMA DE REGLAS
+// =============================================================================
+
+enum ArbitrationScope {
+  NACIONAL
+  INTERNACIONAL
+}
+
+enum ProcedureType {
+  REGULAR
+  EMERGENCY
+}
+
+enum DeadlineType {
+  PAYMENT                      // Pago de tasas
+  CONTESTACION                 // Contestación de demanda
+  RECONVENCION                 // Reconvención
+  CONTESTACION_RECONVENCION    // Contestación de reconvención
+  ALEGATOS                     // Presentación de alegatos
+  RECUSACION_ABSOLUCION        // Absolución de recusación
+  DESIGNACION_ARBITRO          // Designación de árbitro por partes
+  SUBSANACION                  // Subsanación de observaciones
+  EMERGENCY_VERIFICATION       // Verificación formal (emergencia)
+  EMERGENCY_PAYMENT            // Pago de tasa de emergencia
+  EMERGENCY_DESIGNATION        // Designación de árbitro de emergencia
+  EMERGENCY_RESOLUTION         // Resolución de emergencia
+  EMERGENCY_PRINCIPAL_REQUEST  // Presentación de solicitud principal
+  CUSTOM                       // Plazo personalizado
+}
+
+enum DeadlineStatus {
+  ACTIVE
+  COMPLETED
+  OVERDUE
+  CANCELLED
+  EXTENDED
+}
+
+enum ProcessStage {
+  DEMANDA
+  CONTESTACION
+  RECONVENCION
+  PROBATORIA
+  AUDIENCIA_PRUEBAS
+  INFORMES_ORALES
+  LAUDO
+}
+
+enum PaymentOrderStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentConcept {
+  TASA_PRESENTACION
+  GASTOS_ADMINISTRATIVOS
+  HONORARIOS_ARBITRO_UNICO
+  HONORARIOS_TRIBUNAL
+  TASA_EMERGENCIA
+  GASTOS_RECONVENCION
+  RELIQUIDACION
+  OTROS
+}
+
+enum ArbitratorStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+  SANCTIONED
+  RETIRED
+  REJECTED
+}
+
+enum EmergencyStatus {
+  REQUESTED
+  PENDING_VERIFICATION
+  VERIFICATION_FAILED
+  PENDING_PAYMENT
+  PAYMENT_OVERDUE
+  PENDING_DESIGNATION
+  DESIGNATION_OVERDUE
+  PENDING_ACCEPTANCE
+  IN_PROCESS
+  RESOLVED
+  PENDING_MAIN_CASE
+  COMPLETED
+  EXPIRED
+  ARCHIVED
+}
+
+enum RecusationStatus {
+  FILED
+  TRANSFERRED
+  PENDING_RESPONSE
+  RESPONSE_RECEIVED
+  PENDING_COUNCIL_DECISION
+  ACCEPTED
+  REJECTED
+}
+
+enum SanctionType {
+  WARNING
+  SUSPENSION
+  REMOVAL
+}
+
+// =============================================================================
+// CONFIGURACIÓN DE TASAS Y ARANCELES
+// =============================================================================
+
+model FeeConfiguration {
+  id        String @id @default(cuid())
+  centerId  String
+
+  // Tipo de arbitraje
+  scope     ArbitrationScope
+
+  // Concepto
+  concept   PaymentConcept
+  name      String
+  description String?
+
+  // Monto
+  amountCents    Int
+  currency       String @default("PEN")
+  includesIGV    Boolean @default(true)
+  igvRate        Float @default(0.18)
+
+  // Vigencia
+  validFrom      DateTime @default(now())
+  validUntil     DateTime?
+
+  isActive       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, scope, concept, validFrom])
+  @@index([centerId])
+  @@index([scope])
+  @@index([isActive])
+}
+
+// =============================================================================
+// ÓRDENES DE PAGO
+// =============================================================================
+
+model PaymentOrder {
+  id        String @id @default(cuid())
+  caseId    String
+
+  // Tipo y concepto
+  concept     PaymentConcept
+  description String
+
+  // Montos
+  baseAmountCents  Int
+  igvAmountCents   Int @default(0)
+  totalAmountCents Int
+  currency         String @default("PEN")
+
+  // Plazos
+  issuedAt     DateTime @default(now())
+  dueAt        DateTime
+
+  // Estado
+  status       PaymentOrderStatus @default(PENDING)
+
+  // Relación con pago
+  paymentId    String?
+  paidAt       DateTime?
+
+  // Para reliquidaciones
+  isReliquidation Boolean @default(false)
+  previousOrderId String?
+
+  // Auditoría
+  issuedById   String?
+
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones con el modelo Case existente
+  // case      Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([status])
+  @@index([dueAt])
+  @@index([concept])
+}
+
+// =============================================================================
+// PLAZOS PROCESALES
+// =============================================================================
+
+model ProcessDeadline {
+  id        String @id @default(cuid())
+  caseId    String
+
+  // Tipo de plazo
+  type      DeadlineType
+  title     String
+  description String?
+
+  // Fechas
+  startsAt      DateTime
+  businessDays  Int
+  dueAt         DateTime
+  timezone      String @default("America/Lima")
+
+  // Estado
+  status        DeadlineStatus @default(ACTIVE)
+  completedAt   DateTime?
+  completedById String?
+
+  // Extensión
+  wasExtended   Boolean @default(false)
+  originalDueAt DateTime?
+  extensionReason String?
+
+  // Configuración de consecuencias
+  onOverdueAction  String?  // JSON: {type, changeStateTo, notifyRoles, message}
+
+  // Recordatorios enviados
+  reminder3DaysSent  Boolean @default(false)
+  reminder1DaySent   Boolean @default(false)
+  reminderDueDaySent Boolean @default(false)
+
+  // Referencia a entidad relacionada (ej: paymentOrderId, recusationId)
+  relatedEntityType String?
+  relatedEntityId   String?
+
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([type])
+  @@index([status])
+  @@index([dueAt])
+}
+
+// =============================================================================
+// ETAPA PROCESAL DEL CASO
+// =============================================================================
+
+model CaseStageHistory {
+  id        String @id @default(cuid())
+  caseId    String
+
+  stage     ProcessStage
+
+  // Fechas
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+
+  // Quién lo registró
+  changedById String?
+
+  notes       String?
+
+  createdAt DateTime @default(now())
+
+  @@index([caseId])
+  @@index([stage])
+}
+
+// =============================================================================
+// REGISTRO DE ÁRBITROS
+// =============================================================================
+
+model ArbitratorRegistry {
+  id        String @id @default(cuid())
+  userId    String @unique
+  centerId  String
+
+  // Estado
+  status    ArbitratorStatus @default(PENDING_APPROVAL)
+
+  // Información profesional
+  barNumber        String?
+  barAssociation   String?
+  specializations  String[]
+
+  // Fechas clave
+  applicationDate  DateTime @default(now())
+  approvalDate     DateTime?
+  suspensionDate   DateTime?
+  sanctionDate     DateTime?
+
+  // Estadísticas
+  casesAssigned    Int @default(0)
+  casesCompleted   Int @default(0)
+  recusationsReceived Int @default(0)
+  sanctionsReceived   Int @default(0)
+
+  // Documentos requeridos
+  ethicsDeclarationDocId String?
+  cvDocId                String?
+
+  // Revisión de solicitud
+  reviewedById     String?
+  reviewedAt       DateTime?
+  rejectionReason  String?
+
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  sanctions     ArbitratorSanction[]
+  recusations   Recusation[]
+
+  @@index([userId])
+  @@index([centerId])
+  @@index([status])
+}
+
+// =============================================================================
+// SANCIONES A ÁRBITROS
+// =============================================================================
+
+model ArbitratorSanction {
+  id           String @id @default(cuid())
+  arbitratorId String
+  arbitrator   ArbitratorRegistry @relation(fields: [arbitratorId], references: [id], onDelete: Cascade)
+
+  type         SanctionType
+  reason       String
+  resolutionNumber String?
+
+  // Duración (para suspensión)
+  startDate    DateTime
+  endDate      DateTime?
+
+  // Impacto automático
+  blocksNewAssignments   Boolean @default(true)
+  removesFromActiveCases Boolean @default(false)
+
+  issuedAt     DateTime @default(now())
+  issuedById   String
+
+  // Apelación
+  wasAppealed  Boolean @default(false)
+  appealResult String?
+
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([arbitratorId])
+  @@index([type])
+  @@index([startDate])
+}
+
+// =============================================================================
+// RECUSACIONES
+// =============================================================================
+
+model Recusation {
+  id           String @id @default(cuid())
+  caseId       String
+  arbitratorId String
+  arbitrator   ArbitratorRegistry @relation(fields: [arbitratorId], references: [id])
+
+  // Solicitante
+  requesterId  String
+  requesterRole String  // CLAIMANT | RESPONDENT
+
+  // Motivo
+  reason       String
+  supportingDocuments String[]
+
+  // Estado
+  status       RecusationStatus @default(FILED)
+
+  // Fechas del flujo
+  filedAt          DateTime @default(now())
+  transferredAt    DateTime?
+  responseDueAt    DateTime?
+  arbitratorResponseAt DateTime?
+  otherPartyResponseAt DateTime?
+  resolvedAt       DateTime?
+
+  // Respuestas
+  arbitratorResponse   String?
+  otherPartyResponse   String?
+
+  // Resolución del Consejo
+  councilDecision   String?  // ACCEPTED | REJECTED
+  councilResolution String?
+  resolvedById      String?
+
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([arbitratorId])
+  @@index([status])
+}
+
+// =============================================================================
+// ARBITRAJE DE EMERGENCIA
+// =============================================================================
+
+model EmergencyRequest {
+  id        String @id @default(cuid())
+  centerId  String
+
+  // Puede tener o no un caso asociado
+  caseId    String?
+
+  // Solicitante
+  requesterId    String
+  requesterName  String
+  requesterEmail String
+  requesterPhone String?
+
+  // Descripción de la emergencia
+  title          String
+  description    String
+  urgencyJustification String
+  requestedMeasures    String
+
+  // Estado
+  status         EmergencyStatus @default(REQUESTED)
+
+  // Fechas críticas del flujo
+  requestedAt         DateTime @default(now())
+  verificationDueAt   DateTime
+  paymentDueAt        DateTime?
+  designationDueAt    DateTime?
+  resolutionDueAt     DateTime?
+  principalRequestDueAt DateTime?
+
+  // Verificación formal
+  verificationCompletedAt DateTime?
+  verificationById        String?
+  verificationNotes       String?
+  missingRequirements     String[]
+
+  // Árbitro de emergencia
+  emergencyArbitratorId   String?
+  arbitratorDesignatedAt  DateTime?
+  arbitratorDesignatedById String?
+  arbitratorAcceptedAt    DateTime?
+  arbitratorRejectedAt    DateTime?
+  arbitratorRejectionReason String?
+
+  // Resolución
+  resolution    String?
+  resolvedAt    DateTime?
+
+  // Pago
+  paymentOrderId      String?
+  paymentConfirmedAt  DateTime?
+
+  // Caso principal generado
+  mainCaseId          String?
+  mainCaseSubmittedAt DateTime?
+
+  // Caducidad
+  expiredAt           DateTime?
+  expirationReason    String?
+
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([caseId])
+  @@index([status])
+  @@index([requesterId])
+  @@index([emergencyArbitratorId])
+}
+
+// =============================================================================
+// HISTORIAL DE ESTADOS DEL CASO
+// =============================================================================
+
+model CaseStatusHistory {
+  id        String @id @default(cuid())
+  caseId    String
+
+  previousStatus String?
+  newStatus      String
+
+  changedAt      DateTime @default(now())
+  changedById    String?
+  triggeredBy    String   // USER | SYSTEM | CRON
+
+  reason         String?
+
+  // Si fue por regla del sistema
+  ruleTriggered  String?
+
+  metadata       Json?
+
+  @@index([caseId])
+  @@index([newStatus])
+  @@index([changedAt])
+}
+
+// =============================================================================
+// REGLAS DEL SISTEMA (CONFIGURABLES)
+// =============================================================================
+
+model SystemRule {
+  id        String @id @default(cuid())
+  centerId  String?  // null = aplica a todos los centros
+
+  code      String @unique
+  name      String
+  description String?
+
+  // Cuándo se evalúa
+  triggerType   String  // EVENT | CRON | STATE_CHANGE | DEADLINE
+  triggerEvent  String? // Evento específico
+  triggerCron   String? // Expresión cron
+  triggerFromState String?
+  triggerToState   String?
+  triggerDeadlineType String?
+
+  // Condiciones (JSON array)
+  conditions    Json?
+
+  // Acciones (JSON array)
+  actions       Json
+
+  // Configuración
+  isActive      Boolean @default(true)
+  priority      Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Log de ejecuciones
+  executions    SystemRuleExecution[]
+
+  @@index([centerId])
+  @@index([isActive])
+  @@index([triggerType])
+}
+
+model SystemRuleExecution {
+  id        String @id @default(cuid())
+  ruleId    String
+  rule      SystemRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  caseId    String?
+
+  executedAt    DateTime @default(now())
+  conditionsMet Boolean
+  actionsExecuted String[]
+  errors        String[]
+
+  executionTimeMs Int?
+
+  metadata      Json?
+
+  @@index([ruleId])
+  @@index([caseId])
+  @@index([executedAt])
+}
+
+// =============================================================================
+// TABLA DE DEVOLUCIONES
+// =============================================================================
+
+model RefundRate {
+  id        String @id @default(cuid())
+  centerId  String
+
+  stage     ProcessStage
+  stageName String
+  stageOrder Int
+
+  // Porcentaje de devolución
+  refundPercentage Float
+
+  // Vigencia
+  validFrom  DateTime @default(now())
+  validUntil DateTime?
+
+  isActive   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, stage, validFrom])
+  @@index([centerId])
+  @@index([isActive])
+}
+
+// =============================================================================
+// CÁLCULOS DE DEVOLUCIÓN
+// =============================================================================
+
+model RefundCalculation {
+  id        String @id @default(cuid())
+  caseId    String
+
+  stage     ProcessStage
+
+  // Montos originales
+  originalAmountCents  Int
+  currency             String @default("PEN")
+
+  // Cálculo
+  refundPercentage     Float
+  refundAmountCents    Int
+  retainedAmountCents  Int
+
+  // Estado
+  status       String @default("CALCULATED")  // CALCULATED | APPROVED | PROCESSED | REJECTED
+
+  // Aprobación
+  calculatedAt   DateTime @default(now())
+  calculatedById String
+
+  approvedAt     DateTime?
+  approvedById   String?
+
+  processedAt    DateTime?
+  processedById  String?
+
+  rejectionReason String?
+
+  metadata     Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([status])
+}
+
+// =============================================================================
+// CONFIGURACIÓN DE PLAZOS POR TIPO DE ARBITRAJE
+// =============================================================================
+
+model DeadlineConfiguration {
+  id        String @id @default(cuid())
+  centerId  String
+
+  // Tipo de arbitraje
+  scope         ArbitrationScope
+  procedureType ProcedureType @default(REGULAR)
+
+  // Tipo de plazo
+  deadlineType  DeadlineType
+  name          String
+  description   String?
+
+  // Cantidad de días hábiles
+  businessDays  Int
+
+  // Acciones al vencer
+  onOverdueAction Json?  // {type, changeStateTo, notifyRoles, message}
+
+  // Recordatorios
+  reminderDays  Int[] @default([3, 1, 0])
+
+  isActive      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, scope, procedureType, deadlineType])
+  @@index([centerId])
+  @@index([isActive])
+}
+
+// =============================================================================
+// FERIADOS (PARA CÁLCULO DE DÍAS HÁBILES)
+// =============================================================================
+
+model Holiday {
+  id        String @id @default(cuid())
+  centerId  String?  // null = aplica a todos
+
+  date      DateTime
+  name      String
+
+  // Tipo de feriado
+  type      String @default("NATIONAL")  // NATIONAL | REGIONAL | CENTER_SPECIFIC
+
+  // Si es recurrente cada año
+  isRecurring Boolean @default(false)
+  recurringMonth Int?
+  recurringDay   Int?
+
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, date])
+  @@index([date])
+  @@index([isActive])
+}
+
+// =============================================================================
+// NOTAS: RELACIONES PENDIENTES
+// =============================================================================
+// Las siguientes relaciones deben agregarse al modelo Case existente:
+//
+// model Case {
+//   ...campos existentes...
+//
+//   // Nuevas relaciones para sistema de reglas
+//   paymentOrders      PaymentOrder[]
+//   processDeadlines   ProcessDeadline[]
+//   stageHistory       CaseStageHistory[]
+//   statusHistory      CaseStatusHistory[]
+//   refundCalculations RefundCalculation[]
+//   emergencyRequests  EmergencyRequest[]
+//   recusations        Recusation[]
+//
+//   // Nuevos campos
+//   scope              ArbitrationScope @default(NACIONAL)
+//   procedureType      ProcedureType @default(REGULAR)
+//   currentStage       ProcessStage?
+//
+//   // Control de bloqueo
+//   isBlocked          Boolean @default(false)
+//   blockReason        String?
+//   blockedAt          DateTime?
+// }

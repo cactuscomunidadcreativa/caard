@@ -1,0 +1,13 @@
+id,centerId*,userId*,status,barNumber,barAssociation,specializations,applicationDate,approvalDate,ethicsDeclarationDocId,cvDocId,independenceDocId,maxConcurrentCases,acceptsEmergency,notes
+EJEMPLO_ARB_001,EJEMPLO_001,EJEMPLO_USR_003,ACTIVE,CAL-12345,Colegio de Abogados de Lima,"Comercial,Civil,Construcción",2024-01-15,2024-02-01,DOC_001,DOC_002,DOC_003,10,true,Árbitro con amplia experiencia
+
+# STATUS DISPONIBLES:
+# PENDING_APPROVAL - Pendiente de aprobación
+# ACTIVE - Activo
+# SUSPENDED - Suspendido
+# SANCTIONED - Sancionado
+# RETIRED - Retirado
+# REJECTED - Rechazado
+
+# ESPECIALIZACIONES (separadas por coma):
+# Comercial, Civil, Construcción, Laboral, Contrataciones del Estado, Internacional, Propiedad Intelectual, Seguros, etc.
