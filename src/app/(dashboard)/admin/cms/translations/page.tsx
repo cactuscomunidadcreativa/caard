@@ -121,6 +121,8 @@ const sectionNames: Record<string, { es: string; en: string; icon: string }> = {
   arbitrationRequest: { es: "Solicitud Arbitral", en: "Arbitration Request", icon: "⚖️" },
   emergency: { es: "Emergencia", en: "Emergency", icon: "🚨" },
   liquidation: { es: "Liquidación", en: "Liquidation", icon: "💰" },
+  siteHealth: { es: "Estado del Sistema", en: "Site Health", icon: "🏥" },
+  cloudflare: { es: "Cloudflare CDN", en: "Cloudflare CDN", icon: "☁️" },
 };
 
 // Tipo para traducciones faltantes

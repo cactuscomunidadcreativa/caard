@@ -471,7 +471,7 @@ export default async function SecretariaPage() {
           <CardTitle>Acciones Rápidas</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <Button variant="outline" className="h-auto py-4" asChild>
               <Link href="/cases/new" className="flex flex-col items-center gap-2">
                 <FileText className="h-6 w-6" />
@@ -494,6 +494,12 @@ export default async function SecretariaPage() {
               <Link href="/secretaria/notificaciones/nueva" className="flex flex-col items-center gap-2">
                 <Bell className="h-6 w-6" />
                 <span>Correr Traslado</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto py-4" asChild>
+              <Link href="/secretaria/arbitros" className="flex flex-col items-center gap-2">
+                <Users className="h-6 w-6" />
+                <span>Registro de Árbitros</span>
               </Link>
             </Button>
           </div>
