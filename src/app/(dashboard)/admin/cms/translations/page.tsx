@@ -38,6 +38,9 @@ import {
   FileSpreadsheet,
   List,
   Grid3X3,
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -132,6 +135,9 @@ interface MissingTranslation {
 // Tipo para filtros
 type FilterType = "all" | "missing" | "same" | "translated";
 
+// Opciones de paginación
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
+
 export default function TranslationsPage() {
   // Estados principales
   const [activeSection, setActiveSection] = useState<string>("common");
@@ -140,6 +146,10 @@ export default function TranslationsPage() {
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [showOnlyEdited, setShowOnlyEdited] = useState(false);
   const [compareLanguages, setCompareLanguages] = useState<[string, string]>(["es", "en"]);
+
+  // Estados de paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(50);
 
   // Estado de traducciones editadas
   const [editedTranslations, setEditedTranslations] = useState<Record<string, TranslationData>>({
@@ -261,6 +271,25 @@ export default function TranslationsPage() {
 
     return entries;
   }, [activeSection, editedTranslations, searchTerm, filterType]);
+
+  // Calcular paginación
+  const totalFilteredItems = filteredTranslations.length;
+  const totalPages = Math.ceil(totalFilteredItems / pageSize);
+
+  // Asegurar que la página actual sea válida
+  const validCurrentPage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+
+  // Obtener traducciones paginadas
+  const paginatedTranslations = useMemo(() => {
+    const startIndex = (validCurrentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredTranslations.slice(startIndex, endIndex);
+  }, [filteredTranslations, validCurrentPage, pageSize]);
+
+  // Reset página cuando cambia sección, búsqueda o filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeSection, searchTerm, filterType]);
 
   // Detectar cambios
   useEffect(() => {
@@ -745,7 +774,7 @@ export default function TranslationsPage() {
 
                 {/* Filas */}
                 <div className="divide-y">
-                  {filteredTranslations.map(({ key, esValue, enValue, status }) => (
+                  {paginatedTranslations.map(({ key, esValue, enValue, status }) => (
                     <div
                       key={key}
                       className={cn(
@@ -867,7 +896,7 @@ export default function TranslationsPage() {
             ) : (
               /* Vista de tarjetas */
               <div className="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredTranslations.map(({ key, esValue, enValue, status }) => (
+                {paginatedTranslations.map(({ key, esValue, enValue, status }) => (
                   <Card
                     key={key}
                     className={cn(
@@ -909,6 +938,105 @@ export default function TranslationsPage() {
               </div>
             )}
           </ScrollArea>
+
+          {/* Controles de paginación */}
+          {totalFilteredItems > 0 && (
+            <div className="border-t bg-muted/30 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">
+                  Mostrando {((validCurrentPage - 1) * pageSize) + 1} - {Math.min(validCurrentPage * pageSize, totalFilteredItems)} de {totalFilteredItems} traducciones
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Por página:</span>
+                  <Select
+                    value={pageSize.toString()}
+                    onValueChange={(value) => {
+                      setPageSize(Number(value));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[80px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <SelectItem key={size} value={size.toString()}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={validCurrentPage === 1}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage(validCurrentPage - 1)}
+                  disabled={validCurrentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                <div className="flex items-center gap-1 mx-2">
+                  {/* Mostrar números de página */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (validCurrentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (validCurrentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = validCurrentPage - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={pageNum === validCurrentPage ? "default" : "outline"}
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setCurrentPage(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage(validCurrentPage + 1)}
+                  disabled={validCurrentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={validCurrentPage === totalPages}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Dialog para agregar idioma */}
