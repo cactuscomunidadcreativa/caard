@@ -100,6 +100,8 @@ export function WebsiteHeader({
     "About Us": t.website.aboutUs,
     "Reglamentos": t.website.regulations,
     "Regulations": t.website.regulations,
+    "Registro de Árbitros": t.website.arbitratorRegistry,
+    "Arbitrator Registry": t.website.arbitratorRegistry,
   };
 
   // Función para obtener el label traducido
