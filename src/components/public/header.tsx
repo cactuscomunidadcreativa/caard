@@ -63,10 +63,14 @@ const menuItems = [
       { label: "Presentación", href: "/presentacion", icon: Building2 },
       { label: "Secretaría General", href: "/secretaria-general", icon: Users },
       { label: "Consejo Superior de Arbitraje", href: "/consejo-superior", icon: Scale },
-      { label: "Nómina de Árbitros", href: "/registro-arbitros", icon: Users },
       { label: "Guías", href: "/guias", icon: FileText },
       { label: "Sedes", href: "/sedes", icon: Building2 },
     ],
+  },
+  {
+    label: "Registro de Árbitros",
+    href: "/registro-arbitros",
+    children: [],
   },
   {
     label: "Arbitraje",
