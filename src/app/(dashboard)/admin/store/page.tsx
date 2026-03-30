@@ -76,7 +76,7 @@ export default function StoreProductsPage() {
       const res = await fetch("/api/store/products");
       if (!res.ok) throw new Error("Error al cargar productos");
       const data = await res.json();
-      setProducts(data.products || data || []);
+      setProducts(data.items || []);
     } catch (error: any) {
       toast.error(error.message || "Error al cargar productos");
     } finally {

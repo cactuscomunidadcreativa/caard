@@ -81,7 +81,7 @@ export default function RulesConfigPage() {
         const res = await fetch("/api/admin/notification-rules");
         if (res.ok) {
           const data = await res.json();
-          const items = (data.rules || data || []).map((r: any) => ({
+          const items = (data.items || data.rules || []).map((r: any) => ({
             id: r.id,
             key: r.key || r.name?.toUpperCase().replace(/\s+/g, "_") || "",
             name: r.name || r.key || "",

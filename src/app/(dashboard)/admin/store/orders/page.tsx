@@ -103,7 +103,7 @@ export default function StoreOrdersPage() {
       const res = await fetch("/api/orders");
       if (!res.ok) throw new Error("Error al cargar pedidos");
       const data = await res.json();
-      setOrders(data.orders || data || []);
+      setOrders(data.items || data.orders || []);
     } catch (error: any) {
       toast.error(error.message || "Error al cargar pedidos");
     } finally {

@@ -1,13 +1,22 @@
 /**
  * CAARD - Servicio de Email
- * Centraliza el envío de emails usando nodemailer
- * Email de sistema: sis@caardpe.com
+ * Centraliza el envio de emails.
+ *
+ * Estrategia:
+ *  1. Si GOOGLE_REFRESH_TOKEN esta configurado -> Gmail API (via GoogleWorkspaceService)
+ *  2. Fallback a SMTP/Nodemailer (config en BD, campo notificationSettings del Centro)
+ *
+ * Email de sistema por defecto: sis@caardpe.com
  */
 
 import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
+import { getGoogleWorkspaceService } from "@/lib/google-workspace";
 
-// Tipo para configuración de email
+// ============================================================
+// Tipos
+// ============================================================
+
 interface EmailConfig {
   host: string;
   port: number;
@@ -18,13 +27,40 @@ interface EmailConfig {
   fromName: string;
 }
 
-// Cache de configuración
+// Cache de configuracion SMTP
 let cachedConfig: EmailConfig | null = null;
 let cachedTransporter: nodemailer.Transporter | null = null;
 
-/**
- * Obtiene la configuración de email desde la base de datos
- */
+// Tipos de email
+export type EmailType =
+  | "WELCOME"
+  | "PASSWORD_RESET"
+  | "CASE_NOTIFICATION"
+  | "DOCUMENT_NOTIFICATION"
+  | "DEADLINE_REMINDER"
+  | "PAYMENT_NOTIFICATION"
+  | "HEARING_REMINDER"
+  | "GENERAL";
+
+// Interfaz para envio de email
+export interface SendEmailParams {
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+  type?: EmailType;
+  replyTo?: string;
+  attachments?: {
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+  }[];
+}
+
+// ============================================================
+// Helpers internos - SMTP (fallback)
+// ============================================================
+
 async function getEmailConfig(): Promise<EmailConfig | null> {
   if (cachedConfig) {
     return cachedConfig;
@@ -40,7 +76,7 @@ async function getEmailConfig(): Promise<EmailConfig | null> {
     const settings = (center?.notificationSettings as any) || {};
 
     if (!settings?.smtpHost || !settings?.smtpUser || !settings?.smtpPassword) {
-      console.warn("Email configuration not found in database");
+      console.warn("SMTP email configuration not found in database");
       return null;
     }
 
@@ -61,9 +97,6 @@ async function getEmailConfig(): Promise<EmailConfig | null> {
   }
 }
 
-/**
- * Obtiene o crea el transporter de nodemailer
- */
 async function getTransporter(): Promise<nodemailer.Transporter | null> {
   if (cachedTransporter) {
     return cachedTransporter;
@@ -88,51 +121,61 @@ async function getTransporter(): Promise<nodemailer.Transporter | null> {
 }
 
 /**
- * Invalida el cache (llamar cuando cambie la configuración)
+ * Invalida el cache (llamar cuando cambie la configuracion)
  */
 export function invalidateEmailCache() {
   cachedConfig = null;
   cachedTransporter = null;
 }
 
-// Tipos de email
-export type EmailType =
-  | "WELCOME"
-  | "PASSWORD_RESET"
-  | "CASE_NOTIFICATION"
-  | "DOCUMENT_NOTIFICATION"
-  | "DEADLINE_REMINDER"
-  | "PAYMENT_NOTIFICATION"
-  | "HEARING_REMINDER"
-  | "GENERAL";
-
-// Interfaz para envío de email
-export interface SendEmailParams {
-  to: string | string[];
-  subject: string;
-  html: string;
-  text?: string;
-  type?: EmailType;
-  replyTo?: string;
-  attachments?: {
-    filename: string;
-    content: Buffer | string;
-    contentType?: string;
-  }[];
-}
+// ============================================================
+// Envio principal
+// ============================================================
 
 /**
- * Envía un email
+ * Envia un email usando Gmail API (preferido) o SMTP (fallback)
  */
 export async function sendEmail(params: SendEmailParams): Promise<{
   success: boolean;
   messageId?: string;
   error?: string;
 }> {
+  // ---- Intento 1: Gmail API ----
+  const workspace = getGoogleWorkspaceService();
+  if (workspace.isConfigured()) {
+    try {
+      const result = await workspace.sendEmail({
+        to: params.to,
+        subject: params.subject,
+        htmlBody: params.html,
+        textBody: params.text,
+        from: "sis@caardpe.com",
+        fromName: "CAARD - Sistema de Arbitraje",
+        replyTo: params.replyTo,
+        attachments: params.attachments?.map((a) => ({
+          filename: a.filename,
+          content: typeof a.content === "string" ? Buffer.from(a.content) : a.content,
+          mimeType: a.contentType || "application/octet-stream",
+        })),
+      });
+
+      if (result.success) {
+        console.log(`Email sent via Gmail API: ${result.messageId} to ${params.to}`);
+        return { success: true, messageId: result.messageId };
+      }
+
+      // Si Gmail API falla, intentar SMTP como fallback
+      console.warn("Gmail API failed, falling back to SMTP:", result.error);
+    } catch (error) {
+      console.warn("Gmail API error, falling back to SMTP:", error);
+    }
+  }
+
+  // ---- Intento 2: SMTP / Nodemailer (fallback) ----
   try {
     const transporter = await getTransporter();
     if (!transporter) {
-      return { success: false, error: "Email not configured" };
+      return { success: false, error: "Email not configured (no Gmail API nor SMTP)" };
     }
 
     const config = await getEmailConfig();
@@ -151,9 +194,7 @@ export async function sendEmail(params: SendEmailParams): Promise<{
     };
 
     const result = await transporter.sendMail(mailOptions);
-
-    // Log del envío
-    console.log(`Email sent: ${result.messageId} to ${params.to}`);
+    console.log(`Email sent via SMTP: ${result.messageId} to ${params.to}`);
 
     return {
       success: true,
@@ -168,8 +209,12 @@ export async function sendEmail(params: SendEmailParams): Promise<{
   }
 }
 
+// ============================================================
+// Templates de email
+// ============================================================
+
 /**
- * Envía email de bienvenida con credenciales
+ * Envia email de bienvenida con credenciales
  */
 export async function sendWelcomeEmail(params: {
   to: string;
@@ -182,12 +227,12 @@ export async function sendWelcomeEmail(params: {
     SUPER_ADMIN: "Super Administrador",
     ADMIN: "Administrador",
     CENTER_STAFF: "Personal del Centro",
-    SECRETARIA: "Secretaría Arbitral",
-    ARBITRO: "Árbitro",
+    SECRETARIA: "Secretaria Arbitral",
+    ARBITRO: "Arbitro",
     ABOGADO: "Abogado",
     DEMANDANTE: "Demandante",
     DEMANDADO: "Demandado",
-  ESTUDIANTE: "Estudiante",
+    ESTUDIANTE: "Estudiante",
   };
 
   const html = `
@@ -211,7 +256,7 @@ export async function sendWelcomeEmail(params: {
     <tr>
       <td style="padding: 40px 30px;">
         <h2 style="color: #0B2A5B; margin: 0 0 20px; font-size: 24px;">
-          ¡Bienvenido/a a CAARD!
+          Bienvenido/a a CAARD!
         </h2>
 
         <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
@@ -232,7 +277,7 @@ export async function sendWelcomeEmail(params: {
               <td style="padding: 8px 0; font-weight: bold; color: #333; font-size: 14px;">${params.email}</td>
             </tr>
             <tr>
-              <td style="padding: 8px 0; color: #666; font-size: 14px;">Contraseña temporal:</td>
+              <td style="padding: 8px 0; color: #666; font-size: 14px;">Contrasena temporal:</td>
               <td style="padding: 8px 0; font-weight: bold; color: #333; font-size: 14px; font-family: monospace; background-color: #fff; padding: 5px 10px; border-radius: 4px;">${params.tempPassword}</td>
             </tr>
           </table>
@@ -241,7 +286,7 @@ export async function sendWelcomeEmail(params: {
         <!-- Warning -->
         <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <p style="color: #856404; font-size: 14px; margin: 0;">
-            <strong>⚠️ Importante:</strong> Por seguridad, le recomendamos cambiar su contraseña después de iniciar sesión por primera vez.
+            <strong>Importante:</strong> Por seguridad, le recomendamos cambiar su contrasena despues de iniciar sesion por primera vez.
           </p>
         </div>
 
@@ -251,7 +296,7 @@ export async function sendWelcomeEmail(params: {
              style="display: inline-block; background: linear-gradient(135deg, #D66829 0%, #c45a22 100%);
                     color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 8px;
                     font-size: 16px; font-weight: bold; box-shadow: 0 4px 15px rgba(214, 104, 41, 0.3);">
-            Iniciar Sesión
+            Iniciar Sesion
           </a>
         </div>
 
@@ -265,13 +310,13 @@ export async function sendWelcomeEmail(params: {
     <tr>
       <td style="background-color: #0B2A5B; padding: 25px; text-align: center;">
         <p style="color: #ffffff; font-size: 14px; margin: 0 0 10px;">
-          CAARD - Centro de Administración de Arbitrajes
+          CAARD - Centro de Administracion de Arbitrajes
         </p>
         <p style="color: #ffffff80; font-size: 12px; margin: 0;">
-          Este es un mensaje automático enviado desde sis@caardpe.com
+          Este es un mensaje automatico enviado desde sis@caardpe.com
         </p>
         <p style="color: #ffffff60; font-size: 11px; margin: 10px 0 0;">
-          © ${new Date().getFullYear()} CAARD. Todos los derechos reservados.
+          &copy; ${new Date().getFullYear()} CAARD. Todos los derechos reservados.
         </p>
       </td>
     </tr>
@@ -289,17 +334,17 @@ Se ha creado una cuenta para usted en el Sistema de Arbitraje CAARD con el rol d
 
 Sus credenciales de acceso:
 - Usuario (Email): ${params.email}
-- Contraseña temporal: ${params.tempPassword}
+- Contrasena temporal: ${params.tempPassword}
 
-IMPORTANTE: Por seguridad, le recomendamos cambiar su contraseña después de iniciar sesión por primera vez.
+IMPORTANTE: Por seguridad, le recomendamos cambiar su contrasena despues de iniciar sesion por primera vez.
 
 Para acceder al sistema, visite: ${process.env.NEXTAUTH_URL || "https://caard.pe"}/login
 
 Si tiene alguna pregunta o necesita asistencia, no dude en contactarnos.
 
 ---
-CAARD - Centro de Administración de Arbitrajes
-Este es un mensaje automático enviado desde sis@caardpe.com
+CAARD - Centro de Administracion de Arbitrajes
+Este es un mensaje automatico enviado desde sis@caardpe.com
   `;
 
   return sendEmail({
@@ -312,7 +357,7 @@ Este es un mensaje automático enviado desde sis@caardpe.com
 }
 
 /**
- * Envía notificación de acción en caso
+ * Envia notificacion de accion en caso
  */
 export async function sendCaseNotification(params: {
   to: string | string[];
@@ -344,7 +389,7 @@ export async function sendCaseNotification(params: {
     <tr>
       <td style="padding: 30px;">
         <div style="${priorityStyles} display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 20px;">
-          ${params.priority === "urgent" ? "⚠️ URGENTE" : "📋 NOTIFICACIÓN"}
+          ${params.priority === "urgent" ? "URGENTE" : "NOTIFICACION"}
         </div>
 
         <h2 style="color: #0B2A5B; margin: 0 0 20px;">
@@ -365,14 +410,14 @@ export async function sendCaseNotification(params: {
         ${params.dueDate ? `
         <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin-top: 20px;">
           <p style="margin: 0; color: #856404; font-size: 14px;">
-            <strong>📅 Fecha límite:</strong> ${params.dueDate.toLocaleDateString("es-PE", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            <strong>Fecha limite:</strong> ${params.dueDate.toLocaleDateString("es-PE", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
         </div>
         ` : ""}
 
         ${params.actionBy ? `
         <p style="color: #666; font-size: 14px; margin-top: 20px;">
-          Acción realizada por: ${params.actionBy}
+          Accion realizada por: ${params.actionBy}
         </p>
         ` : ""}
 
@@ -388,7 +433,7 @@ export async function sendCaseNotification(params: {
     <tr>
       <td style="background-color: #f8f9fa; padding: 20px; text-align: center;">
         <p style="color: #666; font-size: 12px; margin: 0;">
-          Este es un mensaje automático del sistema CAARD.
+          Este es un mensaje automatico del sistema CAARD.
         </p>
       </td>
     </tr>
@@ -447,7 +492,7 @@ export async function processNotificationQueue(limit = 50): Promise<{
       try {
         const sendResult = await sendEmail({
           to: notification.toEmail!,
-          subject: notification.subject || "Notificación CAARD",
+          subject: notification.subject || "Notificacion CAARD",
           html: notification.body || "",
         });
 

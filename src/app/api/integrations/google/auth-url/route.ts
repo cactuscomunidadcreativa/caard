@@ -1,10 +1,11 @@
 /**
- * CAARD - API para obtener URL de autorización de Google
+ * CAARD - API para obtener URL de autorizacion de Google
+ * Solicita todos los scopes necesarios: Gmail, Calendar, Drive, UserInfo
  */
 
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getGoogleDriveService } from "@/lib/google-drive";
+import { getGoogleWorkspaceService } from "@/lib/google-workspace";
 
 export async function GET() {
   try {
@@ -18,14 +19,14 @@ export async function GET() {
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
     }
 
-    const driveService = getGoogleDriveService();
-    const authUrl = driveService.getAuthUrl();
+    const workspace = getGoogleWorkspaceService();
+    const authUrl = workspace.getAuthUrl();
 
     return NextResponse.json({ authUrl });
   } catch (error) {
     console.error("Error getting auth URL:", error);
     return NextResponse.json(
-      { error: "Error al obtener URL de autorización" },
+      { error: "Error al obtener URL de autorizacion" },
       { status: 500 }
     );
   }

@@ -78,7 +78,7 @@ export default function CoursesListPage() {
       const res = await fetch("/api/cms/courses");
       if (!res.ok) throw new Error("Error al cargar cursos");
       const data = await res.json();
-      setCourses(data.courses || data || []);
+      setCourses(data.items || data.courses || []);
     } catch (error: any) {
       toast.error(error.message || "Error al cargar cursos");
     } finally {

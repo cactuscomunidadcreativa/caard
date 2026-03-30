@@ -85,7 +85,7 @@ export default function FeesConfigPage() {
         const res = await fetch("/api/admin/taxes");
         if (res.ok) {
           const data = await res.json();
-          const items = (data.taxes || data || []).map((f: any) => ({
+          const items = (data.items || data.taxes || []).map((f: any) => ({
             id: f.id,
             name: f.name || "",
             type: f.type || "TASA_ARBITRAL",

@@ -73,7 +73,7 @@ export default function SecretariaNotificacionesPage() {
         const res = await fetch("/api/notifications/user");
         if (res.ok) {
           const data = await res.json();
-          const items = (data.notifications || data || []).map((n: any) => ({
+          const items = (data.items || data.notifications || []).map((n: any) => ({
             id: n.id,
             type: n.type || "INFO",
             title: n.title || "Notificación",

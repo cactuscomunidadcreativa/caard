@@ -76,7 +76,7 @@ export default function PlazosPage() {
         const res = await fetch("/api/deadlines");
         if (res.ok) {
           const data = await res.json();
-          const items = (data.deadlines || data || []).map((d: any) => {
+          const items = (data.items || data.deadlines || []).map((d: any) => {
             const now = new Date();
             const dueDate = new Date(d.dueDate);
             const daysRemaining = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));

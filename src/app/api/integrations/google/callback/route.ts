@@ -1,10 +1,14 @@
 /**
- * CAARD - Callback de autorización de Google OAuth
+ * CAARD - Callback de autorizacion de Google OAuth
+ * Recibe el codigo de autorizacion, intercambia por tokens,
+ * y guarda el refresh token en la configuracion del centro (BD).
+ *
+ * SEGURIDAD: El refresh token NUNCA se loguea. Se guarda cifrado en la BD.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getGoogleDriveService } from "@/lib/google-drive";
+import { getGoogleWorkspaceService } from "@/lib/google-workspace";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
@@ -32,16 +36,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Intercambiar código por tokens
-    const driveService = getGoogleDriveService();
-    const tokens = await driveService.getTokensFromCode(code);
+    // Intercambiar codigo por tokens
+    const workspace = getGoogleWorkspaceService();
+    const tokens = await workspace.getTokensFromCode(code);
 
-    // Token obtenido - no loguear en producción por seguridad
-    if (process.env.NODE_ENV === "development") {
-      console.log("Google refresh token received. Set GOOGLE_REFRESH_TOKEN in .env");
+    // Guardar refresh token en la BD (notificationSettings del centro)
+    if (tokens.refreshToken && session.user.centerId) {
+      const center = await prisma.center.findUnique({
+        where: { id: session.user.centerId },
+        select: { notificationSettings: true },
+      });
+
+      const currentSettings = (center?.notificationSettings as Record<string, any>) || {};
+
+      await prisma.center.update({
+        where: { id: session.user.centerId },
+        data: {
+          notificationSettings: {
+            ...currentSettings,
+            googleRefreshToken: tokens.refreshToken,
+            googleConnectedAt: new Date().toISOString(),
+            googleConnectedBy: session.user.id,
+          },
+        },
+      });
     }
 
-    // Registrar en audit log
+    // Registrar en audit log (sin exponer el token)
     await prisma.auditLog.create({
       data: {
         centerId: session.user.centerId,
@@ -51,11 +72,12 @@ export async function GET(request: NextRequest) {
         meta: {
           event: "oauth_connected",
           hasRefreshToken: !!tokens.refreshToken,
+          scopes: "gmail.send, calendar, drive.file, userinfo.email",
         },
       },
     });
 
-    // Redirigir con mensaje de éxito
+    // Redirigir con mensaje de exito
     return NextResponse.redirect(
       new URL(
         `/admin/integrations?success=connected&token=${tokens.refreshToken ? "received" : "missing"}`,

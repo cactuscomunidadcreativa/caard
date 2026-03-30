@@ -75,7 +75,7 @@ export default function PaymentVerifyPage() {
         const res = await fetch("/api/payments?status=PENDING_VERIFICATION");
         if (res.ok) {
           const data = await res.json();
-          const payments = (data.payments || data || []).map((p: any) => ({
+          const payments = (data.items || data.payments || []).map((p: any) => ({
             id: p.id,
             orderNumber: p.paymentOrder?.orderNumber || p.id.slice(0, 8),
             caseCode: p.paymentOrder?.case?.code || "—",

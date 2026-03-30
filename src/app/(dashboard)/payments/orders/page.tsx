@@ -96,7 +96,7 @@ export default function PaymentOrdersPage() {
         const res = await fetch("/api/payment-orders");
         if (res.ok) {
           const data = await res.json();
-          const orders = (data.orders || data || []).map((o: any) => ({
+          const orders = (data.items || data.orders || []).map((o: any) => ({
             id: o.id,
             orderNumber: o.orderNumber || o.id.slice(0, 8),
             caseCode: o.case?.code || "—",

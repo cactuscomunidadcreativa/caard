@@ -74,6 +74,14 @@ import { toast } from "sonner";
 // Tipos de integraciones disponibles
 const INTEGRATION_CATEGORIES = [
   {
+    id: "google-workspace",
+    name: "Google Workspace",
+    description: "Gmail, Calendar, Drive unificado",
+    icon: Cloud,
+    color: "text-red-600",
+    bgColor: "bg-red-100",
+  },
+  {
     id: "email",
     name: "Email",
     description: "Configuracion de correo electronico",
@@ -292,12 +300,100 @@ export default function IntegrationsPage() {
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
-  const [activeTab, setActiveTab] = useState("email");
+  const [activeTab, setActiveTab] = useState("google-workspace");
+  const [googleStatus, setGoogleStatus] = useState<{
+    configured: boolean;
+    loading: boolean;
+    testingEmail: boolean;
+    testingCalendar: boolean;
+    testEmailTo: string;
+    calendarEvents: any[];
+  }>({
+    configured: false,
+    loading: true,
+    testingEmail: false,
+    testingCalendar: false,
+    testEmailTo: "",
+    calendarEvents: [],
+  });
 
   // Cargar integraciones existentes
   useEffect(() => {
     loadIntegrations();
+    checkGoogleStatus();
   }, []);
+
+  const checkGoogleStatus = async () => {
+    try {
+      const res = await fetch("/api/integrations/google/status");
+      if (res.ok) {
+        const data = await res.json();
+        setGoogleStatus((prev) => ({ ...prev, configured: data.configured, loading: false }));
+      } else {
+        setGoogleStatus((prev) => ({ ...prev, loading: false }));
+      }
+    } catch {
+      setGoogleStatus((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleGoogleAuthorize = async () => {
+    try {
+      const res = await fetch("/api/integrations/google/auth-url");
+      const data = await res.json();
+      if (data.authUrl) {
+        window.open(data.authUrl, "_blank");
+      } else {
+        toast.error("Error al generar URL de autorizacion. Verifica GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET.");
+      }
+    } catch {
+      toast.error("Error al conectar con Google");
+    }
+  };
+
+  const handleTestGmailEmail = async () => {
+    if (!googleStatus.testEmailTo) {
+      toast.error("Ingresa un email destinatario");
+      return;
+    }
+    setGoogleStatus((prev) => ({ ...prev, testingEmail: true }));
+    try {
+      const res = await fetch("/api/integrations/google/test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: googleStatus.testEmailTo }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Correo de prueba enviado a ${googleStatus.testEmailTo}`);
+      } else {
+        toast.error(data.error || "Error al enviar correo de prueba");
+      }
+    } catch {
+      toast.error("Error al enviar correo de prueba");
+    } finally {
+      setGoogleStatus((prev) => ({ ...prev, testingEmail: false }));
+    }
+  };
+
+  const handleTestCalendar = async () => {
+    setGoogleStatus((prev) => ({ ...prev, testingCalendar: true }));
+    try {
+      const res = await fetch("/api/calendar/events?calendarId=primary");
+      if (res.ok) {
+        const data = await res.json();
+        setGoogleStatus((prev) => ({ ...prev, calendarEvents: data.events || [] }));
+        toast.success(`Se encontraron ${data.events?.length || 0} eventos en el calendario`);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Error al obtener eventos");
+      }
+    } catch {
+      toast.error("Error al conectar con Google Calendar");
+    } finally {
+      setGoogleStatus((prev) => ({ ...prev, testingCalendar: false }));
+    }
+  };
 
   const loadIntegrations = async () => {
     try {
@@ -493,7 +589,192 @@ export default function IntegrationsPage() {
           })}
         </TabsList>
 
-        {INTEGRATION_CATEGORIES.map((category) => (
+        {/* Google Workspace - Custom tab content */}
+        <TabsContent value="google-workspace">
+          <div className="space-y-6">
+            {/* Connection status */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-red-100">
+                      <Cloud className="h-6 w-6 text-red-600" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">Google Workspace</CardTitle>
+                      <CardDescription>
+                        Integracion unificada: Gmail API, Google Calendar, Google Drive
+                      </CardDescription>
+                    </div>
+                  </div>
+                  {googleStatus.loading ? (
+                    <Badge variant="outline">
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      Verificando...
+                    </Badge>
+                  ) : googleStatus.configured ? (
+                    <Badge className="bg-green-100 text-green-700">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Conectado
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-yellow-100 text-yellow-700">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      No conectado
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Scopes */}
+                <div>
+                  <Label className="text-sm font-semibold mb-2 block">Scopes solicitados</Label>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="gap-1">
+                      <Mail className="h-3 w-3" />
+                      gmail.send
+                    </Badge>
+                    <Badge variant="outline" className="gap-1">
+                      <Calendar className="h-3 w-3" />
+                      calendar
+                    </Badge>
+                    <Badge variant="outline" className="gap-1">
+                      <Cloud className="h-3 w-3" />
+                      drive.file
+                    </Badge>
+                    <Badge variant="outline" className="gap-1">
+                      <Key className="h-3 w-3" />
+                      userinfo.email
+                    </Badge>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Authorize button */}
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={handleGoogleAuthorize}
+                    className="bg-[#D66829] hover:bg-[#c45a22] gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {googleStatus.configured ? "Re-autorizar con Google" : "Autorizar con Google"}
+                  </Button>
+                  <p className="text-sm text-muted-foreground">
+                    {googleStatus.configured
+                      ? "Puedes re-autorizar para actualizar los permisos o cambiar la cuenta."
+                      : "Conecta una cuenta de Google Workspace (@caardpe.com) para habilitar Gmail, Calendar y Drive."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Test: Send email */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Mail className="h-5 w-5 text-blue-600" />
+                  Gmail API - Enviar correo de prueba
+                </CardTitle>
+                <CardDescription>
+                  Verifica que la integracion con Gmail API funciona correctamente
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-3">
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="test-email-to">Email destinatario</Label>
+                    <Input
+                      id="test-email-to"
+                      type="email"
+                      placeholder="tu@email.com"
+                      value={googleStatus.testEmailTo}
+                      onChange={(e) =>
+                        setGoogleStatus((prev) => ({ ...prev, testEmailTo: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <Button
+                    onClick={handleTestGmailEmail}
+                    disabled={googleStatus.testingEmail || !googleStatus.configured}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    {googleStatus.testingEmail ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <TestTube className="h-4 w-4" />
+                    )}
+                    Enviar correo de prueba
+                  </Button>
+                </div>
+                {!googleStatus.configured && (
+                  <p className="text-sm text-yellow-600 mt-2">
+                    Autoriza con Google primero para poder enviar correos de prueba.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Test: Calendar */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Calendar className="h-5 w-5 text-orange-600" />
+                  Google Calendar - Ver calendario
+                </CardTitle>
+                <CardDescription>
+                  Verifica la conexion con Google Calendar listando los proximos eventos
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button
+                  onClick={handleTestCalendar}
+                  disabled={googleStatus.testingCalendar || !googleStatus.configured}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  {googleStatus.testingCalendar ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Calendar className="h-4 w-4" />
+                  )}
+                  Ver calendario
+                </Button>
+                {!googleStatus.configured && (
+                  <p className="text-sm text-yellow-600">
+                    Autoriza con Google primero para poder ver el calendario.
+                  </p>
+                )}
+                {googleStatus.calendarEvents.length > 0 && (
+                  <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
+                    {googleStatus.calendarEvents.slice(0, 10).map((event: any) => (
+                      <div key={event.id} className="p-3 flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-sm">{event.summary}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(event.start).toLocaleString("es-PE", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}
+                          </p>
+                        </div>
+                        {event.meetLink && (
+                          <Badge variant="outline" className="gap-1 text-xs">
+                            <Video className="h-3 w-3" />
+                            Meet
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {INTEGRATION_CATEGORIES.filter((c) => c.id !== "google-workspace").map((category) => (
           <TabsContent key={category.id} value={category.id}>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {AVAILABLE_INTEGRATIONS.filter(

@@ -95,7 +95,7 @@ export default function EmergenciasPage() {
         const res = await fetch("/api/emergency");
         if (res.ok) {
           const data = await res.json();
-          const items = (data.emergencies || data || []).map((e: any) => {
+          const items = (data.items || data.emergencies || []).map((e: any) => {
             const requestDate = new Date(e.requestDate || e.createdAt);
             const deadlineHours = e.deadlineHours || 24;
             const deadlineMs = requestDate.getTime() + deadlineHours * 60 * 60 * 1000;

@@ -49,7 +49,7 @@ export default function PaymentsReportPage() {
         const res = await fetch("/api/payment-orders");
         if (res.ok) {
           const data = await res.json();
-          const orders = data.orders || data || [];
+          const orders = data.items || data.orders || [];
 
           // Compute payment status summary
           const statusMap: Record<string, { count: number; amount: number }> = {};
