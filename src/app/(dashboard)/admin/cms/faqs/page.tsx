@@ -50,5 +50,8 @@ export default async function FAQsManagementPage() {
 
   const pagesWithFAQs = await getFAQsSections();
 
-  return <FAQsManagementClient pagesWithFAQs={pagesWithFAQs} />;
+  // Serializar Date objects para evitar error de hidratación en client components
+  const serialized = JSON.parse(JSON.stringify(pagesWithFAQs));
+
+  return <FAQsManagementClient pagesWithFAQs={serialized} />;
 }

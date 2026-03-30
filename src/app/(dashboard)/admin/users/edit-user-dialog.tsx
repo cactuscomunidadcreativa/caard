@@ -92,6 +92,7 @@ const ROLE_LABELS: Record<Role, string> = {
   ABOGADO: "Abogado",
   DEMANDANTE: "Demandante",
   DEMANDADO: "Demandado",
+  ESTUDIANTE: "Estudiante",
 };
 
 export function EditUserDialog({ user, centers, open, onClose, onSuccess }: EditUserDialogProps) {

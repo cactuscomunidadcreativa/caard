@@ -187,6 +187,7 @@ export async function sendWelcomeEmail(params: {
     ABOGADO: "Abogado",
     DEMANDANTE: "Demandante",
     DEMANDADO: "Demandado",
+  ESTUDIANTE: "Estudiante",
   };
 
   const html = `

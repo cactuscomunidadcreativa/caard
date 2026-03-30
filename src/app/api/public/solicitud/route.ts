@@ -8,34 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { publicRequestSchema } from "@/lib/validations/public-request";
 import { createCharge, isCulqiConfigured } from "@/lib/culqi/client";
 import { CASE_FOLDER_STRUCTURE } from "@/config/constants";
-
-/**
- * Genera código correlativo del expediente
- */
-async function generateCaseCode(centerId: string): Promise<{ code: string; year: number; sequence: number }> {
-  const year = new Date().getFullYear();
-
-  const center = await prisma.center.findUnique({
-    where: { id: centerId },
-    select: { code: true },
-  });
-
-  if (!center) {
-    throw new Error("Centro no encontrado");
-  }
-
-  const lastCase = await prisma.case.findFirst({
-    where: { centerId, year },
-    orderBy: { sequence: "desc" },
-    select: { sequence: true },
-  });
-
-  const sequence = (lastCase?.sequence || 0) + 1;
-  const paddedSequence = sequence.toString().padStart(6, "0");
-  const code = `EXP-${year}-${center.code}-${paddedSequence}`;
-
-  return { code, year, sequence };
-}
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
+import { generateCaseCode } from "@/lib/case-code";
 
 /**
  * POST /api/public/solicitud
@@ -43,6 +17,16 @@ async function generateCaseCode(centerId: string): Promise<{ code: string; year:
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting para solicitudes públicas
+    const ip = getClientIp(request);
+    const rateLimitResult = checkRateLimit(`solicitud:${ip}`, RATE_LIMITS.publicSubmission);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Intente más tarde." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
 
     // Extraer token de pago si viene
@@ -101,7 +85,7 @@ export async function POST(request: NextRequest) {
       : data.demandado.razonSocial || "";
 
     // Generar código
-    const { code, year, sequence } = await generateCaseCode(center.id);
+    const { code, year, sequence } = await generateCaseCode(center.id, false);
 
     // Calcular monto de tasa
     const feeAmount = arbitrationType.baseFeeCents || 50000; // Default S/ 500.00

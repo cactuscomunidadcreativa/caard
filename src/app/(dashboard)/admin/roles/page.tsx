@@ -155,6 +155,18 @@ const ROLE_DEFAULTS: Record<Role, {
     canManageCases: false,
     sortOrder: 8,
   },
+  ESTUDIANTE: {
+    displayName: "Estudiante",
+    description: "Acceso a cursos, tienda y consulta básica",
+    color: "bg-teal-100 text-teal-700 border-teal-200",
+    icon: "BookOpen",
+    canAccessAdmin: false,
+    canAccessCMS: false,
+    canAccessAI: true,
+    canManageUsers: false,
+    canManageCases: false,
+    sortOrder: 9,
+  },
 };
 
 const ROLE_ICONS: Record<string, any> = {

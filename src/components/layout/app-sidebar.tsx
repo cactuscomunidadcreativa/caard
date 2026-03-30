@@ -88,6 +88,15 @@ import {
   HeartPulse,
   Cloud,
   Server,
+  ShoppingBag,
+  ShoppingCart,
+  Package,
+  Tag,
+  Library,
+  GraduationCap,
+  Landmark,
+  LayoutTemplate,
+  Gift,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -441,6 +450,18 @@ function useNavigationItems() {
       roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
     },
     {
+      title: "Cursos",
+      href: "/admin/cms/courses",
+      icon: GraduationCap,
+      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+    },
+    {
+      title: "Landing Pages",
+      href: "/admin/cms/landing-pages",
+      icon: LayoutTemplate,
+      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+    },
+    {
       title: t.sidebar.announcements,
       href: "/admin/cms/announcements",
       icon: Megaphone,
@@ -465,6 +486,12 @@ function useNavigationItems() {
       roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
     },
     {
+      title: "Imágenes Cabecera",
+      href: "/admin/cms/hero-images",
+      icon: Image,
+      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+    },
+    {
       title: t.sidebar.mediaFiles,
       href: "/admin/cms/media",
       icon: Image,
@@ -480,6 +507,74 @@ function useNavigationItems() {
       title: t.sidebar.translations,
       href: "/admin/cms/translations",
       icon: Globe,
+      roles: ["SUPER_ADMIN", "ADMIN"],
+    },
+  ];
+
+  // TIENDA
+  const storeItems: NavItem[] = [
+    {
+      title: "Panel Tienda",
+      href: "/admin/store",
+      icon: ShoppingBag,
+      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+    },
+    {
+      title: "Productos",
+      href: "/admin/store/products",
+      icon: Package,
+      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+    },
+    {
+      title: "Categorías",
+      href: "/admin/store/categories",
+      icon: Tag,
+      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+    },
+    {
+      title: "Pedidos",
+      href: "/admin/store/orders",
+      icon: ClipboardList,
+      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"],
+    },
+    {
+      title: "Pagos Libres",
+      href: "/admin/pagos/libres",
+      icon: Banknote,
+      roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA"],
+    },
+    {
+      title: "Tributación",
+      href: "/admin/configuracion/tributacion",
+      icon: Percent,
+      roles: ["SUPER_ADMIN", "ADMIN"],
+    },
+  ];
+
+  // BIBLIOTECA DE LAUDOS
+  const libraryItems: NavItem[] = [
+    {
+      title: "Laudos",
+      href: "/admin/laudos",
+      icon: Landmark,
+      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"],
+    },
+    {
+      title: "Subir Laudo",
+      href: "/admin/laudos/new",
+      icon: FilePlus,
+      roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA"],
+    },
+    {
+      title: "Suscripciones",
+      href: "/admin/laudos/subscriptions",
+      icon: Users,
+      roles: ["SUPER_ADMIN", "ADMIN"],
+    },
+    {
+      title: "Paquetes",
+      href: "/admin/laudos/packages",
+      icon: Gift,
       roles: ["SUPER_ADMIN", "ADMIN"],
     },
   ];
@@ -544,6 +639,12 @@ function useNavigationItems() {
       title: t.sidebar.dataMigration,
       href: "/admin/migration",
       icon: Database,
+      roles: ["SUPER_ADMIN"],
+    },
+    {
+      title: "Config. Entorno",
+      href: "/admin/settings/env-config",
+      icon: Server,
       roles: ["SUPER_ADMIN"],
     },
   ];
@@ -653,6 +754,8 @@ function useNavigationItems() {
     { id: "finance", label: t.sidebar.finance, icon: Wallet, items: financeItems },
     { id: "notifications", label: t.sidebar.notifications, icon: Bell, items: notificationsItems },
     { id: "cms", label: t.sidebar.website, icon: Globe, items: cmsItems, showForRoles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"], dividerBefore: true },
+    { id: "store", label: "Tienda", icon: ShoppingBag, items: storeItems, showForRoles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"] },
+    { id: "library", label: "Biblioteca", icon: Library, items: libraryItems, showForRoles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"] },
     { id: "reports", label: t.sidebar.reports, icon: PieChart, items: reportItems, showForRoles: ["SUPER_ADMIN", "ADMIN"] },
     { id: "admin", label: t.sidebar.admin, icon: Settings, items: adminItems, showForRoles: ["SUPER_ADMIN", "ADMIN"] },
     { id: "ai", label: t.sidebar.ai, icon: Bot, items: aiItems, showForRoles: ["SUPER_ADMIN", "ADMIN"] },

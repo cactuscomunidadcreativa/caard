@@ -7,17 +7,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createCharge, isCulqiConfigured } from "@/lib/culqi/client";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limiting para pagos
+    const ip = getClientIp(req);
+    const rateLimitResult = checkRateLimit(`payment:${ip}`, RATE_LIMITS.payment);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "Demasiados intentos de pago", user_message: "Por favor espere antes de intentar nuevamente." },
+        { status: 429 }
+      );
+    }
+
     const session = await auth();
 
-    // Validar autenticación (opcional para pagos públicos)
-    // if (!session?.user) {
-    //   return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    // }
-
+    // Validar que el pago tenga al menos una orden de pago válida o sesión autenticada
+    // Los pagos públicos requieren paymentOrderId para validar legitimidad
     const body = await req.json();
+
+    const { paymentOrderId: reqPaymentOrderId } = body;
+    if (!session?.user && !reqPaymentOrderId) {
+      return NextResponse.json(
+        { error: "No autorizado", user_message: "Debe iniciar sesión o proporcionar una orden de pago válida" },
+        { status: 401 }
+      );
+    }
     const {
       token,
       amount,

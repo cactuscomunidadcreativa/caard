@@ -69,21 +69,16 @@ const ARBITRATOR_FEE_TIERS = [
   { min: 5000000, max: Infinity, rate: 1.5, minFee: 100000 },
 ];
 
-// Gastos adicionales
+// Gastos adicionales (montos SIN IGV)
 const ADDITIONAL_FEES = {
-  registrationFee: 500, // Tasa de registro
-  notificationFee: 150, // Gastos de notificación por parte
+  registrationFee: 500, // Tasa de presentación de solicitud de arbitraje (sin IGV)
+  notificationFee: 150, // Gastos de notificación por parte (sin IGV)
   audiencePerHour: 200, // Gastos por hora de audiencia
   emergencyFee: 1800, // Tasa fija de arbitraje de emergencia (sin IGV)
 };
 
-// Tipos de arbitraje con sus mínimos
-const ARBITRATION_TYPE_MIN_FEES: Record<string, number> = {
-  civil_comercial: 3000,
-  contratacion_publica: 5000,
-  laboral: 2500,
-  consumidor: 1500,
-};
+// Factor para cuantía indeterminada: 3.5% del valor del contrato
+const INDETERMINATE_RATE = 0.035;
 
 interface CalculationResult {
   registrationFee: number;
@@ -135,8 +130,10 @@ function calculateFees(
   // Calcular subtotal
   const subtotal = registrationFee + adminFee + arbitratorFee + notificationFee + emergencyFee;
 
-  // IGV (18%)
-  const igv = subtotal * 0.18;
+  // IGV (18%) - Solo aplica a: tasa de presentación, gastos del centro (admin), gastos de notificación
+  // NO aplica a honorarios de árbitros
+  const igvBase = registrationFee + adminFee + notificationFee + emergencyFee;
+  const igv = igvBase * 0.18;
 
   // Total
   const total = subtotal + igv;
@@ -172,6 +169,7 @@ export function ArbitrageCalculator() {
   const [numberOfParties, setNumberOfParties] = useState(2);
   const [isEmergency, setIsEmergency] = useState(false);
   const [isIndeterminate, setIsIndeterminate] = useState(false);
+  const [contractValue, setContractValue] = useState<string>("");
 
   // Tipos de arbitraje con traducciones
   const ARBITRATION_TYPES = [
@@ -185,12 +183,17 @@ export function ArbitrageCalculator() {
   const result = useMemo(() => {
     const numAmount = parseFloat(amount.replace(/,/g, "")) || 0;
 
-    // Para cuantía indeterminada, usar mínimo del tipo de arbitraje
-    const effectiveAmount = isIndeterminate
-      ? ARBITRATION_TYPE_MIN_FEES[arbitrationType] || 50000
-      : numAmount;
+    // Para cuantía indeterminada: 3.5% del valor total del contrato
+    let effectiveAmount: number;
+    if (isIndeterminate) {
+      const numContractValue = parseFloat(contractValue.replace(/,/g, "")) || 0;
+      if (numContractValue <= 0) return null;
+      effectiveAmount = numContractValue * INDETERMINATE_RATE;
+    } else {
+      effectiveAmount = numAmount;
+    }
 
-    if (effectiveAmount <= 0 && !isIndeterminate) return null;
+    if (effectiveAmount <= 0) return null;
 
     // Si es USD, convertir a PEN (tipo de cambio referencial)
     const amountInPEN = currency === "USD" ? effectiveAmount * 3.7 : effectiveAmount;
@@ -202,7 +205,7 @@ export function ArbitrageCalculator() {
       isEmergency,
       numberOfParties
     );
-  }, [amount, currency, arbitrationType, numberOfArbitrators, numberOfParties, isEmergency, isIndeterminate]);
+  }, [amount, contractValue, currency, arbitrationType, numberOfArbitrators, numberOfParties, isEmergency, isIndeterminate]);
 
   // Formatear número
   const formatCurrency = (value: number, curr: string = "PEN") => {
@@ -219,6 +222,7 @@ export function ArbitrageCalculator() {
     setNumberOfParties(2);
     setIsEmergency(false);
     setIsIndeterminate(false);
+    setContractValue("");
   };
 
   return (
@@ -273,7 +277,7 @@ export function ArbitrageCalculator() {
                   />
                 </div>
 
-                {/* Cuantía */}
+                {/* Cuantía determinada */}
                 {!isIndeterminate && (
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
@@ -301,6 +305,45 @@ export function ArbitrageCalculator() {
                         className="flex-1 text-right font-mono text-lg"
                       />
                     </div>
+                  </div>
+                )}
+
+                {/* Valor del contrato (para cuantía indeterminada) */}
+                {isIndeterminate && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-[#D66829]" />
+                      Valor total del contrato
+                    </Label>
+                    <p className="text-xs text-slate-500">
+                      Se aplicará el 3.5% del valor del contrato como cuantía de referencia
+                    </p>
+                    <div className="flex gap-2">
+                      <Select value={currency} onValueChange={(v) => setCurrency(v as "PEN" | "USD")}>
+                        <SelectTrigger className="w-24">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PEN">S/</SelectItem>
+                          <SelectItem value="USD">$</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="text"
+                        placeholder="Valor del contrato"
+                        value={contractValue}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9.,]/g, "");
+                          setContractValue(value);
+                        }}
+                        className="flex-1 text-right font-mono text-lg"
+                      />
+                    </div>
+                    {contractValue && (
+                      <p className="text-sm text-[#D66829] font-medium">
+                        Cuantía de referencia (3.5%): {formatCurrency(parseFloat(contractValue.replace(/,/g, "")) * INDETERMINATE_RATE || 0)}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -410,8 +453,8 @@ export function ArbitrageCalculator() {
 
                       <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
                         <div>
-                          <p className="font-medium text-slate-900">{t.calculator.registrationFee}</p>
-                          <p className="text-xs text-slate-500">{t.calculator.registrationFeeDesc}</p>
+                          <p className="font-medium text-slate-900">Tasa de presentación de solicitud de arbitraje</p>
+                          <p className="text-xs text-slate-500">Tasa fija aplicable al inicio del proceso</p>
                         </div>
                         <p className="font-mono font-semibold text-slate-900">
                           {formatCurrency(result.registrationFee)}
@@ -422,7 +465,7 @@ export function ArbitrageCalculator() {
                         <div>
                           <p className="font-medium text-slate-900">{t.calculator.adminFees}</p>
                           <p className="text-xs text-slate-500">
-                            {result.adminTierRate}% {t.calculator.adminFeesDesc} S/ {result.adminTierMinFee.toLocaleString()})
+                            Según tabla de gastos (mín. S/ {result.adminTierMinFee.toLocaleString()})
                           </p>
                         </div>
                         <p className="font-mono font-semibold text-slate-900">
@@ -436,7 +479,7 @@ export function ArbitrageCalculator() {
                             {numberOfArbitrators > 1 ? t.calculator.arbitratorFeesPlural : t.calculator.arbitratorFees} ({numberOfArbitrators})
                           </p>
                           <p className="text-xs text-slate-500">
-                            {result.arbTierRate}% {t.calculator.arbitratorFeesDesc} {numberOfArbitrators} {numberOfArbitrators > 1 ? t.calculator.arbitrators : t.calculator.arbitrator}
+                            Según tabla de honorarios × {numberOfArbitrators} {numberOfArbitrators > 1 ? t.calculator.arbitrators : t.calculator.arbitrator}
                           </p>
                         </div>
                         <p className="font-mono font-semibold text-slate-900">
@@ -479,7 +522,10 @@ export function ArbitrageCalculator() {
                       </div>
 
                       <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100">
-                        <p className="font-medium text-slate-700">{t.calculator.igv}</p>
+                        <div>
+                          <p className="font-medium text-slate-700">{t.calculator.igv}</p>
+                          <p className="text-xs text-slate-500">Aplica sobre tasa de presentación, gastos del centro y notificación</p>
+                        </div>
                         <p className="font-mono font-semibold text-slate-900">
                           {formatCurrency(result.igv)}
                         </p>

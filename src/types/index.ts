@@ -242,6 +242,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   ABOGADO: "Abogado",
   DEMANDANTE: "Demandante",
   DEMANDADO: "Demandado",
+  ESTUDIANTE: "Estudiante",
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {

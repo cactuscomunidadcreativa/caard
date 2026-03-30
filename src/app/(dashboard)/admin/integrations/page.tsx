@@ -114,6 +114,14 @@ const INTEGRATION_CATEGORIES = [
     bgColor: "bg-pink-100",
   },
   {
+    id: "storage",
+    name: "Almacenamiento",
+    description: "Google Drive y archivos",
+    icon: Cloud,
+    color: "text-teal-600",
+    bgColor: "bg-teal-100",
+  },
+  {
     id: "domain",
     name: "Dominios",
     description: "Configuracion de dominios",
@@ -231,6 +239,22 @@ const AVAILABLE_INTEGRATIONS = [
       { key: "apiKey", label: "API Key", type: "password", sensitive: true },
       { key: "defaultModel", label: "Modelo por defecto", type: "select", options: ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"] },
     ],
+  },
+  // Storage - Google Drive
+  {
+    code: "google-drive",
+    type: "STORAGE",
+    name: "Google Drive",
+    description: "Almacenamiento de documentos de expedientes en Google Drive",
+    icon: Cloud,
+    fields: [
+      { key: "clientId", label: "Client ID", type: "text", placeholder: "Tu Google Cloud Client ID" },
+      { key: "clientSecret", label: "Client Secret", type: "password", sensitive: true },
+      { key: "redirectUri", label: "Redirect URI", type: "text", placeholder: "https://tudominio.com/api/integrations/google/callback" },
+      { key: "refreshToken", label: "Refresh Token", type: "password", sensitive: true },
+      { key: "rootFolderId", label: "ID Carpeta Raiz", type: "text", placeholder: "ID de la carpeta raiz en Drive" },
+    ],
+    oauth: true,
   },
   // Domains
   {
@@ -637,9 +661,25 @@ export default function IntegrationsPage() {
                 <div className="p-4 border rounded-lg bg-blue-50">
                   <p className="font-medium text-blue-700 mb-2">Autenticacion OAuth</p>
                   <p className="text-sm text-blue-600 mb-3">
-                    Esta integracion requiere autenticacion OAuth. Despues de guardar las credenciales, debes autorizar el acceso.
+                    Esta integracion requiere autenticacion OAuth. Primero guarda las credenciales (Client ID y Client Secret), luego haz clic en &quot;Autorizar con Google&quot; para obtener el Refresh Token automaticamente.
                   </p>
-                  <Button variant="outline" className="gap-2">
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/api/integrations/google/auth-url");
+                        const data = await res.json();
+                        if (data.authUrl) {
+                          window.open(data.authUrl, "_blank");
+                        } else {
+                          toast.error("Configura Client ID y Client Secret primero");
+                        }
+                      } catch {
+                        toast.error("Error al generar URL de autorizacion. Guarda las credenciales primero.");
+                      }
+                    }}
+                  >
                     <ExternalLink className="h-4 w-4" />
                     Autorizar con Google
                   </Button>

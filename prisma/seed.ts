@@ -6,16 +6,17 @@
  * Este seed crea todos los datos necesarios para que el sistema funcione:
  * 1. Centro de Arbitraje
  * 2. Tipos de Arbitraje
- * 3. Usuarios (8 roles)
+ * 3. Usuarios (9 roles)
  * 4. Configuración de Roles
- * 5. Expedientes de ejemplo
- * 6. Sistema de Reglas (Tasas, Plazos, Devoluciones)
+ * 5. Registro de Árbitros
+ * 6. Sistema de Reglas (Tasas, Devoluciones)
  * 7. Feriados de Perú
  * 8. CMS (Páginas, Menú, Artículos, Eventos)
  * 9. Sistema de IA (Modelos, Asistentes)
+ * 10. Categorías de Tienda
  */
 
-import { PrismaClient, Role, AIProvider, ArbitrationScope, ProcedureType, ProcessStage, PaymentConcept, CaseStatus, DeadlineType, DeadlineStatus } from "@prisma/client";
+import { PrismaClient, Role, AIProvider, ArbitrationScope, ProcessStage, PaymentConcept } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -107,10 +108,9 @@ async function main() {
   console.log("⚖️  2. Creando Tipos de Arbitraje...");
 
   const tiposArbitraje = [
-    { code: "COMERCIAL", name: "Arbitraje Comercial", description: "Controversias derivadas de relaciones comerciales y mercantiles.", kind: "INSTITUTIONAL" as const, tribunalMode: "SOLE_ARBITRATOR" as const, baseFeeCents: 50000, currency: "PEN" },
-    { code: "CONSTRUCCION", name: "Arbitraje de Construcción", description: "Controversias de contratos de construcción y obras.", kind: "INSTITUTIONAL" as const, tribunalMode: "TRIBUNAL_3" as const, baseFeeCents: 100000, currency: "PEN" },
-    { code: "EMERGENCIA", name: "Arbitraje de Emergencia", description: "Procedimiento acelerado para medidas urgentes.", kind: "INSTITUTIONAL" as const, tribunalMode: "SOLE_ARBITRATOR" as const, baseFeeCents: 75000, currency: "PEN" },
-    { code: "CONSUMO", name: "Arbitraje de Consumo", description: "Controversias entre consumidores y proveedores.", kind: "INSTITUTIONAL" as const, tribunalMode: "SOLE_ARBITRATOR" as const, baseFeeCents: 25000, currency: "PEN" },
+    { code: "COMERCIAL", name: "Arbitraje Comercial", description: "Controversias derivadas de relaciones comerciales y mercantiles.", kind: "INSTITUTIONAL" as const, tribunalMode: "SOLE_ARBITRATOR" as const, baseFeeCents: 50000, currency: "PEN" }, // S/ 500 + IGV = S/ 590
+    { code: "CONTRATACION_PUBLICA", name: "Arbitraje de Contratación Pública", description: "Controversias derivadas de contrataciones con el Estado.", kind: "INSTITUTIONAL" as const, tribunalMode: "TRIBUNAL_3" as const, baseFeeCents: 50000, currency: "PEN" }, // S/ 500 + IGV = S/ 590
+    { code: "EMERGENCIA", name: "Arbitraje de Emergencia", description: "Procedimiento acelerado para medidas urgentes.", kind: "INSTITUTIONAL" as const, tribunalMode: "SOLE_ARBITRATOR" as const, baseFeeCents: 180000, currency: "PEN" }, // S/ 1,800 + IGV = S/ 2,124
     { code: "INTERNACIONAL", name: "Arbitraje Internacional", description: "Controversias con elementos de extranjería.", kind: "INSTITUTIONAL" as const, tribunalMode: "TRIBUNAL_3" as const, baseFeeCents: 200000, currency: "USD" },
   ];
 
@@ -142,6 +142,7 @@ async function main() {
     { email: "abogado2@caard.pe", name: "Dr. Miguel Fernández", role: Role.ABOGADO, phone: "+51999000011" },
     { email: "demandante@ejemplo.com", name: "Juan Pérez Sánchez", role: Role.DEMANDANTE, phone: "+51999000007" },
     { email: "demandado@ejemplo.com", name: "Empresa ABC S.A.C.", role: Role.DEMANDADO, phone: "+51999000008" },
+    { email: "estudiante@ejemplo.com", name: "Luis Ramírez Torres", role: Role.ESTUDIANTE, phone: "+51999000012" },
   ];
 
   const createdUsers: Record<string, string> = {};
@@ -171,6 +172,7 @@ async function main() {
     { role: Role.ABOGADO, displayName: "Abogado", description: "Representante legal de partes", color: "bg-amber-100 text-amber-700 border-amber-200", icon: "Briefcase", canAccessAdmin: false, canAccessCMS: false, canAccessAI: true, canManageUsers: false, canManageCases: false, canManageDocuments: true, canViewReports: false, isSystemRole: true, sortOrder: 6 },
     { role: Role.DEMANDANTE, displayName: "Demandante", description: "Parte que inicia el proceso", color: "bg-green-100 text-green-700 border-green-200", icon: "UserCheck", canAccessAdmin: false, canAccessCMS: false, canAccessAI: true, canManageUsers: false, canManageCases: false, canManageDocuments: true, canViewReports: false, isSystemRole: true, sortOrder: 7 },
     { role: Role.DEMANDADO, displayName: "Demandado", description: "Parte contra la cual se dirige la demanda", color: "bg-orange-100 text-orange-700 border-orange-200", icon: "User", canAccessAdmin: false, canAccessCMS: false, canAccessAI: true, canManageUsers: false, canManageCases: false, canManageDocuments: true, canViewReports: false, isSystemRole: true, sortOrder: 8 },
+    { role: Role.ESTUDIANTE, displayName: "Estudiante", description: "Alumno inscrito en cursos de CAARD", color: "bg-teal-100 text-teal-700 border-teal-200", icon: "GraduationCap", canAccessAdmin: false, canAccessCMS: false, canAccessAI: true, canManageUsers: false, canManageCases: false, canManageDocuments: false, canViewReports: false, isSystemRole: true, sortOrder: 9 },
   ];
 
   for (const config of roleConfigs) {
@@ -230,160 +232,9 @@ async function main() {
   console.log();
 
   // ==========================================================================
-  // 6. EXPEDIENTES DE EJEMPLO
+  // 6. CONFIGURACIÓN DE TASAS
   // ==========================================================================
-  console.log("📁 6. Creando Expedientes de ejemplo...");
-
-  const tipoComercial = await prisma.arbitrationType.findFirst({ where: { centerId: center.id, code: "COMERCIAL" } });
-  const tipoConstruccion = await prisma.arbitrationType.findFirst({ where: { centerId: center.id, code: "CONSTRUCCION" } });
-  const tipoEmergencia = await prisma.arbitrationType.findFirst({ where: { centerId: center.id, code: "EMERGENCIA" } });
-
-  const casesData = [
-    { typeId: tipoComercial?.id, code: "ARB-2025-0001", title: "Incumplimiento de contrato de servicios de software", status: CaseStatus.IN_PROCESS, stage: ProcessStage.CONTESTACION, claimant: "Juan Pérez Sánchez", respondent: "Tech Solutions S.A.C.", amount: 25000000, submittedAt: new Date("2025-01-05"), admittedAt: new Date("2025-01-10") },
-    { typeId: tipoComercial?.id, code: "ARB-2025-0002", title: "Disputa por suministro de materiales", status: CaseStatus.ADMITTED, stage: ProcessStage.DEMANDA, claimant: "Importadora del Norte E.I.R.L.", respondent: "Distribuidora Sur S.A.", amount: 15000000, submittedAt: new Date("2025-01-15"), admittedAt: new Date("2025-01-20") },
-    { typeId: tipoConstruccion?.id, code: "ARB-2025-0003", title: "Controversia en obra de edificio residencial", status: CaseStatus.IN_PROCESS, stage: ProcessStage.PROBATORIA, claimant: "Constructora Andina S.A.C.", respondent: "Inmobiliaria Central S.A.", amount: 85000000, submittedAt: new Date("2024-11-10"), admittedAt: new Date("2024-11-18") },
-    { typeId: tipoComercial?.id, code: "ARB-2025-0004", title: "Resolución de contrato de franquicia", status: CaseStatus.AWAITING_PAYMENT, stage: ProcessStage.DEMANDA, claimant: "Franquicias Perú S.A.C.", respondent: "Operador Local E.I.R.L.", amount: 35000000, submittedAt: new Date("2025-01-22") },
-    { typeId: tipoEmergencia?.id, code: "EMG-2025-0001", title: "Medida cautelar urgente - Embargo preventivo", status: CaseStatus.EMERGENCY_IN_PROCESS, claimant: "Exportadora Premium S.A.", respondent: "Comercial Delta S.A.C.", amount: 12000000, submittedAt: new Date("2025-01-24") },
-    { typeId: tipoComercial?.id, code: "ARB-2024-0089", title: "Incumplimiento de contrato de distribución", status: CaseStatus.CLOSED, stage: ProcessStage.LAUDO, claimant: "Distribuidora Global S.A.", respondent: "Productos del Campo E.I.R.L.", amount: 18000000, submittedAt: new Date("2024-06-15"), admittedAt: new Date("2024-06-22"), closedAt: new Date("2024-12-20") },
-  ];
-
-  for (const caseData of casesData) {
-    if (!caseData.typeId) continue;
-
-    const existingCase = await prisma.case.findUnique({ where: { code: caseData.code } });
-    if (existingCase) {
-      console.log(`   ⏭ ${caseData.code} ya existe`);
-      continue;
-    }
-
-    const caso = await prisma.case.create({
-      data: {
-        centerId: center.id,
-        arbitrationTypeId: caseData.typeId,
-        year: parseInt(caseData.code.split("-")[1]),
-        sequence: parseInt(caseData.code.split("-")[2]),
-        code: caseData.code,
-        title: caseData.title,
-        status: caseData.status,
-        currentStage: caseData.stage,
-        scope: ArbitrationScope.NACIONAL,
-        procedureType: caseData.code.startsWith("EMG") ? ProcedureType.EMERGENCY : ProcedureType.REGULAR,
-        claimantName: caseData.claimant,
-        respondentName: caseData.respondent,
-        disputeAmountCents: BigInt(caseData.amount),
-        currency: "PEN",
-        submittedAt: caseData.submittedAt,
-        admittedAt: caseData.admittedAt,
-        closedAt: caseData.closedAt,
-      },
-    });
-
-    // Crear estructura de carpetas
-    const folders = [
-      { key: "01_Solicitud", name: "01. Solicitud" },
-      { key: "02_Admision", name: "02. Admisión" },
-      { key: "03_Contestacion", name: "03. Contestación" },
-      { key: "04_Reconvencion", name: "04. Reconvención" },
-      { key: "05_Pruebas", name: "05. Pruebas" },
-      { key: "06_Audiencias", name: "06. Audiencias" },
-      { key: "07_Alegatos", name: "07. Alegatos" },
-      { key: "08_Laudo", name: "08. Laudo" },
-      { key: "09_Pagos", name: "09. Pagos" },
-    ];
-
-    for (const folder of folders) {
-      await prisma.caseFolder.upsert({
-        where: { caseId_key: { caseId: caso.id, key: folder.key } },
-        update: {},
-        create: { caseId: caso.id, ...folder },
-      });
-    }
-
-    console.log(`   ✓ ${caso.code}: ${caso.title?.substring(0, 40)}...`);
-  }
-  console.log();
-
-  // ==========================================================================
-  // 7. PLAZOS PROCESALES
-  // ==========================================================================
-  console.log("📅 7. Creando Plazos Procesales...");
-
-  const activeCases = await prisma.case.findMany({
-    where: { centerId: center.id, status: { in: [CaseStatus.IN_PROCESS, CaseStatus.ADMITTED, CaseStatus.AWAITING_PAYMENT] } },
-    take: 3,
-  });
-
-  const now = new Date();
-  for (const caso of activeCases) {
-    const deadlinesData = [
-      { type: DeadlineType.CONTESTACION, title: "Presentar contestación de demanda", businessDays: 20, daysOffset: 15 },
-      { type: DeadlineType.PAYMENT, title: "Completar pago de tasas administrativas", businessDays: 10, daysOffset: 5 },
-    ];
-
-    for (const dl of deadlinesData) {
-      const dueAt = new Date(now);
-      dueAt.setDate(dueAt.getDate() + dl.daysOffset);
-
-      await prisma.processDeadline.create({
-        data: {
-          caseId: caso.id,
-          type: dl.type,
-          title: dl.title,
-          description: `Plazo para ${dl.title.toLowerCase()}`,
-          startsAt: now,
-          businessDays: dl.businessDays,
-          dueAt: dueAt,
-          timezone: "America/Lima",
-          status: DeadlineStatus.ACTIVE,
-          onOverdueAction: dl.type === DeadlineType.PAYMENT ? "SUSPEND" : "NOTIFY",
-          notifyRoles: ["SECRETARIA"],
-        },
-      });
-    }
-    console.log(`   ✓ Plazos creados para ${caso.code}`);
-  }
-  console.log();
-
-  // ==========================================================================
-  // 8. ÓRDENES DE PAGO
-  // ==========================================================================
-  console.log("💰 8. Creando Órdenes de Pago...");
-
-  let orderSequence = 1;
-  for (const caso of activeCases) {
-    const orderNumber = `OP-2025-${String(orderSequence++).padStart(6, "0")}`;
-    const dueAt = new Date(now);
-    dueAt.setDate(dueAt.getDate() + 10);
-
-    const existingOrder = await prisma.paymentOrder.findUnique({ where: { orderNumber } });
-    if (existingOrder) {
-      console.log(`   ⏭ ${orderNumber} ya existe`);
-      continue;
-    }
-
-    await prisma.paymentOrder.create({
-      data: {
-        caseId: caso.id,
-        orderNumber,
-        concept: PaymentConcept.GASTOS_ADMINISTRATIVOS,
-        description: "Gastos administrativos del proceso arbitral",
-        amountCents: 100000,
-        igvCents: 18000,
-        totalCents: 118000,
-        currency: "PEN",
-        dueAt,
-        status: "PENDING",
-        blocksCase: true,
-      },
-    });
-    console.log(`   ✓ ${orderNumber} para ${caso.code}`);
-  }
-  console.log();
-
-  // ==========================================================================
-  // 9. CONFIGURACIÓN DE TASAS
-  // ==========================================================================
-  console.log("💵 9. Creando Configuración de Tasas...");
+  console.log("💵 6. Creando Configuración de Tasas...");
 
   for (const fee of FEES_CONFIG) {
     await prisma.feeConfiguration.upsert({
@@ -408,9 +259,9 @@ async function main() {
   console.log();
 
   // ==========================================================================
-  // 10. TABLA DE DEVOLUCIONES
+  // 7. TABLA DE DEVOLUCIONES
   // ==========================================================================
-  console.log("↩️  10. Creando Tabla de Devoluciones...");
+  console.log("↩️  7. Creando Tabla de Devoluciones...");
 
   for (const rate of REFUND_RATES) {
     await prisma.refundRate.upsert({
@@ -430,9 +281,9 @@ async function main() {
   console.log();
 
   // ==========================================================================
-  // 11. FERIADOS
+  // 8. FERIADOS
   // ==========================================================================
-  console.log("🗓️  11. Creando Feriados de Perú...");
+  console.log("🗓️  8. Creando Feriados de Perú...");
 
   for (const holiday of HOLIDAYS_PERU) {
     try {
@@ -454,9 +305,9 @@ async function main() {
   console.log(`   ✓ ${HOLIDAYS_PERU.length} feriados creados\n`);
 
   // ==========================================================================
-  // 12. CMS - CONFIGURACIÓN DEL SITIO
+  // 9. CMS - CONFIGURACIÓN DEL SITIO
   // ==========================================================================
-  console.log("🌐 12. Creando CMS - Configuración del Sitio...");
+  console.log("🌐 9. Creando CMS - Configuración del Sitio...");
 
   await prisma.cmsSiteConfig.upsert({
     where: { centerId: center.id },
@@ -471,9 +322,9 @@ async function main() {
       instagramUrl: "https://www.instagram.com/caardpe",
       linkedinUrl: "https://www.linkedin.com/company/caardpe/",
       whatsappNumber: "+51977236143",
-      contactEmail: "mesadepartes@caardpe.com",
+      contactEmail: "info@caardpe.com",
       contactPhone: "(511) 977 236 143",
-      contactAddress: "Jr Paramonga 311, oficina 702, Santiago de Surco, Lima, Perú",
+      contactAddress: "Jr. Aldebarán No. 596, oficina 1409 – Edificio IQ Surco, Santiago de Surco, Lima, Perú",
       defaultMetaTitle: "CAARD | Centro de Arbitraje",
       defaultMetaDescription: "Centro de Administración de Arbitrajes y Resolución de Disputas. Impulsamos el arbitraje como medio eficaz para la solución de controversias.",
       footerText: "El Centro de Administración de Arbitrajes y Resolución de Disputas es una institución arbitral que busca impulsar el arbitraje como medio eficaz para la solución de controversias.",
@@ -483,9 +334,9 @@ async function main() {
   console.log(`   ✓ Configuración del sitio creada\n`);
 
   // ==========================================================================
-  // 13. CMS - MENÚ DE NAVEGACIÓN
+  // 10. CMS - MENÚ DE NAVEGACIÓN
   // ==========================================================================
-  console.log("📌 13. Creando CMS - Menú de Navegación...");
+  console.log("📌 10. Creando CMS - Menú de Navegación...");
 
   // Eliminar menú existente
   await prisma.cmsMenuItem.deleteMany({ where: { centerId: center.id } });
@@ -542,9 +393,9 @@ async function main() {
   console.log(`   ✓ ${menuItems.length} items de menú creados\n`);
 
   // ==========================================================================
-  // 14. CMS - CATEGORÍAS
+  // 11. CMS - CATEGORÍAS
   // ==========================================================================
-  console.log("📁 14. Creando CMS - Categorías...");
+  console.log("📁 11. Creando CMS - Categorías...");
 
   const categories = [
     { slug: "arbitraje", name: "Arbitraje", color: "#0B2A5B" },
@@ -564,9 +415,9 @@ async function main() {
   console.log(`   ✓ ${categories.length} categorías creadas\n`);
 
   // ==========================================================================
-  // 15. CMS - PÁGINAS PRINCIPALES
+  // 12. CMS - PÁGINAS PRINCIPALES
   // ==========================================================================
-  console.log("📄 15. Creando CMS - Páginas Principales...");
+  console.log("📄 12. Creando CMS - Páginas Principales...");
 
   const pages = [
     { slug: "inicio", title: "Inicio", metaTitle: "CAARD | Centro de Arbitraje", isPublished: true },
@@ -594,9 +445,9 @@ async function main() {
   console.log(`   ✓ ${pages.length} páginas creadas\n`);
 
   // ==========================================================================
-  // 16. CMS - ARTÍCULOS
+  // 13. CMS - ARTÍCULOS
   // ==========================================================================
-  console.log("📝 16. Creando CMS - Artículos...");
+  console.log("📝 13. Creando CMS - Artículos...");
 
   const arbitrajeCategory = await prisma.cmsCategory.findFirst({ where: { centerId: center.id, slug: "arbitraje" } });
 
@@ -617,9 +468,9 @@ async function main() {
   console.log();
 
   // ==========================================================================
-  // 17. CMS - EVENTOS
+  // 14. CMS - EVENTOS
   // ==========================================================================
-  console.log("📅 17. Creando CMS - Eventos...");
+  console.log("📅 14. Creando CMS - Eventos...");
 
   const eventCategory = await prisma.cmsCategory.findFirst({ where: { centerId: center.id, slug: "eventos" } });
 
@@ -639,9 +490,9 @@ async function main() {
   console.log();
 
   // ==========================================================================
-  // 18. MODELOS DE IA
+  // 15. MODELOS DE IA
   // ==========================================================================
-  console.log("🤖 18. Creando Modelos de IA...");
+  console.log("🤖 15. Creando Modelos de IA...");
 
   const aiModels = [
     { provider: AIProvider.OPENAI, modelId: "gpt-4-turbo", name: "GPT-4 Turbo", inputCostPer1k: 1, outputCostPer1k: 3, maxTokens: 4096, maxContextWindow: 128000, isActive: true, isDefault: true, supportsVision: true, supportsFunctions: true, supportsStreaming: true },
@@ -661,9 +512,9 @@ async function main() {
   console.log();
 
   // ==========================================================================
-  // 19. ASISTENTES DE IA
+  // 16. ASISTENTES DE IA
   // ==========================================================================
-  console.log("🎯 19. Creando Asistentes de IA...");
+  console.log("🎯 16. Creando Asistentes de IA...");
 
   const assistants = [
     { name: "Asistente Legal General", slug: "legal-general", description: "Consultas legales sobre arbitraje", systemPrompt: "Eres un asistente legal especializado en arbitraje en Perú. Ayudas con consultas sobre procedimientos, términos legales y documentación. No das asesoría vinculante.", welcomeMessage: "Hola, soy el asistente legal de CAARD. ¿En qué puedo ayudarte?", temperature: 0.3, maxTokens: 2048, allowedContexts: ["general", "cases"], isActive: true },
@@ -682,9 +533,9 @@ async function main() {
   console.log();
 
   // ==========================================================================
-  // 20. CUOTA GLOBAL DE IA
+  // 17. CUOTA GLOBAL DE IA
   // ==========================================================================
-  console.log("📊 20. Creando Cuota Global de IA...");
+  console.log("📊 17. Creando Cuota Global de IA...");
 
   const existingQuota = await prisma.aISystemQuota.findFirst({ where: { isActive: true } });
   if (!existingQuota) {
@@ -705,6 +556,29 @@ async function main() {
   }
 
   // ==========================================================================
+  // 18. STORE CATEGORIES
+  // ==========================================================================
+  console.log("🛒 Creando Categorías de Tienda...");
+
+  const storeCategories = [
+    { name: "Libros", slug: "libros", description: "Publicaciones y libros de arbitraje", sortOrder: 1 },
+    { name: "Plantillas", slug: "plantillas", description: "Plantillas de documentos legales", sortOrder: 2 },
+    { name: "Cursos Grabados", slug: "cursos-grabados", description: "Cursos en video bajo demanda", sortOrder: 3 },
+    { name: "Membresías", slug: "membresias", description: "Planes de acceso y membresía", sortOrder: 4 },
+    { name: "Servicios", slug: "servicios", description: "Servicios profesionales", sortOrder: 5 },
+  ];
+
+  for (const cat of storeCategories) {
+    await prisma.storeCategory.upsert({
+      where: { centerId_slug: { centerId: center.id, slug: cat.slug } },
+      update: {},
+      create: { centerId: center.id, ...cat },
+    });
+    console.log(`   ✓ ${cat.name}`);
+  }
+  console.log();
+
+  // ==========================================================================
   // RESUMEN FINAL
   // ==========================================================================
   console.log("═".repeat(60));
@@ -721,15 +595,15 @@ async function main() {
   console.log("   ABOGADO        │ abogado@caard.pe / abogado2@caard.pe");
   console.log("   DEMANDANTE     │ demandante@ejemplo.com");
   console.log("   DEMANDADO      │ demandado@ejemplo.com");
+  console.log("   ESTUDIANTE     │ estudiante@ejemplo.com");
   console.log("─".repeat(60));
   console.log();
   console.log("📊 DATOS CREADOS:");
   console.log(`   • 1 Centro de Arbitraje`);
   console.log(`   • 5 Tipos de Arbitraje`);
-  console.log(`   • 10 Usuarios (8 roles)`);
-  console.log(`   • 8 Configuraciones de Roles`);
+  console.log(`   • 11 Usuarios (9 roles)`);
+  console.log(`   • 9 Configuraciones de Roles`);
   console.log(`   • 2 Árbitros registrados`);
-  console.log(`   • 6 Expedientes de ejemplo`);
   console.log(`   • ${FEES_CONFIG.length} Configuraciones de Tasas`);
   console.log(`   • ${REFUND_RATES.length} Tasas de Devolución`);
   console.log(`   • ${HOLIDAYS_PERU.length} Feriados`);
@@ -738,6 +612,7 @@ async function main() {
   console.log(`   • ${events.length} Eventos`);
   console.log(`   • ${aiModels.length} Modelos de IA`);
   console.log(`   • ${assistants.length} Asistentes de IA`);
+  console.log(`   • ${storeCategories.length} Categorías de Tienda`);
   console.log();
   console.log("🚀 Ejecuta 'npm run dev' para iniciar el servidor");
   console.log();

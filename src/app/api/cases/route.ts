@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar que el tipo de arbitraje existe y pertenece al centro
-    const arbitrationType = await prisma.arbitrationType.findFirst({
+    let arbitrationType = await prisma.arbitrationType.findFirst({
       where: {
         id: data.arbitrationTypeId,
         centerId,
@@ -185,17 +185,23 @@ export async function POST(request: NextRequest) {
     });
 
     if (!arbitrationType) {
-      return NextResponse.json(
-        { error: "Tipo de arbitraje no válido" },
-        { status: 400 }
-      );
+      // Intentar sin filtro de centro (por si el usuario no tiene centerId asignado)
+      arbitrationType = await prisma.arbitrationType.findFirst({
+        where: { id: data.arbitrationTypeId, isActive: true },
+      });
+      if (arbitrationType) {
+        // Usar el centro del tipo de arbitraje
+        centerId = arbitrationType.centerId;
+      } else {
+        return NextResponse.json(
+          { error: "Tipo de arbitraje no válido o no encontrado. Verifique que existan tipos de arbitraje activos." },
+          { status: 400 }
+        );
+      }
     }
 
     // Determinar si es arbitraje de emergencia basado en el código del tipo
     const isEmergency = isEmergencyArbitrationType(arbitrationType.code);
-
-    // Generar código correlativo
-    const { code, year, sequence } = await generateCaseCode(centerId, isEmergency);
 
     // Construir nombre del demandante
     const claimantName = data.claimant.type === "PERSONA_NATURAL"
@@ -207,9 +213,12 @@ export async function POST(request: NextRequest) {
       ? `${data.respondent.nombres} ${data.respondent.apellidos}`
       : data.respondent.razonSocial || "";
 
-    // Crear el expediente en una transacción
+    // Crear el expediente en una transacción (código generado DENTRO para evitar race condition)
     const newCase = await prisma.$transaction(async (tx) => {
-      // 1. Crear el caso
+      // 1. Generar código correlativo dentro de la transacción
+      const { code, year, sequence } = await generateCaseCode(centerId, isEmergency, tx);
+
+      // 2. Crear el caso
       const createdCase = await tx.case.create({
         data: {
           centerId,
@@ -221,11 +230,15 @@ export async function POST(request: NextRequest) {
           status: "SUBMITTED",
           claimantName,
           respondentName,
+          disputeAmountCents: data.hasDefinedAmount && data.claimAmount
+            ? BigInt(Math.round(data.claimAmount * 100))
+            : null,
+          currency: data.currency || "PEN",
           submittedAt: new Date(),
         },
       });
 
-      // 2. Crear o buscar usuario demandante
+      // 3. Crear o buscar usuario demandante
       let claimantUser = await tx.user.findUnique({
         where: { email: data.claimant.email },
       });
@@ -242,7 +255,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // 3. Agregar demandante como miembro
+      // 4. Agregar demandante como miembro
       await tx.caseMember.create({
         data: {
           caseId: createdCase.id,
@@ -255,7 +268,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // 4. Crear miembro demandado (sin usuario por ahora)
+      // 5. Crear miembro demandado (sin usuario por ahora)
       await tx.caseMember.create({
         data: {
           caseId: createdCase.id,
@@ -267,7 +280,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // 5. Crear estructura de carpetas
+      // 6. Crear estructura de carpetas
       const folders = CASE_FOLDER_STRUCTURE.map((folder) => ({
         caseId: createdCase.id,
         key: folder.key,
@@ -278,7 +291,7 @@ export async function POST(request: NextRequest) {
         data: folders,
       });
 
-      // 6. Crear pago inicial (tasa de arbitraje)
+      // 7. Crear pago inicial (tasa de arbitraje)
       if (arbitrationType.baseFeeCents) {
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + 5); // 5 días para pagar
@@ -297,7 +310,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // 7. Registrar en audit log
+      // 8. Registrar en audit log
       await tx.auditLog.create({
         data: {
           centerId,
@@ -325,10 +338,20 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error) {
-    console.error("Error creating case:", error);
+  } catch (error: any) {
+    console.error("Error creating case:", error?.message || error);
+    console.error("Stack:", error?.stack);
+
+    // Prisma unique constraint violations
+    if (error?.code === "P2002") {
+      return NextResponse.json(
+        { error: "Ya existe un expediente con ese código. Intente nuevamente." },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Error al crear expediente" },
+      { error: "Error al crear expediente", details: error?.message },
       { status: 500 }
     );
   }

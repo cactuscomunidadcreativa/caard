@@ -196,6 +196,7 @@ function getDefaultDisplayName(role: Role): string {
     ABOGADO: "Abogado",
     DEMANDANTE: "Demandante",
     DEMANDADO: "Demandado",
+  ESTUDIANTE: "Estudiante",
   };
   return names[role] || role;
 }
@@ -210,6 +211,7 @@ function getDefaultColor(role: Role): string {
     ABOGADO: "bg-amber-100 text-amber-700",
     DEMANDANTE: "bg-green-100 text-green-700",
     DEMANDADO: "bg-orange-100 text-orange-700",
+  ESTUDIANTE: "bg-teal-100 text-teal-700",
   };
   return colors[role] || "bg-gray-100 text-gray-700";
 }
@@ -224,6 +226,7 @@ function getDefaultIcon(role: Role): string {
     ABOGADO: "Briefcase",
     DEMANDANTE: "UserCheck",
     DEMANDADO: "User",
+    ESTUDIANTE: "BookOpen",
   };
   return icons[role] || "User";
 }
@@ -238,6 +241,7 @@ function getRoleSortOrder(role: Role): number {
     ABOGADO: 6,
     DEMANDANTE: 7,
     DEMANDADO: 8,
+    ESTUDIANTE: 9,
   };
   return order[role] || 99;
 }

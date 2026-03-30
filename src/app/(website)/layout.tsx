@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { WebsiteHeader } from "@/components/cms/website-header";
 import { WebsiteFooter } from "@/components/cms/website-footer";
 import { WhatsAppButton } from "@/components/cms/whatsapp-button";
+import { PublicChatbot } from "@/components/ai/public-chatbot";
 
 interface SiteConfig {
   siteName?: string | null;
@@ -64,6 +65,9 @@ export default async function WebsiteLayout({
       />
       <main>{children}</main>
       <WebsiteFooter config={config} />
+
+      {/* Chatbot público con IA */}
+      <PublicChatbot />
 
       {/* Botón flotante de WhatsApp */}
       <WhatsAppButton

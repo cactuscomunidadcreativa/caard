@@ -31,12 +31,14 @@ export interface CaseCodeResult {
  */
 export async function generateCaseCode(
   centerId: string,
-  isEmergency: boolean = false
+  isEmergency: boolean = false,
+  tx?: any
 ): Promise<CaseCodeResult> {
+  const db = tx || prisma;
   const year = new Date().getFullYear();
 
   // Obtener el centro para el código
-  const center = await prisma.center.findUnique({
+  const center = await db.center.findUnique({
     where: { id: centerId },
     select: { code: true },
   });
@@ -49,7 +51,7 @@ export async function generateCaseCode(
   const typePrefix = isEmergency ? "ARBEME" : "ARB";
 
   // Obtener el último número de secuencia del año para este tipo
-  const lastCase = await prisma.case.findFirst({
+  const lastCase = await db.case.findFirst({
     where: {
       centerId,
       year,

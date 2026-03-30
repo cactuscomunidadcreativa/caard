@@ -42,6 +42,7 @@ const ROLE_LABELS: Record<Role, string> = {
   ABOGADO: "Abogado",
   DEMANDANTE: "Demandante",
   DEMANDADO: "Demandado",
+  ESTUDIANTE: "Estudiante",
 };
 
 const ROLE_COLORS: Record<Role, string> = {
@@ -53,6 +54,7 @@ const ROLE_COLORS: Record<Role, string> = {
   ABOGADO: "bg-amber-100 text-amber-700",
   DEMANDANTE: "bg-green-100 text-green-700",
   DEMANDADO: "bg-orange-100 text-orange-700",
+  ESTUDIANTE: "bg-teal-100 text-teal-700",
 };
 
 async function getRoleConfigs() {

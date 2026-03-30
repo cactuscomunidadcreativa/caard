@@ -65,5 +65,8 @@ export default async function LocationsManagementPage() {
 
   const pagesWithLocations = await getLocationsSections();
 
-  return <LocationsManagementClient pagesWithLocations={pagesWithLocations} />;
+  // Serializar Date objects para evitar error de hidratación en client components
+  const serialized = JSON.parse(JSON.stringify(pagesWithLocations));
+
+  return <LocationsManagementClient pagesWithLocations={serialized} />;
 }

@@ -8,9 +8,20 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateOtp } from "@/lib/otp/service";
 import { OtpType, OtpChannel } from "@prisma/client";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting para OTP
+    const ip = getClientIp(request);
+    const rateLimitResult = checkRateLimit(`otp:${ip}`, RATE_LIMITS.otp);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "Demasiados intentos. Intente de nuevo en unos minutos." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { email, type = "LOGIN", channel } = body;
 

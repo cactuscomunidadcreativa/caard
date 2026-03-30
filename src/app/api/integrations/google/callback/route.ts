@@ -36,12 +36,10 @@ export async function GET(request: NextRequest) {
     const driveService = getGoogleDriveService();
     const tokens = await driveService.getTokensFromCode(code);
 
-    // Guardar refresh token (en producción, guardar de forma segura en DB o vault)
-    // Por ahora, mostramos instrucciones para agregarlo al .env
-    console.log("=== GOOGLE REFRESH TOKEN ===");
-    console.log("Agrega esta línea a tu archivo .env:");
-    console.log(`GOOGLE_REFRESH_TOKEN=${tokens.refreshToken}`);
-    console.log("=============================");
+    // Token obtenido - no loguear en producción por seguridad
+    if (process.env.NODE_ENV === "development") {
+      console.log("Google refresh token received. Set GOOGLE_REFRESH_TOKEN in .env");
+    }
 
     // Registrar en audit log
     await prisma.auditLog.create({

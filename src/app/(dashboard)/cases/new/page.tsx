@@ -127,25 +127,8 @@ export default function NewCasePage() {
         }
       } catch (error) {
         console.error("Error loading arbitration types:", error);
-        // Usar datos de prueba si falla
-        setArbitrationTypes([
-          {
-            id: "1",
-            code: "COMERCIAL",
-            name: "Arbitraje Comercial",
-            description: "Resolución de controversias comerciales",
-            baseFeeCents: 50000,
-            currency: "PEN",
-          },
-          {
-            id: "2",
-            code: "CONSTRUCCION",
-            name: "Arbitraje de Construcción",
-            description: "Controversias de contratos de construcción",
-            baseFeeCents: 100000,
-            currency: "PEN",
-          },
-        ]);
+        toast.error("Error al cargar tipos de arbitraje. Recargue la página.");
+        setArbitrationTypes([]);
       } finally {
         setLoadingTypes(false);
       }
@@ -153,7 +136,46 @@ export default function NewCasePage() {
     loadArbitrationTypes();
   }, []);
 
-  const nextStep = () => {
+  // Campos requeridos por paso para validación parcial
+  const STEP_FIELDS: Record<number, (keyof CreateCaseInput)[]> = {
+    1: ["arbitrationTypeId"],
+    2: ["claimant"],
+    3: ["respondent"],
+    4: ["title", "hasDefinedAmount", "currency"],
+    5: ["acceptTerms", "acceptPrivacy"],
+  };
+
+  const nextStep = async () => {
+    // Validar campos del paso actual antes de avanzar
+    const fieldsToValidate = STEP_FIELDS[currentStep] || [];
+    const isValid = await form.trigger(fieldsToValidate as any);
+
+    if (!isValid) {
+      // Mostrar errores específicos del paso
+      const errors = form.formState.errors;
+      const errorMessages: string[] = [];
+
+      if (currentStep === 1 && errors.arbitrationTypeId) {
+        errorMessages.push("Seleccione un tipo de arbitraje");
+      }
+      if (currentStep === 2 && errors.claimant) {
+        errorMessages.push("Complete los datos del demandante");
+      }
+      if (currentStep === 3 && errors.respondent) {
+        errorMessages.push("Complete los datos del demandado");
+      }
+      if (currentStep === 4) {
+        if (errors.title) errorMessages.push("El título es obligatorio (mín. 10 caracteres)");
+      }
+
+      if (errorMessages.length > 0) {
+        toast.error(errorMessages.join(". "));
+      } else {
+        toast.error("Complete los campos requeridos antes de continuar");
+      }
+      return;
+    }
+
     if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1);
     }
@@ -181,14 +203,29 @@ export default function NewCasePage() {
         toast.success(result.message || "Expediente creado exitosamente");
         router.push(`/cases/${result.data.id}`);
       } else {
-        toast.error(result.error || "Error al crear expediente");
+        // Mostrar detalles del error si hay
+        const errorDetail = result.details?.fieldErrors
+          ? Object.values(result.details.fieldErrors).flat().join(", ")
+          : result.error;
+        toast.error(errorDetail || "Error al crear expediente");
       }
     } catch (error) {
-      toast.error("Error de conexión");
+      toast.error("Error de conexión al servidor");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Mostrar errores de validación cuando el submit falla silenciosamente
+  const handleSubmitWithErrors = form.handleSubmit(onSubmit, (errors) => {
+    console.error("Form validation errors:", errors);
+    const errorKeys = Object.keys(errors);
+    if (errorKeys.includes("acceptTerms") || errorKeys.includes("acceptPrivacy")) {
+      toast.error("Debe aceptar los términos y la política de privacidad");
+    } else {
+      toast.error(`Hay ${errorKeys.length} campo(s) con errores. Revise los pasos anteriores.`);
+    }
+  });
 
   const claimantType = form.watch("claimant.type");
   const respondentType = form.watch("respondent.type");
@@ -235,7 +272,7 @@ export default function NewCasePage() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmitWithErrors}>
           {/* Step 1: Tipo de Arbitraje */}
           {currentStep === 1 && (
             <Card>

@@ -191,6 +191,7 @@ const ROLE_LABELS: Record<Role, string> = {
   ABOGADO: "Abogado",
   DEMANDANTE: "Demandante",
   DEMANDADO: "Demandado",
+  ESTUDIANTE: "Estudiante",
 };
 
 const NOTIFICATION_ROLES: Role[] = [

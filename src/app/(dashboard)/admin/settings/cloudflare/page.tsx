@@ -144,6 +144,7 @@ export default function CloudflareSetupPage() {
   ];
   const [isConnected, setIsConnected] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [config, setConfig] = useState({
     email: "",
@@ -151,12 +152,46 @@ export default function CloudflareSetupPage() {
     zoneId: "",
     accountId: "",
   });
+  const [zoneInfo, setZoneInfo] = useState<{ name?: string; status?: string; plan?: string } | null>(null);
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} ${t.cloudflare.copied}`);
   };
 
+  // Guardar credenciales en .env.local vía API
+  const handleSaveCredentials = async () => {
+    if (!config.email || !config.apiKey || !config.zoneId) {
+      toast.error("Completa email, API Key y Zone ID como mínimo");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const vars = [
+        { key: "CLOUDFLARE_EMAIL", value: config.email },
+        { key: "CLOUDFLARE_API_KEY", value: config.apiKey },
+        { key: "CLOUDFLARE_ZONE_ID", value: config.zoneId },
+      ];
+      if (config.accountId) {
+        vars.push({ key: "CLOUDFLARE_ACCOUNT_ID", value: config.accountId });
+      }
+      for (const v of vars) {
+        const res = await fetch("/api/admin/env-config", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(v),
+        });
+        if (!res.ok) throw new Error(`Error guardando ${v.key}`);
+      }
+      toast.success("Credenciales guardadas en .env.local");
+    } catch (err: any) {
+      toast.error(err.message || "Error al guardar credenciales");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Test real contra Cloudflare API
   const handleTestConnection = async () => {
     if (!config.apiKey || !config.zoneId) {
       toast.error(t.cloudflare.testError);
@@ -164,11 +199,36 @@ export default function CloudflareSetupPage() {
     }
 
     setIsTesting(true);
-    // Simulate API test
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsConnected(true);
-    setIsTesting(false);
-    toast.success(t.cloudflare.testSuccess);
+    try {
+      // Verificar token/key contra Cloudflare API
+      const res = await fetch(`https://api.cloudflare.com/client/v4/zones/${config.zoneId}`, {
+        headers: {
+          "X-Auth-Email": config.email,
+          "X-Auth-Key": config.apiKey,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await res.json();
+      if (data.success && data.result) {
+        setIsConnected(true);
+        setZoneInfo({
+          name: data.result.name,
+          status: data.result.status,
+          plan: data.result.plan?.name,
+        });
+        toast.success(`Conectado a ${data.result.name} (${data.result.plan?.name || "Free"})`);
+        // Auto-guardar credenciales
+        await handleSaveCredentials();
+      } else {
+        setIsConnected(false);
+        toast.error(data.errors?.[0]?.message || "No se pudo verificar la conexión");
+      }
+    } catch (err: any) {
+      setIsConnected(false);
+      toast.error("Error de red al conectar con Cloudflare");
+    } finally {
+      setIsTesting(false);
+    }
   };
 
   const completedSteps = SETUP_STEPS.filter((s) => s.completed).length;
@@ -498,6 +558,14 @@ export default function CloudflareSetupPage() {
 
               <Separator />
 
+              {/* Zone Info */}
+              {zoneInfo && (
+                <div className="p-4 rounded-lg bg-green-50 border border-green-200 space-y-1">
+                  <p className="font-medium text-green-800">Dominio: {zoneInfo.name}</p>
+                  <p className="text-sm text-green-700">Estado: {zoneInfo.status} | Plan: {zoneInfo.plan}</p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">{t.cloudflare.connectionStatus}</p>
@@ -505,17 +573,31 @@ export default function CloudflareSetupPage() {
                     {isConnected ? t.cloudflare.connectedToCloudflare : t.cloudflare.notConnectedStatus}
                   </p>
                 </div>
-                <Button
-                  onClick={handleTestConnection}
-                  disabled={isTesting}
-                >
-                  {isTesting ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                  )}
-                  {t.cloudflare.testConnection}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleSaveCredentials}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Settings2 className="h-4 w-4 mr-2" />
+                    )}
+                    Guardar
+                  </Button>
+                  <Button
+                    onClick={handleTestConnection}
+                    disabled={isTesting}
+                  >
+                    {isTesting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    {t.cloudflare.testConnection}
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

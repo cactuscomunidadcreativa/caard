@@ -1,5 +1,5 @@
 /**
- * CAARD - Middleware para protección de rutas
+ * CAARD - Middleware para protección de rutas y seguridad
  */
 
 import { auth } from "@/lib/auth";
@@ -39,6 +39,14 @@ const publicRoutes = [
   "/transparencia",
   "/politica-privacidad",
   "/terminos-condiciones",
+  // Módulos comerciales públicos
+  "/cursos",
+  "/tienda",
+  "/carrito",
+  "/checkout",
+  "/laudos",
+  "/arbitros",
+  "/l",        // Landing pages
 ];
 
 // Rutas que requieren rol de admin
@@ -47,12 +55,33 @@ const adminRoutes = ["/admin"];
 // Rutas que requieren rol de secretaría o superior
 const staffRoutes = ["/secretaria", "/staff"];
 
+/**
+ * Agrega security headers a cualquier respuesta
+ */
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+  );
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload"
+    );
+  }
+  return response;
+}
+
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
   // Permitir rutas públicas
   if (publicRoutes.some((route) => pathname === route || pathname.startsWith(route + "/"))) {
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
   // Permitir archivos estáticos y API routes públicas
@@ -64,7 +93,7 @@ export default auth((req) => {
     pathname.startsWith("/patterns") ||
     pathname.includes(".")
   ) {
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
   // Verificar autenticación para rutas protegidas
@@ -92,7 +121,7 @@ export default auth((req) => {
     }
   }
 
-  return NextResponse.next();
+  return addSecurityHeaders(NextResponse.next());
 });
 
 export const config = {

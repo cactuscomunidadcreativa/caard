@@ -22,6 +22,7 @@ enum Role {
   ABOGADO         // Abogado (puede representar demandantes o demandados)
   DEMANDANTE      // Parte demandante
   DEMANDADO       // Parte demandada
+  ESTUDIANTE      // Estudiante (cursos, tienda, consulta básica)
 }
 
 enum CaseStatus {
@@ -290,6 +291,19 @@ model Center {
   cmsAnnouncements CmsAnnouncement[]
   cmsMedia         CmsMedia[]
   cmsSiteConfig    CmsSiteConfig?
+
+  // Commerce Relations
+  courses          Course[]
+  storeProducts    StoreProduct[]
+  storeCategories  StoreCategory[]
+  storeOrders      StoreOrder[]
+  carts            Cart[]
+  commerceTaxConfigs CommerceTaxConfig[]
+  freePayments     FreePayment[]
+  laudos           Laudo[]
+  laudoCategories  LaudoCategory[]
+  laudoPackages    LaudoPackage[]
+  landingPages     LandingPage[]
 }
 
 //
@@ -351,6 +365,14 @@ model User {
 
   // OTP tokens
   otpTokens            OtpToken[]
+
+  // Commerce Relations
+  enrollments          Enrollment[]
+  storeOrders          StoreOrder[]
+  cart                 Cart?
+  freePayments         FreePayment[]
+  laudoSubscriptions   LaudoSubscription[]
+  laudoAccesses        LaudoAccess[]
 
   // 2FA settings
   twoFactorEnabled     Boolean @default(false)
@@ -1054,6 +1076,11 @@ enum CmsSectionType {
   TIMELINE       // Línea de tiempo
   LOGO_CLOUD     // Logos de clientes/partners
   CUSTOM         // HTML personalizado
+  // Módulos comerciales
+  ARBITRATOR_PROFILES // Perfiles de árbitros destacados
+  COURSE_CATALOG      // Catálogo de cursos embebido
+  PRODUCT_CATALOG     // Catálogo de productos embebido
+  LAUDO_FEATURED      // Laudos destacados
 }
 
 model CmsSection {
@@ -2273,6 +2300,7 @@ model ArbitratorRegistry {
   // Relaciones
   sanctions   ArbitratorSanction[]
   recusations Recusation[]
+  profile     ArbitratorProfile?
 
   @@index([centerId])
   @@index([userId])
@@ -2567,9 +2595,11 @@ model AdminIntervention {
 enum TaxType {
   IGV               // Impuesto General a las Ventas (18%)
   DETRACCION        // Detracción SPOT (12% servicios > S/. 700)
+  PERCEPCION        // Percepción del IGV
   RETENCION_4TA     // Retención 4ta Categoría (8% honorarios > S/. 1,500)
   RETENCION_IGV     // Retención de IGV (agentes designados)
   IR                // Impuesto a la Renta
+  EXONERADO         // Exonerado de impuestos
 }
 
 //
@@ -3147,4 +3177,688 @@ model Setting {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// =============================================
+// MÓDULOS COMERCIALES: CURSOS, TIENDA, LAUDOS
+// =============================================
+
+//
+// ENUMS COMERCIALES
+//
+
+enum CourseModality {
+  ONLINE
+  PRESENCIAL
+  HYBRID
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  PENDING_PAYMENT
+  ENROLLED
+  COMPLETED
+  CANCELLED
+}
+
+enum ProductType {
+  DIGITAL
+  PHYSICAL
+  SERVICE
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  ORDER_PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+}
+
+enum OrderItemType {
+  COURSE
+  PRODUCT
+  LAUDO
+  SUBSCRIPTION
+}
+
+enum CartItemType {
+  CART_COURSE
+  CART_PRODUCT
+  CART_LAUDO
+  CART_SUBSCRIPTION
+}
+
+enum LaudoAccessLevel {
+  FREE
+  PREMIUM
+}
+
+enum SubscriptionPeriod {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+enum SubscriptionStatus {
+  SUB_ACTIVE
+  SUB_EXPIRED
+  SUB_CANCELLED
+  SUB_PENDING_PAYMENT
+}
+
+enum LandingPageTemplate {
+  COURSE_PROMO
+  SERVICE_PROMO
+  EVENT_PROMO
+  CUSTOM
+}
+
+enum LandingPageStatus {
+  LP_DRAFT
+  LP_PUBLISHED
+  LP_ARCHIVED
+}
+
+//
+// CURSOS
+//
+
+model Course {
+  id        String   @id @default(cuid())
+  centerId  String
+  center    Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  slug          String
+  title         String
+  description   String?
+  content       String?  // Rich text / HTML
+  coverImage    String?
+
+  modality      CourseModality @default(ONLINE)
+  status        CourseStatus   @default(DRAFT)
+  categoryId    String?
+
+  // Precios
+  isFree        Boolean  @default(false)
+  priceCents    Int?     // null = gratis
+  currency      String   @default("PEN")
+  taxConfig     Json?    // {igv: bool, detraccion: bool, percepcion: bool}
+
+  // Online
+  lessons       CourseLesson[]
+
+  // Presencial
+  startDate     DateTime?
+  endDate       DateTime?
+  timezone      String   @default("America/Lima")
+  location      String?
+  maxCapacity   Int?
+  currentEnrolled Int    @default(0)
+
+  // Instructor
+  instructorName  String?
+  instructorBio   String?
+  instructorImage String?
+
+  // Meta
+  durationHours Float?
+  isFeatured    Boolean @default(false)
+
+  enrollments   Enrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, slug])
+  @@index([centerId])
+  @@index([status])
+}
+
+model CourseLesson {
+  id        String @id @default(cuid())
+  courseId   String
+  course     Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  content     String?
+  videoUrl    String?
+  sortOrder   Int     @default(0)
+  durationMinutes Int?
+
+  materials   CourseMaterial[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([courseId])
+}
+
+model CourseMaterial {
+  id        String @id @default(cuid())
+  lessonId  String
+  lesson    CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  title     String
+  fileUrl   String
+  fileType  String?
+  fileSize  Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([lessonId])
+}
+
+model Enrollment {
+  id        String @id @default(cuid())
+  courseId   String
+  course     Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status     EnrollmentStatus @default(PENDING_PAYMENT)
+  paidAmountCents Int?
+  currency   String @default("PEN")
+
+  orderId    String?
+  order      StoreOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  enrolledAt  DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, userId])
+  @@index([userId])
+  @@index([status])
+}
+
+//
+// TIENDA
+//
+
+model StoreProduct {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  slug          String
+  title         String
+  description   String?
+  content       String?
+  coverImage    String?
+  images        Json?    // String[]
+
+  type          ProductType @default(DIGITAL)
+  categoryId    String?
+  category      StoreCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Precios
+  priceCents        Int
+  comparePriceCents Int?       // Precio tachado
+  currency          String     @default("PEN")
+  taxConfig         Json?      // {igv: bool, detraccion: bool, percepcion: bool}
+
+  // Inventario (físico)
+  stock         Int?
+  trackStock    Boolean @default(false)
+
+  // Digital
+  digitalFileUrl  String?
+  digitalFileType String?
+
+  // Servicio
+  serviceDurationMinutes Int?
+  serviceBookingUrl      String?
+
+  // Envío (físico)
+  weight           Float?
+  requiresShipping Boolean @default(false)
+
+  isPublished   Boolean @default(false)
+  isFeatured    Boolean @default(false)
+
+  orderItems    StoreOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, slug])
+  @@index([centerId])
+  @@index([type])
+  @@index([categoryId])
+  @@index([isPublished])
+}
+
+model StoreCategory {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  slug        String
+  name        String
+  description String?
+  coverImage  String?
+  sortOrder   Int     @default(0)
+
+  products    StoreProduct[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, slug])
+  @@index([centerId])
+}
+
+//
+// BIBLIOTECA DE LAUDOS
+//
+
+model Laudo {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  slug          String
+  title         String
+  summary       String?    // Resumen público (siempre visible)
+  fullPdfUrl    String?    // PDF completo (solo con acceso)
+
+  accessLevel   LaudoAccessLevel @default(FREE)
+  priceCents    Int?       // Precio compra individual (null = no vendible individualmente)
+  currency      String     @default("PEN")
+
+  // Metadatos indexables para búsqueda
+  year              Int?
+  arbitrationType   String?  // comercial, construcción, minería, etc.
+  subject           String?  // materia: contractual, laboral, societario, etc.
+  claimAmountRange  String?  // e.g., "100000-500000" o "menor a 100000"
+  result            String?  // estimado, desestimado, parcial, conciliado
+  arbitratorCount   Int?     // 1 o 3
+  isAnonymized      Boolean  @default(true)
+  pageCount         Int?
+  tags              Json?    // String[] tags adicionales
+
+  categoryId    String?
+  category      LaudoCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  isPublished   Boolean @default(false)
+  isFeatured    Boolean @default(false)
+  downloadCount Int     @default(0)
+
+  accesses      LaudoAccess[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, slug])
+  @@index([centerId])
+  @@index([accessLevel])
+  @@index([year])
+  @@index([subject])
+  @@index([isPublished])
+}
+
+model LaudoCategory {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  slug        String
+  name        String
+  description String?
+  sortOrder   Int     @default(0)
+
+  laudos      Laudo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, slug])
+  @@index([centerId])
+}
+
+model LaudoSubscription {
+  id        String @id @default(cuid())
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  period    SubscriptionPeriod
+  status    SubscriptionStatus @default(SUB_PENDING_PAYMENT)
+  priceCents Int
+  currency  String @default("PEN")
+
+  startDate   DateTime?
+  endDate     DateTime?
+  autoRenew   Boolean @default(false)
+
+  orderId     String?
+  order       StoreOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model LaudoAccess {
+  id        String @id @default(cuid())
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  laudoId   String
+  laudo     Laudo  @relation(fields: [laudoId], references: [id], onDelete: Cascade)
+
+  grantedAt DateTime @default(now())
+  expiresAt DateTime?
+  grantType String   // PURCHASE, SUBSCRIPTION, ROLE_BASED, CASE_BASED
+
+  orderId   String?
+
+  @@unique([userId, laudoId])
+  @@index([userId])
+  @@index([laudoId])
+}
+
+model LaudoPackage {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  name          String
+  description   String?
+  laudoCount    Int        // Cantidad de laudos incluidos
+  priceCents    Int
+  discountPercent Int      @default(0)
+  currency      String     @default("PEN")
+  isActive      Boolean    @default(true)
+  validDays     Int        @default(365)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+}
+
+//
+// PERFILES DE ÁRBITROS
+//
+
+model ArbitratorProfile {
+  id          String @id @default(cuid())
+  registryId  String @unique
+  registry    ArbitratorRegistry @relation(fields: [registryId], references: [id], onDelete: Cascade)
+
+  slug            String @unique
+  displayName     String
+  title           String?  // e.g., "Árbitro Especialista en Derecho Comercial"
+  photoUrl        String?
+  biography       String?  // Rich text
+  education       Json?    // [{degree, institution, year}]
+  experience      Json?    // [{position, organization, period}]
+  publications    Json?    // [{title, publisher, year, url}]
+  languages       Json?    // ["Español", "Inglés", "Portugués"]
+  contactEmail    String?
+  linkedinUrl     String?
+  yearsExperience Int?
+  laudosCount     Int      @default(0)
+
+  isPublished     Boolean  @default(false)
+  isFeatured      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isPublished])
+}
+
+//
+// LANDING PAGES
+//
+
+model LandingPage {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  slug            String
+  title           String
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+
+  template   LandingPageTemplate @default(CUSTOM)
+  status     LandingPageStatus   @default(LP_DRAFT)
+
+  // El contenido usa CmsSection vinculadas via landingPageId
+  sections   LandingPageSection[]
+
+  conversionGoal String?  // Texto del objetivo (e.g., "Inscripción al curso")
+  targetUrl      String?  // URL de redirección post-conversión
+
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  viewCount   Int       @default(0)
+  conversionCount Int   @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([centerId, slug])
+  @@index([centerId])
+  @@index([isPublished])
+}
+
+model LandingPageSection {
+  id            String @id @default(cuid())
+  landingPageId String
+  landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+
+  type      CmsSectionType
+  title     String?
+  subtitle  String?
+  content   Json?
+  bgColor   String?
+  textColor String?
+  bgImage   String?
+  padding   String?  @default("md")
+  sortOrder Int      @default(0)
+  isVisible Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([landingPageId])
+}
+
+//
+// CARRITO DE COMPRAS
+//
+
+model Cart {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items     CartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CartItem {
+  id        String @id @default(cuid())
+  cartId    String
+  cart      Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  itemType   CartItemType
+  courseId    String?
+  productId  String?
+  laudoId    String?
+
+  quantity   Int    @default(1)
+  priceCents Int
+  currency   String @default("PEN")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cartId])
+}
+
+//
+// ÓRDENES DE COMPRA
+//
+
+model StoreOrder {
+  id          String @id @default(cuid())
+  centerId    String
+  center      Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  orderNumber String @unique  // ORD-2026-000001
+  userId      String?
+  user        User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Info invitado (si no tiene cuenta)
+  guestEmail  String?
+  guestName   String?
+  guestPhone  String?
+
+  status      OrderStatus @default(PENDING_PAYMENT)
+
+  // Totales
+  subtotalCents     Int
+  igvCents          Int     @default(0)
+  detraccionCents   Int     @default(0)
+  percepcionCents   Int     @default(0)
+  shippingCents     Int     @default(0)
+  totalCents        Int
+  currency          String  @default("PEN")
+
+  // Envío (productos físicos)
+  shippingAddress   Json?
+  trackingNumber    String?
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+
+  // Pago
+  paymentProvider   String?   // CULQI, YAPE, TRANSFERENCIA
+  paymentStatus     String?   @default("PENDING")
+  culqiChargeId     String?
+  culqiRaw          Json?
+  paidAt            DateTime?
+
+  // Items y relaciones
+  items             StoreOrderItem[]
+  enrollments       Enrollment[]
+  laudoSubscriptions LaudoSubscription[]
+
+  adminNotes        String?
+  customerNotes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([userId])
+  @@index([status])
+  @@index([orderNumber])
+}
+
+model StoreOrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  order     StoreOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  itemType   OrderItemType
+  courseId    String?
+  productId  String?
+  product    StoreProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  laudoId    String?
+
+  title      String   // Snapshot del nombre
+  quantity   Int
+  unitPriceCents Int
+  totalCents Int
+  currency   String   @default("PEN")
+  taxBreakdown Json?  // {igv, detraccion, percepcion}
+
+  // Descarga digital
+  digitalDownloadUrl String?
+  downloadCount      Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+//
+// CONFIGURACIÓN TRIBUTARIA
+//
+
+model CommerceTaxConfig {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  name              String   // e.g., "IGV Productos", "Detracción Servicios"
+  type              TaxType
+  rate              Float    // Porcentaje decimal: 0.18 = 18%
+  isActive          Boolean  @default(true)
+  thresholdCents    Int?     // Monto mínimo para aplicar (en céntimos)
+  appliesToProducts Boolean  @default(true)
+  appliesToCourses  Boolean  @default(true)
+  appliesToLaudos   Boolean  @default(true)
+  appliesToServices Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([type])
+}
+
+//
+// PAGOS LIBRES
+//
+
+model FreePayment {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caseId    String?  // Opcional: vincular a un expediente
+
+  concept       String
+  description   String?
+  amountCents   Int
+  currency      String  @default("PEN")
+  taxBreakdown  Json?   // {subtotal, igv, detraccion, percepcion, total}
+
+  status            String  @default("PENDING") // PENDING, PAID, CANCELLED
+  paymentProvider   String?
+  culqiChargeId     String?
+  paidAt            DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([userId])
+  @@index([caseId])
 }

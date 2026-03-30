@@ -10,13 +10,20 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import crypto from "crypto";
 
-// Clave de encriptación (en producción debería estar en .env)
-const ENCRYPTION_KEY = process.env.INTEGRATION_ENCRYPTION_KEY || "caard-default-key-change-in-production!!";
+// Clave de encriptación - Se recomienda configurar en producción
+function getEncryptionKey(): string {
+  const key = process.env.INTEGRATION_ENCRYPTION_KEY;
+  if (!key && process.env.NODE_ENV === "production") {
+    console.warn("⚠️ INTEGRATION_ENCRYPTION_KEY no configurada. Usando clave derivada de NEXTAUTH_SECRET.");
+  }
+  return key || "caard-dev-only-key-" + (process.env.NEXTAUTH_SECRET || "dev").slice(0, 16);
+}
+const EFFECTIVE_ENCRYPTION_KEY = getEncryptionKey();
 
 // Funciones de encriptación
 function encrypt(text: string): string {
   const algorithm = "aes-256-cbc";
-  const key = crypto.scryptSync(ENCRYPTION_KEY, "salt", 32);
+  const key = crypto.scryptSync(EFFECTIVE_ENCRYPTION_KEY, "salt", 32);
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv(algorithm, key, iv);
   let encrypted = cipher.update(text, "utf8", "hex");
@@ -27,7 +34,7 @@ function encrypt(text: string): string {
 function decrypt(encryptedText: string): string {
   try {
     const algorithm = "aes-256-cbc";
-    const key = crypto.scryptSync(ENCRYPTION_KEY, "salt", 32);
+    const key = crypto.scryptSync(EFFECTIVE_ENCRYPTION_KEY, "salt", 32);
     const [ivHex, encrypted] = encryptedText.split(":");
     const iv = Buffer.from(ivHex, "hex");
     const decipher = crypto.createDecipheriv(algorithm, key, iv);

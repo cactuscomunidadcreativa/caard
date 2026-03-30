@@ -19,7 +19,7 @@ const ALLOWED_TYPES = [
   "image/png",
   "image/gif",
   "image/webp",
-  "image/svg+xml",
+  // SVG excluido por riesgo de XSS - los SVGs pueden contener scripts maliciosos
 ];
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 
