@@ -28,6 +28,11 @@ declare module "next-auth" {
   }
 }
 
+// Determinar URL base para callbacks OAuth
+const baseUrl = process.env.NEXTAUTH_URL || process.env.AUTH_URL || process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : "http://localhost:3000";
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma) as Adapter,
   session: {
@@ -37,6 +42,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
     error: "/login",
   },
+  trustHost: true,
   providers: [
     // Credentials Provider for email/password
     Credentials({

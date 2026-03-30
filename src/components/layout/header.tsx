@@ -186,34 +186,50 @@ export function Header({ title, description }: HeaderProps) {
 
   // Marcar como leído
   const markAsRead = async (id: string) => {
-    try {
-      await fetch(`/api/notifications/${id}/read`, { method: "POST" });
-    } catch (error) {
-      console.error("Error marking as read:", error);
-    }
+    // Actualizar UI inmediatamente
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
+    try {
+      await fetch(`/api/notifications/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isRead: true }),
+      });
+    } catch (error) {
+      console.error("Error marking as read:", error);
+    }
   };
 
   // Marcar todas como leídas
   const markAllAsRead = async () => {
+    // Actualizar UI inmediatamente
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     try {
-      await fetch("/api/notifications/read-all", { method: "POST" });
+      // Marcar cada una individualmente (no hay endpoint bulk)
+      const unread = notifications.filter((n) => !n.isRead);
+      await Promise.allSettled(
+        unread.map((n) =>
+          fetch(`/api/notifications/${n.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isRead: true }),
+          })
+        )
+      );
     } catch (error) {
       console.error("Error marking all as read:", error);
     }
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
   // Eliminar notificación
   const deleteNotification = async (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
     try {
       await fetch(`/api/notifications/${id}`, { method: "DELETE" });
     } catch (error) {
       console.error("Error deleting notification:", error);
     }
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
   // Filtrar notificaciones

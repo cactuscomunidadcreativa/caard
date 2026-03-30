@@ -93,7 +93,24 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const userId = session.user.id;
     const userRole = session.user.role as Role;
     const isFullAccess = FULL_ACCESS_ROLES.includes(userRole);
+    const body = await request.json();
 
+    // Intentar primero con Notification (in-app, tiene isRead)
+    const inAppNotification = await prisma.notification.findUnique({ where: { id } });
+    if (inAppNotification) {
+      if (!isFullAccess && inAppNotification.userId !== userId) {
+        return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
+      }
+      const updated = await prisma.notification.update({
+        where: { id },
+        data: {
+          ...(body.isRead !== undefined && { isRead: body.isRead, readAt: body.isRead ? new Date() : null }),
+        },
+      });
+      return NextResponse.json({ notification: updated });
+    }
+
+    // Fallback: NotificationQueue
     const existingNotification = await prisma.notificationQueue.findUnique({
       where: { id },
     });
@@ -105,7 +122,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Verificar acceso si no es admin
     if (!isFullAccess && existingNotification.userId !== userId) {
       return NextResponse.json(
         { error: "Sin acceso a esta notificación" },
@@ -113,15 +129,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const body = await request.json();
     const validatedData = updateNotificationSchema.parse(body);
-
     const updateData: any = {};
 
     if (validatedData.status !== undefined) {
       updateData.status = validatedData.status;
-
-      // Si se marca como enviada, registrar fecha
       if (validatedData.status === "SENT" && !existingNotification.sentAt) {
         updateData.sentAt = new Date();
       }
@@ -130,22 +142,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const notification = await prisma.notificationQueue.update({
       where: { id },
       data: updateData,
-      include: {
-        case: {
-          select: {
-            id: true,
-            code: true,
-            title: true,
-          },
-        },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
     });
 
     return NextResponse.json({ notification });
