@@ -49,7 +49,7 @@ interface Laudo {
   year: number | null;
   subject: string | null;
   accessLevel: string;
-  downloads: number;
+  downloadCount: number;
   isPublished: boolean;
   priceCents: number | null;
   currency: string;
@@ -79,7 +79,7 @@ export default function LaudosListPage() {
       const res = await fetch("/api/laudos?published=false");
       if (!res.ok) throw new Error("Error al cargar laudos");
       const data = await res.json();
-      setLaudos(data.laudos || data || []);
+      setLaudos(data.items || data.laudos || []);
     } catch (error: any) {
       toast.error(error.message || "Error al cargar laudos");
     } finally {
@@ -115,7 +115,7 @@ export default function LaudosListPage() {
   const total = laudos.length;
   const free = laudos.filter((l) => l.accessLevel === "FREE").length;
   const premium = laudos.filter((l) => l.accessLevel === "PREMIUM" || l.accessLevel === "MEMBERS").length;
-  const totalDownloads = laudos.reduce((sum, l) => sum + (l.downloads || 0), 0);
+  const totalDownloads = laudos.reduce((sum, l) => sum + (l.downloadCount || 0), 0);
 
   if (isLoading) {
     return (
@@ -294,7 +294,7 @@ export default function LaudosListPage() {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Download className="h-3.5 w-3.5 text-muted-foreground" />
-                          {laudo.downloads || 0}
+                          {laudo.downloadCount || 0}
                         </div>
                       </TableCell>
                       <TableCell>

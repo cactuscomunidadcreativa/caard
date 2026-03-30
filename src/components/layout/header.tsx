@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { LanguageSelector } from "@/components/cms/language-selector";
 import {
   FileText,
   DollarSign,
@@ -111,66 +112,11 @@ const typeConfig: Record<
   },
 };
 
-// Datos de demo para notificaciones
-const demoNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "CASE_UPDATE",
-    title: "Nuevo expediente asignado",
-    message: "EXP-2026-CAARD-000123 requiere su revisión",
-    caseCode: "EXP-2026-CAARD-000123",
-    isRead: false,
-    isImportant: true,
-    createdAt: new Date(Date.now() - 5 * 60000),
-    actionUrl: "/cases/123",
-    actionLabel: "Ver expediente",
-  },
-  {
-    id: "2",
-    type: "DEADLINE",
-    title: "Plazo próximo a vencer",
-    message: "Contestación en EXP-2026-CAARD-000120 vence en 2 días",
-    caseCode: "EXP-2026-CAARD-000120",
-    isRead: false,
-    isImportant: true,
-    createdAt: new Date(Date.now() - 60 * 60000),
-    actionUrl: "/cases/120",
-  },
-  {
-    id: "3",
-    type: "PAYMENT",
-    title: "Pago confirmado",
-    message: "Tasa arbitral de S/ 500.00 confirmada",
-    isRead: false,
-    isImportant: false,
-    createdAt: new Date(Date.now() - 3 * 60 * 60000),
-  },
-  {
-    id: "4",
-    type: "HEARING",
-    title: "Audiencia programada",
-    message: "Audiencia de instalación para EXP-2026-CAARD-000115",
-    caseCode: "EXP-2026-CAARD-000115",
-    isRead: true,
-    isImportant: false,
-    createdAt: new Date(Date.now() - 24 * 60 * 60000),
-    actionUrl: "/cases/115",
-  },
-  {
-    id: "5",
-    type: "DOCUMENT",
-    title: "Documento recibido",
-    message: "La parte demandada presentó contestación",
-    caseCode: "EXP-2026-CAARD-000110",
-    isRead: true,
-    isImportant: false,
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60000),
-  },
-];
+// Sin datos demo - se cargan de la API
 
 export function Header({ title, description }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(demoNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
@@ -321,6 +267,9 @@ export function Header({ title, description }: HeaderProps) {
           className="w-64 pl-8"
         />
       </div>
+
+      {/* Language Selector */}
+      <LanguageSelector />
 
       {/* Notifications Panel */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
