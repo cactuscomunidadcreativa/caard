@@ -66,11 +66,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
         });
 
-        if (!user || !user.passwordHash) {
+        if (!user) {
           return null;
         }
 
         if (!user.isActive) {
+          return null;
+        }
+
+        // Login por OTP verificado (el código ya fue validado en /api/auth/otp/verify)
+        if (password.startsWith("__OTP_VERIFIED__")) {
+          // Verificar que existe un OTP usado recientemente para este usuario
+          const recentOtp = await prisma.otpToken.findFirst({
+            where: {
+              userId: user.id,
+              type: "LOGIN",
+              usedAt: { not: null, gte: new Date(Date.now() - 5 * 60 * 1000) }, // usado en últimos 5 min
+            },
+            orderBy: { usedAt: "desc" },
+          });
+
+          if (!recentOtp) {
+            return null; // No hay OTP verificado reciente
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            role: user.role,
+            centerId: user.centerId,
+          };
+        }
+
+        // Login por contraseña tradicional
+        if (!user.passwordHash) {
           return null;
         }
 
