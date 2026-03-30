@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,68 +44,24 @@ import {
   Calendar,
   User,
   FileWarning,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
-// Datos de ejemplo
-const mockSanctions = [
-  {
-    id: "1",
-    arbitratorName: "Dr. Roberto Sánchez Vega",
-    arbitratorId: "3",
-    type: "SUSPENSION",
-    reason: "Incumplimiento de plazos reglamentarios en emisión de laudo",
-    description: "El árbitro excedió en 30 días el plazo para emitir laudo sin justificación válida en el caso ARB-2024-0050.",
-    startDate: "2025-01-15",
-    endDate: "2025-02-15",
-    duration: "30 días",
-    status: "ACTIVE",
-    imposedBy: "Consejo Directivo",
-    caseReference: "ARB-2024-0050",
-  },
-  {
-    id: "2",
-    arbitratorName: "Dr. Luis Pérez Torres",
-    arbitratorId: "5",
-    type: "WARNING",
-    reason: "Conflicto de interés no declarado",
-    description: "No declaró relación comercial previa con una de las partes. Se detectó después del nombramiento.",
-    startDate: "2024-12-01",
-    endDate: null,
-    duration: "Permanente en expediente",
-    status: "REGISTERED",
-    imposedBy: "Comité de Ética",
-    caseReference: "ARB-2024-0078",
-  },
-  {
-    id: "3",
-    arbitratorName: "Dra. Carmen Ríos Medina",
-    arbitratorId: "6",
-    type: "REMOVAL",
-    reason: "Falta grave - Violación de confidencialidad",
-    description: "Divulgación de información confidencial del proceso arbitral a terceros.",
-    startDate: "2024-10-20",
-    endDate: null,
-    duration: "Definitiva",
-    status: "ACTIVE",
-    imposedBy: "Consejo Directivo",
-    caseReference: "ARB-2024-0045",
-  },
-  {
-    id: "4",
-    arbitratorName: "Dr. Carlos Mendoza Rivera",
-    arbitratorId: "1",
-    type: "WARNING",
-    reason: "Retraso en programación de audiencias",
-    description: "Demora injustificada en programar audiencia de pruebas.",
-    startDate: "2024-08-15",
-    endDate: "2024-08-15",
-    duration: "Registro",
-    status: "COMPLETED",
-    imposedBy: "Secretaría General",
-    caseReference: "ARB-2024-0030",
-  },
-];
+interface Sanction {
+  id: string;
+  arbitratorName: string;
+  arbitratorId: string;
+  type: string;
+  reason: string;
+  description: string;
+  startDate: string;
+  endDate: string | null;
+  duration: string;
+  status: string;
+  imposedBy: string;
+  caseReference: string;
+}
 
 const typeConfig: Record<string, { label: string; color: string; severity: number }> = {
   WARNING: { label: "Amonestación", color: "bg-amber-100 text-amber-800", severity: 1 },
@@ -122,19 +78,43 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 };
 
 export default function SancionesPage() {
-  const [selectedSanction, setSelectedSanction] = useState<typeof mockSanctions[0] | null>(null);
+  const [sanctions, setSanctions] = useState<Sanction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSanction, setSelectedSanction] = useState<Sanction | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
-  const filteredSanctions = mockSanctions.filter(s => {
+  useEffect(() => {
+    async function fetchSanctions() {
+      try {
+        // No specific sanctions API exists yet; show empty state
+        setSanctions([]);
+      } catch (error) {
+        console.error("Error fetching sanctions:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSanctions();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const filteredSanctions = sanctions.filter(s => {
     const matchesType = filterType === "all" || s.type === filterType;
     const matchesStatus = filterStatus === "all" || s.status === filterStatus;
     return matchesType && matchesStatus;
   });
 
-  const activeSanctions = mockSanctions.filter(s => s.status === "ACTIVE");
+  const activeSanctions = sanctions.filter(s => s.status === "ACTIVE");
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -183,7 +163,7 @@ export default function SancionesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockSanctions.filter(s => s.type === "WARNING").length}
+                  {sanctions.filter(s => s.type === "WARNING").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Amonestaciones</p>
               </div>
@@ -199,7 +179,7 @@ export default function SancionesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockSanctions.filter(s => s.type === "SUSPENSION").length}
+                  {sanctions.filter(s => s.type === "SUSPENSION").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Suspensiones</p>
               </div>
@@ -215,7 +195,7 @@ export default function SancionesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockSanctions.filter(s => s.type === "REMOVAL").length}
+                  {sanctions.filter(s => s.type === "REMOVAL").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Remociones</p>
               </div>

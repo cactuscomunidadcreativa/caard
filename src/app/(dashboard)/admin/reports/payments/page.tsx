@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,33 +33,68 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
+  Loader2,
 } from "lucide-react";
-
-// Datos de ejemplo
-const revenueByMonth = [
-  { month: "Sep 2024", tasas: 85000, honorarios: 120000, gastos: 15000, total: 220000 },
-  { month: "Oct 2024", tasas: 92000, honorarios: 135000, gastos: 18000, total: 245000 },
-  { month: "Nov 2024", tasas: 78000, honorarios: 110000, gastos: 12000, total: 200000 },
-  { month: "Dic 2024", tasas: 95000, honorarios: 145000, gastos: 20000, total: 260000 },
-  { month: "Ene 2025", tasas: 88000, honorarios: 140000, gastos: 17000, total: 245000 },
-];
-
-const paymentStatus = [
-  { status: "Pagado", count: 145, amount: 890000, color: "green" },
-  { status: "Pendiente", count: 28, amount: 156000, color: "amber" },
-  { status: "Vencido", count: 12, amount: 78000, color: "red" },
-  { status: "Anulado", count: 5, amount: 25000, color: "gray" },
-];
-
-const topDebtors = [
-  { name: "Empresa ABC S.A.C.", amount: 45000, days: 15 },
-  { name: "Tech Solutions Perú", amount: 32000, days: 8 },
-  { name: "Constructora Norte", amount: 28000, days: 22 },
-  { name: "Importaciones del Sur", amount: 18000, days: 5 },
-];
 
 export default function PaymentsReportPage() {
   const [year, setYear] = useState("2025");
+  const [loading, setLoading] = useState(true);
+  const [revenueByMonth, setRevenueByMonth] = useState<{ month: string; tasas: number; honorarios: number; gastos: number; total: number }[]>([]);
+  const [paymentStatus, setPaymentStatus] = useState<{ status: string; count: number; amount: number; color: string }[]>([]);
+  const [topDebtors, setTopDebtors] = useState<{ name: string; amount: number; days: number }[]>([]);
+
+  useEffect(() => {
+    async function fetchReportData() {
+      try {
+        const res = await fetch("/api/payment-orders");
+        if (res.ok) {
+          const data = await res.json();
+          const orders = data.orders || data || [];
+
+          // Compute payment status summary
+          const statusMap: Record<string, { count: number; amount: number }> = {};
+          for (const o of orders) {
+            const amount = o.totalCents ? o.totalCents / 100 : 0;
+            const st = o.status || "PENDING";
+            if (!statusMap[st]) statusMap[st] = { count: 0, amount: 0 };
+            statusMap[st].count++;
+            statusMap[st].amount += amount;
+          }
+
+          const statusLabels: Record<string, { label: string; color: string }> = {
+            PAID: { label: "Pagado", color: "green" },
+            PENDING: { label: "Pendiente", color: "amber" },
+            OVERDUE: { label: "Vencido", color: "red" },
+            CANCELLED: { label: "Anulado", color: "gray" },
+          };
+          const statusList = Object.entries(statusMap).map(([key, val]) => ({
+            status: statusLabels[key]?.label || key,
+            count: val.count,
+            amount: val.amount,
+            color: statusLabels[key]?.color || "gray",
+          }));
+          setPaymentStatus(statusList);
+
+          // We don't have monthly breakdown from API, leave empty
+          setRevenueByMonth([]);
+          setTopDebtors([]);
+        }
+      } catch (error) {
+        console.error("Error fetching payment report:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchReportData();
+  }, [year]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   const totalRevenue = revenueByMonth.reduce((sum, m) => sum + m.total, 0);
   const pendingAmount = paymentStatus.find(s => s.status === "Pendiente")?.amount || 0;

@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,65 +46,8 @@ import {
   XCircle,
   Filter,
   Download,
+  Loader2,
 } from "lucide-react";
-
-// Datos de ejemplo
-const mockPaymentOrders = [
-  {
-    id: "1",
-    orderNumber: "OP-2025-0001",
-    caseCode: "ARB-2025-0001",
-    concept: "TASA_ARBITRAL",
-    description: "Tasa de administración - Primera cuota",
-    amount: 15000,
-    currency: "PEN",
-    status: "PENDING",
-    dueDate: "2025-02-01",
-    createdAt: "2025-01-20",
-    debtor: "Empresa ABC S.A.C.",
-  },
-  {
-    id: "2",
-    orderNumber: "OP-2025-0002",
-    caseCode: "ARB-2025-0001",
-    concept: "HONORARIOS_ARBITRO",
-    description: "Honorarios del árbitro único - 50%",
-    amount: 25000,
-    currency: "PEN",
-    status: "PAID",
-    dueDate: "2025-01-25",
-    createdAt: "2025-01-15",
-    paidAt: "2025-01-24",
-    debtor: "Empresa ABC S.A.C.",
-  },
-  {
-    id: "3",
-    orderNumber: "OP-2025-0003",
-    caseCode: "ARB-2025-0002",
-    concept: "GASTOS_ADMINISTRATIVOS",
-    description: "Gastos de notificación y otros",
-    amount: 500,
-    currency: "PEN",
-    status: "OVERDUE",
-    dueDate: "2025-01-20",
-    createdAt: "2025-01-10",
-    debtor: "Tech Solutions Perú",
-  },
-  {
-    id: "4",
-    orderNumber: "OP-2025-0004",
-    caseCode: "ARB-2024-0089",
-    concept: "TASA_ARBITRAL",
-    description: "Tasa de administración - Cuota final",
-    amount: 10000,
-    currency: "PEN",
-    status: "CANCELLED",
-    dueDate: "2025-01-30",
-    createdAt: "2025-01-05",
-    debtor: "Importaciones del Sur",
-    cancellationReason: "Caso cerrado por desistimiento",
-  },
-];
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: any }> = {
   PENDING: { label: "Pendiente", variant: "secondary", icon: Clock },
@@ -123,13 +66,71 @@ const conceptLabels: Record<string, string> = {
   OTROS: "Otros Conceptos",
 };
 
+interface PaymentOrder {
+  id: string;
+  orderNumber: string;
+  caseCode: string;
+  concept: string;
+  description: string;
+  amount: number;
+  currency: string;
+  status: string;
+  dueDate: string;
+  createdAt: string;
+  paidAt?: string;
+  debtor: string;
+  cancellationReason?: string;
+}
+
 export default function PaymentOrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [selectedOrder, setSelectedOrder] = useState<typeof mockPaymentOrders[0] | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<PaymentOrder | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [paymentOrders, setPaymentOrders] = useState<PaymentOrder[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredOrders = mockPaymentOrders.filter(order => {
+  useEffect(() => {
+    async function fetchOrders() {
+      try {
+        const res = await fetch("/api/payment-orders");
+        if (res.ok) {
+          const data = await res.json();
+          const orders = (data.orders || data || []).map((o: any) => ({
+            id: o.id,
+            orderNumber: o.orderNumber || o.id.slice(0, 8),
+            caseCode: o.case?.code || "—",
+            concept: o.concept || "TASA_ARBITRAL",
+            description: o.description || "",
+            amount: o.totalCents ? o.totalCents / 100 : o.amount || 0,
+            currency: o.currency || "PEN",
+            status: o.status,
+            dueDate: o.dueDate ? new Date(o.dueDate).toISOString().split("T")[0] : "",
+            createdAt: o.issuedAt ? new Date(o.issuedAt).toISOString().split("T")[0] : o.createdAt ? new Date(o.createdAt).toISOString().split("T")[0] : "",
+            paidAt: o.paidAt ? new Date(o.paidAt).toISOString().split("T")[0] : undefined,
+            debtor: o.case?.claimantName || o.debtor || "—",
+            cancellationReason: o.cancellationReason,
+          }));
+          setPaymentOrders(orders);
+        }
+      } catch (error) {
+        console.error("Error fetching payment orders:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchOrders();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const filteredOrders = paymentOrders.filter(order => {
     const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.caseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -138,15 +139,15 @@ export default function PaymentOrdersPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const pendingTotal = mockPaymentOrders
+  const pendingTotal = paymentOrders
     .filter(o => o.status === "PENDING")
     .reduce((sum, o) => sum + o.amount, 0);
 
-  const overdueTotal = mockPaymentOrders
+  const overdueTotal = paymentOrders
     .filter(o => o.status === "OVERDUE")
     .reduce((sum, o) => sum + o.amount, 0);
 
-  const paidTotal = mockPaymentOrders
+  const paidTotal = paymentOrders
     .filter(o => o.status === "PAID")
     .reduce((sum, o) => sum + o.amount, 0);
 
@@ -181,7 +182,7 @@ export default function PaymentOrdersPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Emitido</p>
                 <p className="text-xl font-bold">
-                  S/ {mockPaymentOrders.reduce((sum, o) => sum + o.amount, 0).toLocaleString()}
+                  S/ {paymentOrders.reduce((sum, o) => sum + o.amount, 0).toLocaleString()}
                 </p>
               </div>
             </div>

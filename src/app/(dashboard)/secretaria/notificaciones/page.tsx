@@ -42,55 +42,6 @@ interface Notification {
   caseCode?: string;
 }
 
-// Datos de ejemplo
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "DEADLINE",
-    title: "Vencimiento de plazo - Contestación de demanda",
-    message: "Se le recuerda que el plazo para la contestación de la demanda vence en 3 días.",
-    status: "DELIVERED",
-    createdAt: "2025-01-27T10:00:00Z",
-    sentAt: "2025-01-27T10:01:00Z",
-    recipientName: "Juan Pérez",
-    recipientEmail: "juan.perez@ejemplo.com",
-    caseCode: "ARB-2025-0001",
-  },
-  {
-    id: "2",
-    type: "HEARING",
-    title: "Citación a Audiencia de Instalación",
-    message: "Se le cita a la audiencia de instalación del tribunal arbitral.",
-    status: "SENT",
-    createdAt: "2025-01-26T14:00:00Z",
-    sentAt: "2025-01-26T14:05:00Z",
-    recipientName: "María García",
-    recipientEmail: "maria.garcia@ejemplo.com",
-    caseCode: "ARB-2025-0002",
-  },
-  {
-    id: "3",
-    type: "DOCUMENT",
-    title: "Traslado de escrito",
-    message: "Se corre traslado del escrito presentado por la parte demandante.",
-    status: "PENDING",
-    createdAt: "2025-01-27T09:00:00Z",
-    recipientName: "Carlos Rodríguez",
-    recipientEmail: "carlos.rodriguez@ejemplo.com",
-    caseCode: "ARB-2025-0001",
-  },
-  {
-    id: "4",
-    type: "URGENT",
-    title: "Resolución Urgente",
-    message: "Se ha emitido una resolución que requiere su atención inmediata.",
-    status: "FAILED",
-    createdAt: "2025-01-25T16:00:00Z",
-    recipientName: "Ana López",
-    recipientEmail: "ana.lopez@ejemplo.com",
-    caseCode: "ARB-2025-0003",
-  },
-];
 
 const typeLabels: Record<string, { label: string; color: string }> = {
   INFO: { label: "Informativa", color: "bg-blue-100 text-blue-800" },
@@ -111,10 +62,39 @@ const statusLabels: Record<string, { label: string; icon: any; color: string }> 
 
 export default function SecretariaNotificacionesPage() {
   const { t } = useTranslation();
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
+
+  useEffect(() => {
+    async function fetchNotifications() {
+      try {
+        const res = await fetch("/api/notifications/user");
+        if (res.ok) {
+          const data = await res.json();
+          const items = (data.notifications || data || []).map((n: any) => ({
+            id: n.id,
+            type: n.type || "INFO",
+            title: n.title || "Notificación",
+            message: n.message || n.body || "",
+            status: n.status || (n.sentAt ? "SENT" : "PENDING"),
+            createdAt: n.createdAt || new Date().toISOString(),
+            sentAt: n.sentAt,
+            recipientName: n.recipientName || n.user?.name || "—",
+            recipientEmail: n.recipientEmail || n.user?.email || "—",
+            caseCode: n.caseCode || n.case?.code,
+          }));
+          setNotifications(items);
+        }
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchNotifications();
+  }, []);
 
   const filteredNotifications = notifications.filter((n) => {
     const matchesSearch =
@@ -135,6 +115,14 @@ export default function SecretariaNotificacionesPage() {
     sent: notifications.filter((n) => n.status === "SENT" || n.status === "DELIVERED").length,
     failed: notifications.filter((n) => n.status === "FAILED").length,
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">

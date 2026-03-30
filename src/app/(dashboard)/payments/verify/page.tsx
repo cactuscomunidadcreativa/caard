@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,79 +39,74 @@ import {
   Eye,
   FileText,
   Upload,
+  Loader2,
 } from "lucide-react";
 
-// Datos de ejemplo de pagos pendientes de verificación
-const mockPendingPayments = [
-  {
-    id: "1",
-    orderNumber: "OP-2025-0001",
-    caseCode: "ARB-2025-0001",
-    payer: "Empresa ABC S.A.C.",
-    amount: 15000,
-    declaredAmount: 15000,
-    paymentDate: "2025-01-25",
-    paymentMethod: "TRANSFERENCIA",
-    bankReference: "TRF-2025012500001",
-    voucherUrl: "/vouchers/voucher-001.pdf",
-    status: "PENDING_VERIFICATION",
-    submittedAt: "2025-01-25T14:30:00",
-  },
-  {
-    id: "2",
-    orderNumber: "OP-2025-0005",
-    caseCode: "ARB-2025-0003",
-    payer: "Constructora Norte S.A.",
-    amount: 8500,
-    declaredAmount: 8500,
-    paymentDate: "2025-01-24",
-    paymentMethod: "DEPOSITO",
-    bankReference: "DEP-2025012400015",
-    voucherUrl: "/vouchers/voucher-002.pdf",
-    status: "PENDING_VERIFICATION",
-    submittedAt: "2025-01-24T16:45:00",
-  },
-  {
-    id: "3",
-    orderNumber: "OP-2025-0006",
-    caseCode: "ARB-2025-0002",
-    payer: "Tech Solutions Perú",
-    amount: 500,
-    declaredAmount: 450,
-    paymentDate: "2025-01-23",
-    paymentMethod: "TRANSFERENCIA",
-    bankReference: "TRF-2025012300089",
-    voucherUrl: "/vouchers/voucher-003.pdf",
-    status: "PENDING_VERIFICATION",
-    submittedAt: "2025-01-23T10:15:00",
-    discrepancy: true,
-  },
-];
-
-const mockVerifiedPayments = [
-  {
-    id: "4",
-    orderNumber: "OP-2025-0002",
-    caseCode: "ARB-2025-0001",
-    payer: "Empresa ABC S.A.C.",
-    amount: 25000,
-    declaredAmount: 25000,
-    paymentDate: "2025-01-20",
-    paymentMethod: "TRANSFERENCIA",
-    bankReference: "TRF-2025012000045",
-    status: "VERIFIED",
-    verifiedAt: "2025-01-21T09:30:00",
-    verifiedBy: "Ana García",
-  },
-];
+interface PendingPayment {
+  id: string;
+  orderNumber: string;
+  caseCode: string;
+  payer: string;
+  amount: number;
+  declaredAmount: number;
+  paymentDate: string;
+  paymentMethod: string;
+  bankReference: string;
+  voucherUrl?: string;
+  status: string;
+  submittedAt: string;
+  discrepancy?: boolean;
+}
 
 export default function PaymentVerifyPage() {
-  const [selectedPayment, setSelectedPayment] = useState<typeof mockPendingPayments[0] | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<PendingPayment | null>(null);
   const [showVerifyDialog, setShowVerifyDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [verificationNotes, setVerificationNotes] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
+  const [verifiedCount, setVerifiedCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPayments() {
+      try {
+        const res = await fetch("/api/payments?status=PENDING_VERIFICATION");
+        if (res.ok) {
+          const data = await res.json();
+          const payments = (data.payments || data || []).map((p: any) => ({
+            id: p.id,
+            orderNumber: p.paymentOrder?.orderNumber || p.id.slice(0, 8),
+            caseCode: p.paymentOrder?.case?.code || "—",
+            payer: p.payerName || p.paymentOrder?.case?.claimantName || "—",
+            amount: p.paymentOrder?.totalCents ? p.paymentOrder.totalCents / 100 : 0,
+            declaredAmount: p.amountCents ? p.amountCents / 100 : 0,
+            paymentDate: p.paymentDate ? new Date(p.paymentDate).toISOString().split("T")[0] : "",
+            paymentMethod: p.method || "TRANSFERENCIA",
+            bankReference: p.bankReference || "",
+            voucherUrl: p.voucherUrl,
+            status: p.status,
+            submittedAt: p.createdAt || "",
+            discrepancy: p.paymentOrder?.totalCents && p.amountCents ? p.paymentOrder.totalCents !== p.amountCents : false,
+          }));
+          setPendingPayments(payments);
+        }
+
+        // Fetch verified count
+        const resVerified = await fetch("/api/payments?status=VERIFIED");
+        if (resVerified.ok) {
+          const dataV = await resVerified.json();
+          setVerifiedCount((dataV.payments || dataV || []).length);
+        }
+      } catch (error) {
+        console.error("Error fetching payments:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPayments();
+  }, []);
 
   const handleVerify = () => {
     // TODO: Implementar verificación
@@ -127,9 +122,17 @@ export default function PaymentVerifyPage() {
     setRejectionReason("");
   };
 
-  const pendingCount = mockPendingPayments.length;
-  const pendingTotal = mockPendingPayments.reduce((sum, p) => sum + p.declaredAmount, 0);
-  const discrepancyCount = mockPendingPayments.filter(p => p.discrepancy).length;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const pendingCount = pendingPayments.length;
+  const pendingTotal = pendingPayments.reduce((sum, p) => sum + p.declaredAmount, 0);
+  const discrepancyCount = pendingPayments.filter(p => p.discrepancy).length;
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -216,7 +219,7 @@ export default function PaymentVerifyPage() {
                 <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockVerifiedPayments.length}</p>
+                <p className="text-2xl font-bold">{verifiedCount}</p>
                 <p className="text-sm text-muted-foreground">Verificados Hoy</p>
               </div>
             </div>
@@ -262,7 +265,7 @@ export default function PaymentVerifyPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockPendingPayments.map((payment) => (
+              {pendingPayments.map((payment) => (
                 <TableRow key={payment.id} className={payment.discrepancy ? "bg-red-50" : ""}>
                   <TableCell className="font-mono font-medium">
                     {payment.orderNumber}

@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,55 +46,29 @@ import {
   FileText,
   Play,
   Eye,
+  Loader2,
 } from "lucide-react";
 
-// Datos de ejemplo
-const mockEmergencies = [
-  {
-    id: "1",
-    caseCode: "EMR-2025-0001",
-    requestDate: "2025-01-25T10:30:00",
-    urgencyReason: "Medida cautelar urgente para evitar daño irreparable en operación comercial",
-    requestedMeasure: "Suspensión de ejecución de garantía bancaria",
-    status: "PENDING_VERIFICATION",
-    assignedArbitrator: null,
-    deadlineHours: 24,
-    hoursRemaining: 18,
-    requestor: "Empresa ABC S.A.C.",
-  },
-  {
-    id: "2",
-    caseCode: "EMR-2025-0002",
-    requestDate: "2025-01-24T15:00:00",
-    urgencyReason: "Preservación de evidencia digital en riesgo de eliminación",
-    requestedMeasure: "Orden de preservación de datos",
-    status: "ARBITRATOR_ASSIGNED",
-    assignedArbitrator: "Dr. Carlos Mendoza",
-    deadlineHours: 48,
-    hoursRemaining: 36,
-    requestor: "Tech Solutions Perú",
-  },
-  {
-    id: "3",
-    caseCode: "EMR-2025-0003",
-    requestDate: "2025-01-23T09:00:00",
-    urgencyReason: "Bloqueo de cuentas bancarias afectando operaciones",
-    requestedMeasure: "Levantamiento de medida cautelar",
-    status: "RESOLVED",
-    assignedArbitrator: "Dra. María García",
-    deadlineHours: 24,
-    hoursRemaining: 0,
-    requestor: "Importaciones del Sur",
-    resolution: "Concedida parcialmente",
-  },
-];
+interface Emergency {
+  id: string;
+  caseCode: string;
+  requestDate: string;
+  urgencyReason: string;
+  requestedMeasure: string;
+  status: string;
+  assignedArbitrator: string | null;
+  deadlineHours: number;
+  hoursRemaining: number;
+  requestor: string;
+  resolution?: string;
+}
 
-const mockArbitrators = [
-  { id: "1", name: "Dr. Carlos Mendoza", specialty: "Comercial", available: true },
-  { id: "2", name: "Dra. María García", specialty: "Civil", available: false },
-  { id: "3", name: "Dr. Roberto Sánchez", specialty: "Comercial", available: true },
-  { id: "4", name: "Dra. Ana Torres", specialty: "Administrativo", available: true },
-];
+interface ArbitratorOption {
+  id: string;
+  name: string;
+  specialty: string;
+  available: boolean;
+}
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
   PENDING_VERIFICATION: { label: "Por Verificar", variant: "destructive", color: "text-red-600" },
@@ -106,14 +80,74 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 };
 
 export default function EmergenciasPage() {
-  const [selectedEmergency, setSelectedEmergency] = useState<typeof mockEmergencies[0] | null>(null);
+  const [emergencies, setEmergencies] = useState<Emergency[]>([]);
+  const [arbitrators, setArbitrators] = useState<ArbitratorOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedEmergency, setSelectedEmergency] = useState<Emergency | null>(null);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedArbitrator, setSelectedArbitrator] = useState("");
   const [verificationNotes, setVerificationNotes] = useState("");
 
-  const pendingEmergencies = mockEmergencies.filter(e => e.status === "PENDING_VERIFICATION");
-  const activeEmergencies = mockEmergencies.filter(e =>
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch("/api/emergency");
+        if (res.ok) {
+          const data = await res.json();
+          const items = (data.emergencies || data || []).map((e: any) => {
+            const requestDate = new Date(e.requestDate || e.createdAt);
+            const deadlineHours = e.deadlineHours || 24;
+            const deadlineMs = requestDate.getTime() + deadlineHours * 60 * 60 * 1000;
+            const hoursRemaining = Math.max(0, Math.ceil((deadlineMs - Date.now()) / (1000 * 60 * 60)));
+            return {
+              id: e.id,
+              caseCode: e.requestNumber || e.case?.code || e.id.slice(0, 8),
+              requestDate: e.requestDate || e.createdAt,
+              urgencyReason: e.urgencyReason || e.reason || "",
+              requestedMeasure: e.requestedMeasure || "",
+              status: e.status,
+              assignedArbitrator: e.assignedArbitrator?.name || e.arbitratorName || null,
+              deadlineHours,
+              hoursRemaining,
+              requestor: e.requestor || e.case?.claimantName || "—",
+              resolution: e.resolution,
+            };
+          });
+          setEmergencies(items);
+        }
+
+        // Fetch arbitrators for assignment
+        const arbRes = await fetch("/api/cms/arbitrators?status=ACTIVE&limit=50");
+        if (arbRes.ok) {
+          const arbData = await arbRes.json();
+          const arbs = (arbData.arbitrators || []).map((a: any) => ({
+            id: a.id,
+            name: a.user?.name || a.name || "—",
+            specialty: (a.specializations || [])[0] || "General",
+            available: a.status === "ACTIVE",
+          }));
+          setArbitrators(arbs);
+        }
+      } catch (error) {
+        console.error("Error fetching emergencies:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const pendingEmergencies = emergencies.filter(e => e.status === "PENDING_VERIFICATION");
+  const activeEmergencies = emergencies.filter(e =>
     ["VERIFIED", "ARBITRATOR_ASSIGNED", "IN_PROGRESS"].includes(e.status)
   );
 
@@ -124,7 +158,7 @@ export default function EmergenciasPage() {
     setSelectedArbitrator("");
   };
 
-  const handleVerify = (emergency: typeof mockEmergencies[0]) => {
+  const handleVerify = (emergency: typeof emergencies[0]) => {
     // TODO: Implementar verificación
     console.log("Verify:", emergency.id);
   };
@@ -203,7 +237,7 @@ export default function EmergenciasPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockEmergencies.filter(e => e.status === "RESOLVED").length}
+                  {emergencies.filter(e => e.status === "RESOLVED").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Resueltos</p>
               </div>
@@ -219,7 +253,7 @@ export default function EmergenciasPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockArbitrators.filter(a => a.available).length}
+                  {arbitrators.filter(a => a.available).length}
                 </p>
                 <p className="text-sm text-muted-foreground">Árbitros Disponibles</p>
               </div>
@@ -251,7 +285,7 @@ export default function EmergenciasPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockEmergencies.map((emergency) => (
+              {emergencies.map((emergency) => (
                 <TableRow key={emergency.id}>
                   <TableCell className="font-mono font-medium">
                     {emergency.caseCode}
@@ -346,7 +380,7 @@ export default function EmergenciasPage() {
                   <SelectValue placeholder="Seleccione un árbitro" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockArbitrators
+                  {arbitrators
                     .filter(a => a.available)
                     .map(arb => (
                       <SelectItem key={arb.id} value={arb.id}>

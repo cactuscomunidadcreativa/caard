@@ -20,39 +20,8 @@ import {
   CheckCircle,
 } from "lucide-react";
 
-// Datos de ejemplo de migraciones
-const mockMigrations = [
-  {
-    id: "1",
-    type: "IMPORT",
-    name: "Importación de casos históricos",
-    status: "COMPLETED",
-    records: 156,
-    createdAt: "2025-01-20",
-    completedAt: "2025-01-20",
-    user: "Admin System",
-  },
-  {
-    id: "2",
-    type: "IMPORT",
-    name: "Importación de árbitros",
-    status: "COMPLETED",
-    records: 45,
-    createdAt: "2025-01-18",
-    completedAt: "2025-01-18",
-    user: "Admin System",
-  },
-  {
-    id: "3",
-    type: "EXPORT",
-    name: "Backup mensual Enero 2025",
-    status: "COMPLETED",
-    records: 1250,
-    createdAt: "2025-01-15",
-    completedAt: "2025-01-15",
-    user: "Admin System",
-  },
-];
+// No migration history API exists yet - show empty state
+const migrations: { id: string; type: string; name: string; status: string; records: number; createdAt: string; completedAt: string; user: string }[] = [];
 
 export default async function MigrationPage() {
   const session = await auth();
@@ -169,8 +138,14 @@ export default async function MigrationPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {migrations.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <History className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+              <p>No hay migraciones registradas</p>
+            </div>
+          ) : (
           <div className="space-y-4">
-            {mockMigrations.map((migration) => (
+            {migrations.map((migration) => (
               <div
                 key={migration.id}
                 className="flex items-center justify-between p-4 border rounded-lg"
@@ -210,6 +185,7 @@ export default async function MigrationPage() {
               </div>
             ))}
           </div>
+          )}
         </CardContent>
       </Card>
 

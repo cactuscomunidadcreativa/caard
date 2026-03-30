@@ -164,56 +164,13 @@ async function RecentCases() {
   );
 }
 
-// Componente de consultas de usuarios
+// Componente de consultas de usuarios (placeholder - no ticket system yet)
 async function UserQueries() {
-  // Simular consultas (en producción vendría de un sistema de tickets)
-  const queries = [
-    {
-      id: "1",
-      user: "Juan Pérez",
-      email: "juan@empresa.com",
-      subject: "Consulta sobre estado de expediente",
-      date: new Date(),
-      status: "pending",
-    },
-    {
-      id: "2",
-      user: "María García",
-      email: "maria@empresa.com",
-      subject: "Problema con pago en línea",
-      date: new Date(Date.now() - 86400000),
-      status: "pending",
-    },
-  ];
-
   return (
-    <div className="space-y-3">
-      {queries.map((query) => (
-        <div
-          key={query.id}
-          className="flex items-center justify-between p-4 rounded-lg border"
-        >
-          <div className="space-y-1">
-            <p className="font-medium">{query.subject}</p>
-            <p className="text-sm text-muted-foreground">
-              {query.user} • {query.email}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {query.date.toLocaleDateString("es-PE")}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline">
-              <Mail className="h-4 w-4 mr-1" />
-              Responder
-            </Button>
-            <Button size="sm" variant="outline">
-              <Phone className="h-4 w-4 mr-1" />
-              Llamar
-            </Button>
-          </div>
-        </div>
-      ))}
+    <div className="text-center py-8 text-muted-foreground">
+      <MessageSquare className="h-12 w-12 mx-auto mb-2 text-muted-foreground/30" />
+      <p>No hay consultas pendientes</p>
+      <p className="text-xs mt-1">Las consultas de usuarios aparecerán aquí cuando estén disponibles</p>
     </div>
   );
 }
@@ -587,40 +544,9 @@ export default async function StaffPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Pago verificado</p>
-                <p className="text-xs text-muted-foreground">
-                  Expediente CAR-2025-0012 • Hace 5 minutos
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                <FileText className="h-4 w-4 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Nueva solicitud recibida</p>
-                <p className="text-xs text-muted-foreground">
-                  Empresa XYZ vs Constructora ABC • Hace 15 minutos
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-              <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
-                <Send className="h-4 w-4 text-orange-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Notificación enviada</p>
-                <p className="text-xs text-muted-foreground">
-                  Emplazamiento a demandado • Hace 30 minutos
-                </p>
-              </div>
-            </div>
+          <div className="text-center py-8 text-muted-foreground">
+            <History className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+            <p className="text-sm">La actividad reciente aparecerá aquí</p>
           </div>
         </CardContent>
       </Card>

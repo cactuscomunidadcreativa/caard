@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,59 +39,21 @@ import {
   Plus,
   RefreshCw,
   FileText,
+  Loader2,
 } from "lucide-react";
 
-// Datos de ejemplo
-const mockDeadlines = [
-  {
-    id: "1",
-    caseCode: "ARB-2025-0001",
-    type: "CONTESTACION",
-    description: "Plazo para contestación de demanda",
-    startDate: "2025-01-20",
-    dueDate: "2025-01-30",
-    businessDays: 10,
-    status: "RUNNING",
-    daysRemaining: 4,
-    extensions: 0,
-  },
-  {
-    id: "2",
-    caseCode: "ARB-2025-0002",
-    type: "SUBSANACION",
-    description: "Subsanación de observaciones",
-    startDate: "2025-01-22",
-    dueDate: "2025-01-27",
-    businessDays: 5,
-    status: "RUNNING",
-    daysRemaining: 1,
-    extensions: 0,
-  },
-  {
-    id: "3",
-    caseCode: "ARB-2025-0003",
-    type: "ALEGATOS",
-    description: "Presentación de alegatos finales",
-    startDate: "2025-01-15",
-    dueDate: "2025-01-25",
-    businessDays: 10,
-    status: "EXPIRED",
-    daysRemaining: -1,
-    extensions: 1,
-  },
-  {
-    id: "4",
-    caseCode: "ARB-2024-0089",
-    type: "PRUEBAS",
-    description: "Ofrecimiento de pruebas",
-    startDate: "2025-01-18",
-    dueDate: "2025-02-01",
-    businessDays: 14,
-    status: "RUNNING",
-    daysRemaining: 6,
-    extensions: 0,
-  },
-];
+interface Deadline {
+  id: string;
+  caseCode: string;
+  type: string;
+  description: string;
+  startDate: string;
+  dueDate: string;
+  businessDays: number;
+  status: string;
+  daysRemaining: number;
+  extensions: number;
+}
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: any }> = {
   RUNNING: { label: "En Curso", variant: "default", icon: Clock },
@@ -101,14 +63,58 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 };
 
 export default function PlazosPage() {
-  const [selectedDeadline, setSelectedDeadline] = useState<typeof mockDeadlines[0] | null>(null);
+  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
   const [showExtensionDialog, setShowExtensionDialog] = useState(false);
   const [extensionDays, setExtensionDays] = useState("");
   const [extensionReason, setExtensionReason] = useState("");
 
-  const urgentDeadlines = mockDeadlines.filter(d => d.status === "RUNNING" && d.daysRemaining <= 2);
-  const expiredDeadlines = mockDeadlines.filter(d => d.status === "EXPIRED");
-  const activeDeadlines = mockDeadlines.filter(d => d.status === "RUNNING");
+  useEffect(() => {
+    async function fetchDeadlines() {
+      try {
+        const res = await fetch("/api/deadlines");
+        if (res.ok) {
+          const data = await res.json();
+          const items = (data.deadlines || data || []).map((d: any) => {
+            const now = new Date();
+            const dueDate = new Date(d.dueDate);
+            const daysRemaining = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            return {
+              id: d.id,
+              caseCode: d.case?.code || "—",
+              type: d.type || "GENERAL",
+              description: d.description || "Plazo procesal",
+              startDate: d.startDate ? new Date(d.startDate).toISOString().split("T")[0] : "",
+              dueDate: dueDate.toISOString().split("T")[0],
+              businessDays: d.businessDays || 0,
+              status: d.status || (daysRemaining < 0 ? "EXPIRED" : "RUNNING"),
+              daysRemaining,
+              extensions: d.extensions || 0,
+            };
+          });
+          setDeadlines(items);
+        }
+      } catch (error) {
+        console.error("Error fetching deadlines:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDeadlines();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const urgentDeadlines = deadlines.filter(d => d.status === "RUNNING" && d.daysRemaining <= 2);
+  const expiredDeadlines = deadlines.filter(d => d.status === "EXPIRED");
+  const activeDeadlines = deadlines.filter(d => d.status === "RUNNING");
 
   const handleExtension = () => {
     // TODO: Implementar lógica de prórroga
@@ -184,7 +190,7 @@ export default function PlazosPage() {
                 <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockDeadlines.length}</p>
+                <p className="text-2xl font-bold">{deadlines.length}</p>
                 <p className="text-sm text-muted-foreground">Total Activos</p>
               </div>
             </div>
@@ -206,7 +212,7 @@ export default function PlazosPage() {
 
         <TabsContent value="all">
           <DeadlineTable
-            deadlines={mockDeadlines}
+            deadlines={deadlines}
             onExtend={(d) => { setSelectedDeadline(d); setShowExtensionDialog(true); }}
           />
         </TabsContent>
@@ -275,8 +281,8 @@ function DeadlineTable({
   deadlines,
   onExtend
 }: {
-  deadlines: typeof mockDeadlines;
-  onExtend: (d: typeof mockDeadlines[0]) => void;
+  deadlines: Deadline[];
+  onExtend: (d: Deadline) => void;
 }) {
   return (
     <Card>

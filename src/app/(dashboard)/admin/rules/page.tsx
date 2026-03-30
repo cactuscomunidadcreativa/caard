@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,121 +47,20 @@ import {
   FileText,
   DollarSign,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 
-// Datos de ejemplo de reglas
-const mockRules = [
-  {
-    id: "1",
-    key: "PLAZO_CONTESTACION_DEMANDA",
-    name: "Plazo contestación de demanda",
-    description: "Días hábiles para presentar contestación de demanda",
-    value: "15",
-    valueType: "NUMBER",
-    category: "PLAZOS",
-    isActive: true,
-    lastModified: "2025-01-15",
-  },
-  {
-    id: "2",
-    key: "PLAZO_SUBSANACION",
-    name: "Plazo de subsanación",
-    description: "Días hábiles para subsanar observaciones",
-    value: "5",
-    valueType: "NUMBER",
-    category: "PLAZOS",
-    isActive: true,
-    lastModified: "2025-01-15",
-  },
-  {
-    id: "3",
-    key: "PLAZO_EMISION_LAUDO",
-    name: "Plazo emisión de laudo",
-    description: "Días hábiles para emitir laudo arbitral",
-    value: "30",
-    valueType: "NUMBER",
-    category: "PLAZOS",
-    isActive: true,
-    lastModified: "2025-01-10",
-  },
-  {
-    id: "4",
-    key: "EMERGENCIA_PLAZO_VERIFICACION",
-    name: "Plazo verificación emergencia",
-    description: "Horas para verificar solicitud de emergencia",
-    value: "24",
-    valueType: "NUMBER",
-    category: "EMERGENCIA",
-    isActive: true,
-    lastModified: "2025-01-10",
-  },
-  {
-    id: "5",
-    key: "EMERGENCIA_PLAZO_RESOLUCION",
-    name: "Plazo resolución emergencia",
-    description: "Días para resolver arbitraje de emergencia",
-    value: "4",
-    valueType: "NUMBER",
-    category: "EMERGENCIA",
-    isActive: true,
-    lastModified: "2025-01-10",
-  },
-  {
-    id: "6",
-    key: "MONTO_MINIMO_CUANTIA",
-    name: "Monto mínimo de cuantía",
-    description: "Cuantía mínima para admitir un caso (en soles)",
-    value: "10000",
-    valueType: "NUMBER",
-    category: "FINANCIERO",
-    isActive: true,
-    lastModified: "2025-01-05",
-  },
-  {
-    id: "7",
-    key: "BLOQUEO_POR_IMPAGO",
-    name: "Bloqueo por impago",
-    description: "Bloquear casos con pagos vencidos",
-    value: "true",
-    valueType: "BOOLEAN",
-    category: "FINANCIERO",
-    isActive: true,
-    lastModified: "2025-01-05",
-  },
-  {
-    id: "8",
-    key: "DIAS_GRACIA_PAGO",
-    name: "Días de gracia para pago",
-    description: "Días adicionales después de vencimiento antes de bloqueo",
-    value: "3",
-    valueType: "NUMBER",
-    category: "FINANCIERO",
-    isActive: true,
-    lastModified: "2025-01-05",
-  },
-  {
-    id: "9",
-    key: "MAX_PRORROGAS_PLAZO",
-    name: "Máximo de prórrogas",
-    description: "Número máximo de prórrogas permitidas por plazo",
-    value: "2",
-    valueType: "NUMBER",
-    category: "PLAZOS",
-    isActive: true,
-    lastModified: "2025-01-01",
-  },
-  {
-    id: "10",
-    key: "NOTIFICAR_ANTES_VENCIMIENTO",
-    name: "Notificar antes de vencimiento",
-    description: "Días antes del vencimiento para enviar recordatorio",
-    value: "3",
-    valueType: "NUMBER",
-    category: "NOTIFICACIONES",
-    isActive: true,
-    lastModified: "2025-01-01",
-  },
-];
+interface Rule {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  value: string;
+  valueType: string;
+  category: string;
+  isActive: boolean;
+  lastModified: string;
+}
 
 const categoryConfig: Record<string, { label: string; color: string; icon: any }> = {
   PLAZOS: { label: "Plazos", color: "bg-blue-100 text-blue-800", icon: Clock },
@@ -172,8 +71,37 @@ const categoryConfig: Record<string, { label: string; color: string; icon: any }
 };
 
 export default function RulesConfigPage() {
-  const [rules, setRules] = useState(mockRules);
-  const [selectedRule, setSelectedRule] = useState<typeof mockRules[0] | null>(null);
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
+
+  useEffect(() => {
+    async function fetchRules() {
+      try {
+        const res = await fetch("/api/admin/notification-rules");
+        if (res.ok) {
+          const data = await res.json();
+          const items = (data.rules || data || []).map((r: any) => ({
+            id: r.id,
+            key: r.key || r.name?.toUpperCase().replace(/\s+/g, "_") || "",
+            name: r.name || r.key || "",
+            description: r.description || "",
+            value: String(r.value ?? ""),
+            valueType: r.valueType || "NUMBER",
+            category: r.category || "GENERAL",
+            isActive: r.isActive ?? true,
+            lastModified: r.updatedAt ? new Date(r.updatedAt).toISOString().split("T")[0] : "",
+          }));
+          setRules(items);
+        }
+      } catch (error) {
+        console.error("Error fetching rules:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchRules();
+  }, []);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
@@ -192,12 +120,20 @@ export default function RulesConfigPage() {
     ));
   };
 
-  const formatValue = (rule: typeof mockRules[0]) => {
+  const formatValue = (rule: Rule) => {
     if (rule.valueType === "BOOLEAN") {
       return rule.value === "true" ? "Sí" : "No";
     }
     return rule.value;
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">

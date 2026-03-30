@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,77 +44,20 @@ import {
   Trash2,
   Calculator,
   Settings,
+  Loader2,
 } from "lucide-react";
 
-// Datos de ejemplo
-const mockFeeConfigurations = [
-  {
-    id: "1",
-    name: "Tasa de Administración - Hasta 100K",
-    type: "TASA_ARBITRAL",
-    minAmount: 0,
-    maxAmount: 100000,
-    calculationType: "PERCENTAGE",
-    value: 3,
-    minimumFee: 1500,
-    isActive: true,
-  },
-  {
-    id: "2",
-    name: "Tasa de Administración - 100K a 500K",
-    type: "TASA_ARBITRAL",
-    minAmount: 100001,
-    maxAmount: 500000,
-    calculationType: "PERCENTAGE",
-    value: 2.5,
-    minimumFee: 3000,
-    isActive: true,
-  },
-  {
-    id: "3",
-    name: "Tasa de Administración - 500K a 1M",
-    type: "TASA_ARBITRAL",
-    minAmount: 500001,
-    maxAmount: 1000000,
-    calculationType: "PERCENTAGE",
-    value: 2,
-    minimumFee: 12500,
-    isActive: true,
-  },
-  {
-    id: "4",
-    name: "Honorarios Árbitro Único - Hasta 100K",
-    type: "HONORARIOS_ARBITRO",
-    minAmount: 0,
-    maxAmount: 100000,
-    calculationType: "PERCENTAGE",
-    value: 5,
-    minimumFee: 3000,
-    isActive: true,
-  },
-  {
-    id: "5",
-    name: "Honorarios Árbitro Único - 100K a 500K",
-    type: "HONORARIOS_ARBITRO",
-    minAmount: 100001,
-    maxAmount: 500000,
-    calculationType: "PERCENTAGE",
-    value: 4,
-    minimumFee: 5000,
-    isActive: true,
-  },
-  {
-    id: "6",
-    name: "Gastos Administrativos Fijos",
-    type: "GASTOS_ADMINISTRATIVOS",
-    minAmount: 0,
-    maxAmount: null,
-    calculationType: "FIXED",
-    value: 500,
-    minimumFee: null,
-    isActive: true,
-  },
-];
+interface FeeConfig {
+  id: string;
+  name: string;
+  type: string;
+  minAmount: number;
+  maxAmount: number | null;
+  calculationType: string;
+  value: number;
+  minimumFee: number | null;
+  isActive: boolean;
+}
 
 const refundRates = [
   { stage: "ANTES_INSTALACION", percentage: 80, description: "Antes de la instalación del tribunal" },
@@ -132,8 +75,37 @@ const typeLabels: Record<string, string> = {
 };
 
 export default function FeesConfigPage() {
-  const [configurations, setConfigurations] = useState(mockFeeConfigurations);
-  const [selectedConfig, setSelectedConfig] = useState<typeof mockFeeConfigurations[0] | null>(null);
+  const [configurations, setConfigurations] = useState<FeeConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedConfig, setSelectedConfig] = useState<FeeConfig | null>(null);
+
+  useEffect(() => {
+    async function fetchFees() {
+      try {
+        const res = await fetch("/api/admin/taxes");
+        if (res.ok) {
+          const data = await res.json();
+          const items = (data.taxes || data || []).map((f: any) => ({
+            id: f.id,
+            name: f.name || "",
+            type: f.type || "TASA_ARBITRAL",
+            minAmount: f.minAmount || 0,
+            maxAmount: f.maxAmount || null,
+            calculationType: f.calculationType || "PERCENTAGE",
+            value: f.value || 0,
+            minimumFee: f.minimumFee || null,
+            isActive: f.isActive ?? true,
+          }));
+          setConfigurations(items);
+        }
+      } catch (error) {
+        console.error("Error fetching fee configurations:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchFees();
+  }, []);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [calculatorAmount, setCalculatorAmount] = useState("");
@@ -181,6 +153,14 @@ export default function FeesConfigPage() {
 
     return results;
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">

@@ -54,21 +54,32 @@ export default function DocumentUploadPage() {
     if (!caseCode.trim()) return;
 
     setIsSearching(true);
-    // TODO: Implementar búsqueda real
-    setTimeout(() => {
-      if (caseCode.startsWith("ARB-")) {
-        setSelectedCase({
-          id: "1",
-          code: caseCode,
-          title: "Controversia contractual - Servicios de consultoría",
-          status: "IN_PROCESS",
-          parties: ["Empresa ABC S.A.C.", "Servicios XYZ S.A."],
-        });
+    try {
+      const res = await fetch(`/api/cases?search=${encodeURIComponent(caseCode)}&pageSize=1`);
+      if (res.ok) {
+        const data = await res.json();
+        const cases = data.cases || data.data || [];
+        if (cases.length > 0) {
+          const c = cases[0];
+          setSelectedCase({
+            id: c.id,
+            code: c.code,
+            title: c.title || "Sin título",
+            status: c.status,
+            parties: [c.claimantName || "Demandante", c.respondentName || "Demandado"].filter(Boolean),
+          });
+        } else {
+          setSelectedCase(null);
+        }
       } else {
         setSelectedCase(null);
       }
+    } catch (error) {
+      console.error("Error searching case:", error);
+      setSelectedCase(null);
+    } finally {
       setIsSearching(false);
-    }, 500);
+    }
   };
 
   const handleUpload = (files: File[]) => {

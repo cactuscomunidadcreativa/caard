@@ -97,71 +97,25 @@ function StatCard({
   return content;
 }
 
-// Datos de ejemplo para plazos (mientras no exista la tabla)
-const mockDeadlines = [
-  {
-    id: "1",
-    title: "Contestación de demanda",
-    caseCode: "ARB-2025-0001",
-    caseTitle: "Controversia contractual",
-    daysRemaining: 2,
-  },
-  {
-    id: "2",
-    title: "Subsanación de observaciones",
-    caseCode: "ARB-2025-0002",
-    caseTitle: "Disputa comercial",
-    daysRemaining: 1,
-  },
-  {
-    id: "3",
-    title: "Presentación de pruebas",
-    caseCode: "ARB-2025-0003",
-    caseTitle: "Incumplimiento contractual",
-    daysRemaining: 5,
-  },
-];
-
-// Datos de ejemplo para emergencias
-const mockEmergencies = [
-  {
-    id: "1",
-    requestNumber: "EMR-2025-0001",
-    title: "Medida cautelar urgente",
-    status: "PENDING_VERIFICATION",
-  },
-  {
-    id: "2",
-    requestNumber: "EMR-2025-0002",
-    title: "Preservación de evidencia",
-    status: "IN_PROCESS",
-  },
-];
-
-// Datos de ejemplo para pagos
-const mockPayments = [
-  {
-    id: "1",
-    orderNumber: "OP-2025-0001",
-    caseCode: "ARB-2025-0001",
-    amount: 15000,
-    status: "PENDING",
-  },
-  {
-    id: "2",
-    orderNumber: "OP-2025-0002",
-    caseCode: "ARB-2025-0002",
-    amount: 8500,
-    status: "OVERDUE",
-  },
-];
 
 // Componente de plazos próximos
-function UpcomingDeadlines() {
-  const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-    PENDING_VERIFICATION: { label: "Por verificar", variant: "destructive" },
-    IN_PROCESS: { label: "En proceso", variant: "default" },
-  };
+async function UpcomingDeadlines() {
+  let deadlines: { id: string; case: { code: string; title: string | null }; dueAt: Date; description: string | null }[] = [];
+  try {
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    deadlines = await prisma.caseDeadline.findMany({
+      where: {
+        dueAt: { lte: sevenDaysFromNow },
+        isCompleted: false,
+      },
+      include: { case: { select: { code: true, title: true } } },
+      orderBy: { dueAt: "asc" },
+      take: 5,
+    });
+  } catch {
+    // Deadline table may not exist yet
+  }
 
   return (
     <Card>
@@ -173,14 +127,16 @@ function UpcomingDeadlines() {
         <CardDescription>Próximos 7 días</CardDescription>
       </CardHeader>
       <CardContent>
-        {mockDeadlines.length === 0 ? (
+        {deadlines.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No hay plazos próximos a vencer
           </p>
         ) : (
           <div className="space-y-4">
-            {mockDeadlines.map((deadline) => {
-              const isUrgent = deadline.daysRemaining <= 2;
+            {deadlines.map((deadline) => {
+              const now = new Date();
+              const daysRemaining = Math.ceil((deadline.dueAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              const isUrgent = daysRemaining <= 2;
 
               return (
                 <div
@@ -188,17 +144,17 @@ function UpcomingDeadlines() {
                   className="flex items-center justify-between border-b pb-3 last:border-0"
                 >
                   <div className="space-y-1">
-                    <p className="font-medium">{deadline.title}</p>
+                    <p className="font-medium">{deadline.description || "Plazo procesal"}</p>
                     <p className="text-sm text-muted-foreground">
-                      {deadline.caseCode} - {deadline.caseTitle}
+                      {deadline.case.code} - {deadline.case.title || "Sin título"}
                     </p>
                   </div>
                   <Badge variant={isUrgent ? "destructive" : "secondary"}>
-                    {deadline.daysRemaining <= 0
+                    {daysRemaining <= 0
                       ? "HOY"
-                      : deadline.daysRemaining === 1
+                      : daysRemaining === 1
                       ? "MAÑANA"
-                      : `${deadline.daysRemaining} días`}
+                      : `${daysRemaining} días`}
                   </Badge>
                 </div>
               );
@@ -214,7 +170,7 @@ function UpcomingDeadlines() {
 }
 
 // Componente de emergencias activas
-function ActiveEmergencies() {
+async function ActiveEmergencies() {
   const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
     REQUESTED: { label: "Nueva", variant: "destructive" },
     PENDING_VERIFICATION: { label: "Por verificar", variant: "destructive" },
@@ -223,6 +179,19 @@ function ActiveEmergencies() {
     PENDING_ACCEPTANCE: { label: "Por aceptar", variant: "secondary" },
     IN_PROCESS: { label: "En proceso", variant: "outline" },
   };
+
+  let emergencies: any[] = [];
+  try {
+    emergencies = await prisma.emergencyRequest.findMany({
+      where: {
+        status: { in: ["REQUESTED", "PENDING_VERIFICATION", "PENDING_PAYMENT", "PENDING_DESIGNATION", "PENDING_ACCEPTANCE", "IN_PROCESS"] },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    });
+  } catch {
+    // Table may not exist yet
+  }
 
   return (
     <Card>
@@ -234,13 +203,13 @@ function ActiveEmergencies() {
         <CardDescription>Requieren atención inmediata</CardDescription>
       </CardHeader>
       <CardContent>
-        {mockEmergencies.length === 0 ? (
+        {emergencies.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No hay emergencias activas
           </p>
         ) : (
           <div className="space-y-4">
-            {mockEmergencies.map((emergency) => {
+            {emergencies.map((emergency: any) => {
               const statusInfo = statusLabels[emergency.status] || {
                 label: emergency.status,
                 variant: "secondary" as const,
@@ -252,9 +221,9 @@ function ActiveEmergencies() {
                   className="flex items-center justify-between border-b pb-3 last:border-0"
                 >
                   <div className="space-y-1">
-                    <p className="font-medium">{emergency.requestNumber}</p>
+                    <p className="font-medium">{emergency.requestNumber || emergency.id.slice(0, 8)}</p>
                     <p className="text-sm text-muted-foreground line-clamp-1">
-                      {emergency.title}
+                      {emergency.title || emergency.urgencyReason || "Solicitud de emergencia"}
                     </p>
                   </div>
                   <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
@@ -272,7 +241,21 @@ function ActiveEmergencies() {
 }
 
 // Componente de pagos pendientes
-function PendingPayments() {
+async function PendingPayments() {
+  let payments: any[] = [];
+  try {
+    payments = await prisma.paymentOrder.findMany({
+      where: {
+        status: { in: ["PENDING", "OVERDUE"] },
+      },
+      include: { case: { select: { code: true } } },
+      orderBy: { issuedAt: "desc" },
+      take: 5,
+    });
+  } catch {
+    // Table may not exist yet
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -283,13 +266,13 @@ function PendingPayments() {
         <CardDescription>Órdenes de pago por confirmar</CardDescription>
       </CardHeader>
       <CardContent>
-        {mockPayments.length === 0 ? (
+        {payments.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No hay pagos pendientes
           </p>
         ) : (
           <div className="space-y-4">
-            {mockPayments.map((payment) => {
+            {payments.map((payment: any) => {
               const isOverdue = payment.status === "OVERDUE";
 
               return (
@@ -300,7 +283,7 @@ function PendingPayments() {
                   <div className="space-y-1">
                     <p className="font-medium">{payment.orderNumber}</p>
                     <p className="text-sm text-muted-foreground">
-                      {payment.caseCode} - S/ {payment.amount.toLocaleString()}
+                      {payment.case?.code || "—"} - S/ {(payment.totalCents / 100).toLocaleString()}
                     </p>
                   </div>
                   <Badge variant={isOverdue ? "destructive" : "secondary"}>
@@ -352,10 +335,30 @@ export default async function SecretariaPage() {
     console.log("Error fetching case stats:", error);
   }
 
-  // Valores mock para estadísticas que dependen de tablas no migradas
-  const pendingDeadlines = mockDeadlines.filter(d => d.daysRemaining <= 3).length;
-  const activeEmergencies = mockEmergencies.length;
-  const pendingPaymentsCount = mockPayments.length;
+  // Fetch real stats from DB (gracefully handle missing tables)
+  let pendingDeadlines = 0;
+  let activeEmergencies = 0;
+  let pendingPaymentsCount = 0;
+
+  try {
+    const threeDaysFromNow = new Date();
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+    pendingDeadlines = await prisma.caseDeadline.count({
+      where: { dueAt: { lte: threeDaysFromNow }, isCompleted: false },
+    });
+  } catch { /* table may not exist */ }
+
+  try {
+    activeEmergencies = await prisma.emergencyRequest.count({
+      where: { status: { in: ["REQUESTED", "PENDING_VERIFICATION", "IN_PROCESS"] } },
+    });
+  } catch { /* table may not exist */ }
+
+  try {
+    pendingPaymentsCount = await prisma.paymentOrder.count({
+      where: { status: { in: ["PENDING", "OVERDUE"] } },
+    });
+  } catch { /* table may not exist */ }
 
   return (
     <div className="container mx-auto py-6 space-y-8">
@@ -506,24 +509,6 @@ export default async function SecretariaPage() {
         </CardContent>
       </Card>
 
-      {/* Info sobre migración pendiente */}
-      <Card className="border-blue-200 bg-blue-50">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-4">
-            <CheckCircle className="h-6 w-6 text-blue-600 shrink-0" />
-            <div>
-              <p className="font-medium text-blue-800">Datos de demostración</p>
-              <p className="text-sm text-blue-700">
-                Los plazos, emergencias y pagos mostrados son datos de ejemplo.
-                Para habilitar las funciones completas, ejecute la migración de base de datos:
-              </p>
-              <code className="block mt-2 p-2 bg-blue-100 rounded text-xs font-mono text-blue-800">
-                npx prisma migrate dev --name add_rules_system
-              </code>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

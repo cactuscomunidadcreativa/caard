@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,73 +47,26 @@ import {
   Award,
   Briefcase,
   GraduationCap,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
-// Datos de ejemplo
-const mockArbitrators = [
-  {
-    id: "1",
-    name: "Dr. Carlos Mendoza Rivera",
-    email: "cmendoza@example.com",
-    phone: "+51 999 888 777",
-    specialty: ["COMERCIAL", "CIVIL"],
-    status: "ACTIVE",
-    category: "PRINCIPAL",
-    caseCount: 45,
-    avgResolutionDays: 120,
-    rating: 4.8,
-    admissionDate: "2020-01-15",
-    education: "Doctor en Derecho - PUCP",
-    experience: "25 años de experiencia en litigios comerciales",
-  },
-  {
-    id: "2",
-    name: "Dra. María García López",
-    email: "mgarcia@example.com",
-    phone: "+51 999 777 666",
-    specialty: ["CIVIL", "LABORAL"],
-    status: "ACTIVE",
-    category: "PRINCIPAL",
-    caseCount: 38,
-    avgResolutionDays: 110,
-    rating: 4.9,
-    admissionDate: "2019-06-20",
-    education: "Magíster en Arbitraje - Universidad de Lima",
-    experience: "20 años en resolución de conflictos",
-  },
-  {
-    id: "3",
-    name: "Dr. Roberto Sánchez Vega",
-    email: "rsanchez@example.com",
-    phone: "+51 999 666 555",
-    specialty: ["ADMINISTRATIVO", "CONSTITUCIONAL"],
-    status: "SUSPENDED",
-    category: "ADJUNTO",
-    caseCount: 22,
-    avgResolutionDays: 140,
-    rating: 4.5,
-    admissionDate: "2021-03-10",
-    education: "Doctor en Derecho Administrativo - USMP",
-    experience: "15 años en derecho público",
-    suspensionReason: "Pendiente actualización de certificaciones",
-  },
-  {
-    id: "4",
-    name: "Dra. Ana Torres Huamán",
-    email: "atorres@example.com",
-    phone: "+51 999 555 444",
-    specialty: ["COMERCIAL", "INTERNACIONAL"],
-    status: "ACTIVE",
-    category: "EMERGENCIA",
-    caseCount: 15,
-    avgResolutionDays: 95,
-    rating: 4.7,
-    admissionDate: "2022-01-05",
-    education: "LLM International Arbitration - Queen Mary",
-    experience: "12 años en arbitraje internacional",
-  },
-];
+interface ArbitratorItem {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  specialty: string[];
+  status: string;
+  category: string;
+  caseCount: number;
+  avgResolutionDays: number;
+  rating: number;
+  admissionDate: string;
+  education: string;
+  experience: string;
+  suspensionReason?: string;
+}
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   ACTIVE: { label: "Activo", variant: "default" },
@@ -130,13 +83,55 @@ const categoryConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function ArbitrosRegistroPage() {
+  const [arbitratorsList, setArbitratorsList] = useState<ArbitratorItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [selectedArbitrator, setSelectedArbitrator] = useState<typeof mockArbitrators[0] | null>(null);
+  const [selectedArbitrator, setSelectedArbitrator] = useState<ArbitratorItem | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
 
-  const filteredArbitrators = mockArbitrators.filter(arb => {
+  useEffect(() => {
+    async function fetchArbitrators() {
+      try {
+        const res = await fetch("/api/cms/arbitrators?limit=100");
+        if (res.ok) {
+          const data = await res.json();
+          const items = (data.arbitrators || []).map((a: any) => ({
+            id: a.id,
+            name: a.user?.name || "—",
+            email: a.user?.email || "—",
+            phone: "",
+            specialty: a.specializations || [],
+            status: a.status || "ACTIVE",
+            category: a.acceptsEmergency ? "EMERGENCIA" : "PRINCIPAL",
+            caseCount: a.casesCompleted || 0,
+            avgResolutionDays: 0,
+            rating: 0,
+            admissionDate: a.approvalDate ? new Date(a.approvalDate).toISOString().split("T")[0] : "",
+            education: "",
+            experience: a.availabilityNotes || "",
+          }));
+          setArbitratorsList(items);
+        }
+      } catch (error) {
+        console.error("Error fetching arbitrators:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchArbitrators();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const filteredArbitrators = arbitratorsList.filter(arb => {
     const matchesSearch = arb.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          arb.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "all" || arb.status === filterStatus;
@@ -144,9 +139,9 @@ export default function ArbitrosRegistroPage() {
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  const activeCount = mockArbitrators.filter(a => a.status === "ACTIVE").length;
-  const totalCases = mockArbitrators.reduce((sum, a) => sum + a.caseCount, 0);
-  const avgRating = mockArbitrators.reduce((sum, a) => sum + a.rating, 0) / mockArbitrators.length;
+  const activeCount = arbitratorsList.filter(a => a.status === "ACTIVE").length;
+  const totalCases = arbitratorsList.reduce((sum, a) => sum + a.caseCount, 0);
+  const avgRating = arbitratorsList.length > 0 ? arbitratorsList.reduce((sum, a) => sum + a.rating, 0) / arbitratorsList.length : 0;
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -179,7 +174,7 @@ export default function ArbitrosRegistroPage() {
                 <User className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockArbitrators.length}</p>
+                <p className="text-2xl font-bold">{arbitratorsList.length}</p>
                 <p className="text-sm text-muted-foreground">Total Árbitros</p>
               </div>
             </div>

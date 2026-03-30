@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,49 +36,23 @@ import {
   FileText,
   User,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
-// Datos de ejemplo
-const mockRecusations = [
-  {
-    id: "1",
-    caseCode: "ARB-2025-0001",
-    arbitratorName: "Dr. Carlos Mendoza Rivera",
-    requestedBy: "Empresa ABC S.A.C.",
-    requestedByRole: "DEMANDANTE",
-    requestDate: "2025-01-20",
-    reason: "Conflicto de interés - El árbitro fue asesor legal del demandado hace 2 años",
-    status: "PENDING",
-    evidence: ["Carta de representación 2023", "Contrato de servicios"],
-  },
-  {
-    id: "2",
-    caseCode: "ARB-2025-0002",
-    arbitratorName: "Dra. María García López",
-    requestedBy: "Tech Solutions Perú",
-    requestedByRole: "DEMANDADO",
-    requestDate: "2025-01-18",
-    reason: "Falta de imparcialidad - Declaraciones públicas sobre el caso",
-    status: "ACCEPTED",
-    evidence: ["Publicación en LinkedIn", "Artículo de opinión"],
-    resolution: "Se acepta la recusación. Se procede a designar nuevo árbitro.",
-    resolvedDate: "2025-01-22",
-  },
-  {
-    id: "3",
-    caseCode: "ARB-2024-0089",
-    arbitratorName: "Dr. Roberto Sánchez Vega",
-    requestedBy: "Importaciones del Sur",
-    requestedByRole: "DEMANDANTE",
-    requestDate: "2025-01-15",
-    reason: "Relación familiar con parte contraria",
-    status: "REJECTED",
-    evidence: ["Declaración jurada"],
-    resolution: "Se rechaza por falta de pruebas suficientes. El parentesco alegado no está acreditado.",
-    resolvedDate: "2025-01-19",
-  },
-];
+interface Recusation {
+  id: string;
+  caseCode: string;
+  arbitratorName: string;
+  requestedBy: string;
+  requestedByRole: string;
+  requestDate: string;
+  reason: string;
+  status: string;
+  evidence: string[];
+  resolution?: string;
+  resolvedDate?: string;
+}
 
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   PENDING: { label: "Pendiente", variant: "secondary" },
@@ -88,13 +62,37 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 };
 
 export default function RecusacionesPage() {
-  const [selectedRecusation, setSelectedRecusation] = useState<typeof mockRecusations[0] | null>(null);
+  const [recusations, setRecusations] = useState<Recusation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedRecusation, setSelectedRecusation] = useState<Recusation | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showResolveDialog, setShowResolveDialog] = useState(false);
   const [resolution, setResolution] = useState("");
   const [resolveAction, setResolveAction] = useState<"accept" | "reject" | null>(null);
 
-  const pendingRecusations = mockRecusations.filter(r => r.status === "PENDING");
+  useEffect(() => {
+    async function fetchRecusations() {
+      try {
+        // No specific recusations API exists yet; show empty state
+        setRecusations([]);
+      } catch (error) {
+        console.error("Error fetching recusations:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchRecusations();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const pendingRecusations = recusations.filter(r => r.status === "PENDING");
 
   const handleResolve = () => {
     // TODO: Implementar resolución
@@ -166,7 +164,7 @@ export default function RecusacionesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockRecusations.filter(r => r.status === "ACCEPTED").length}
+                  {recusations.filter(r => r.status === "ACCEPTED").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Aceptadas</p>
               </div>
@@ -182,7 +180,7 @@ export default function RecusacionesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockRecusations.filter(r => r.status === "REJECTED").length}
+                  {recusations.filter(r => r.status === "REJECTED").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Rechazadas</p>
               </div>
@@ -197,7 +195,7 @@ export default function RecusacionesPage() {
                 <FileText className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockRecusations.length}</p>
+                <p className="text-2xl font-bold">{recusations.length}</p>
                 <p className="text-sm text-muted-foreground">Total</p>
               </div>
             </div>
@@ -227,7 +225,7 @@ export default function RecusacionesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockRecusations.map((recusation) => (
+              {recusations.map((recusation) => (
                 <TableRow key={recusation.id}>
                   <TableCell className="font-mono font-medium">
                     {recusation.caseCode}

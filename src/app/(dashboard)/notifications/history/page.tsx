@@ -34,86 +34,17 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-// Datos de ejemplo
-const mockNotifications = [
-  {
-    id: "1",
-    type: "CASE_UPDATE",
-    title: "Demanda admitida",
-    message: "La demanda del expediente ARB-2025-0001 ha sido admitida a trámite.",
-    caseCode: "ARB-2025-0001",
-    caseId: "case-1",
-    isRead: false,
-    isImportant: false,
-    createdAt: "2025-01-26T10:30:00",
-  },
-  {
-    id: "2",
-    type: "DEADLINE",
-    title: "Plazo próximo a vencer",
-    message: "El plazo para contestación de demanda vence en 2 días hábiles.",
-    caseCode: "ARB-2025-0001",
-    caseId: "case-1",
-    isRead: false,
-    isImportant: true,
-    createdAt: "2025-01-26T09:00:00",
-  },
-  {
-    id: "3",
-    type: "PAYMENT",
-    title: "Pago confirmado",
-    message: "Se ha confirmado el pago de S/ 15,000 correspondiente a la orden OP-2025-0001.",
-    caseCode: "ARB-2025-0001",
-    caseId: "case-1",
-    isRead: true,
-    isImportant: false,
-    createdAt: "2025-01-25T14:20:00",
-  },
-  {
-    id: "4",
-    type: "DOCUMENT",
-    title: "Nuevo documento",
-    message: "Se ha cargado un nuevo documento: Contestación de demanda.",
-    caseCode: "ARB-2025-0002",
-    caseId: "case-2",
-    isRead: true,
-    isImportant: false,
-    createdAt: "2025-01-25T11:45:00",
-  },
-  {
-    id: "5",
-    type: "HEARING",
-    title: "Audiencia programada",
-    message: "Se ha programado audiencia de pruebas para el 15/02/2025 a las 10:00 AM.",
-    caseCode: "ARB-2025-0001",
-    caseId: "case-1",
-    isRead: true,
-    isImportant: true,
-    createdAt: "2025-01-24T16:00:00",
-  },
-  {
-    id: "6",
-    type: "CASE_UPDATE",
-    title: "Solicitud observada",
-    message: "Su solicitud ha sido observada. Tiene 5 días hábiles para subsanar.",
-    caseCode: "ARB-2025-0003",
-    caseId: "case-3",
-    isRead: true,
-    isImportant: true,
-    createdAt: "2025-01-23T10:30:00",
-  },
-  {
-    id: "7",
-    type: "SYSTEM",
-    title: "Mantenimiento programado",
-    message: "El sistema estará en mantenimiento el día 28/01/2025 de 02:00 a 04:00 AM.",
-    caseCode: null,
-    caseId: null,
-    isRead: true,
-    isImportant: false,
-    createdAt: "2025-01-22T09:00:00",
-  },
-];
+interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  caseCode: string | null;
+  caseId: string | null;
+  isRead: boolean;
+  isImportant: boolean;
+  createdAt: string;
+}
 
 const typeConfig: Record<string, { label: string; icon: any; color: string }> = {
   CASE_UPDATE: { label: "Expediente", icon: FileText, color: "bg-blue-100 text-blue-600" },
@@ -125,10 +56,39 @@ const typeConfig: Record<string, { label: string; icon: any; color: string }> = 
 };
 
 export default function NotificationHistoryPage() {
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterRead, setFilterRead] = useState<string>("all");
+
+  useEffect(() => {
+    async function fetchNotifications() {
+      try {
+        const res = await fetch("/api/notifications/user");
+        if (res.ok) {
+          const data = await res.json();
+          const items = (data.notifications || data || []).map((n: any) => ({
+            id: n.id,
+            type: n.type || "SYSTEM",
+            title: n.title || "Notificación",
+            message: n.message || n.body || "",
+            caseCode: n.caseCode || n.case?.code || null,
+            caseId: n.caseId || null,
+            isRead: n.isRead !== undefined ? n.isRead : (n.readAt != null),
+            isImportant: n.isImportant ?? false,
+            createdAt: n.createdAt || new Date().toISOString(),
+          }));
+          setNotifications(items);
+        }
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchNotifications();
+  }, []);
 
   const filteredNotifications = notifications.filter(notif => {
     const matchesSearch =

@@ -6,6 +6,7 @@
 
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,45 +19,31 @@ import {
   Globe,
 } from "lucide-react";
 
-// Datos de ejemplo
-const mockCenters = [
-  {
-    id: "1",
-    name: "CAARD Lima",
-    code: "CAARD-LIM",
-    status: "ACTIVE",
-    domain: "lima.caard.pe",
-    usersCount: 156,
-    casesCount: 89,
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "2",
-    name: "CAARD Arequipa",
-    code: "CAARD-AQP",
-    status: "ACTIVE",
-    domain: "arequipa.caard.pe",
-    usersCount: 45,
-    casesCount: 23,
-    createdAt: "2024-03-20",
-  },
-  {
-    id: "3",
-    name: "CAARD Trujillo",
-    code: "CAARD-TRU",
-    status: "PENDING",
-    domain: "trujillo.caard.pe",
-    usersCount: 12,
-    casesCount: 0,
-    createdAt: "2025-01-10",
-  },
-];
-
 export default async function CentersPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "SUPER_ADMIN") {
     redirect("/");
   }
+
+  const dbCenters = await prisma.center.findMany({
+    include: {
+      _count: {
+        select: { users: true, cases: true },
+      },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  const centers = dbCenters.map((c) => ({
+    id: c.id,
+    name: c.name,
+    code: c.code,
+    status: "ACTIVE",
+    domain: `${c.code.toLowerCase()}.caard.pe`,
+    usersCount: c._count.users,
+    casesCount: c._count.cases,
+    createdAt: c.createdAt.toISOString().split("T")[0],
+  }));
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -82,7 +69,7 @@ export default async function CentersPage() {
                 <Building2 className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockCenters.length}</p>
+                <p className="text-2xl font-bold">{centers.length}</p>
                 <p className="text-sm text-muted-foreground">Centros</p>
               </div>
             </div>
@@ -97,7 +84,7 @@ export default async function CentersPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockCenters.reduce((sum, c) => sum + c.usersCount, 0)}
+                  {centers.reduce((sum, c) => sum + c.usersCount, 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Usuarios Totales</p>
               </div>
@@ -113,7 +100,7 @@ export default async function CentersPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockCenters.reduce((sum, c) => sum + c.casesCount, 0)}
+                  {centers.reduce((sum, c) => sum + c.casesCount, 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Casos Totales</p>
               </div>
@@ -129,7 +116,7 @@ export default async function CentersPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockCenters.filter(c => c.status === "ACTIVE").length}
+                  {centers.filter(c => c.status === "ACTIVE").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Activos</p>
               </div>
@@ -140,7 +127,7 @@ export default async function CentersPage() {
 
       {/* Lista de Centros */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockCenters.map((center) => (
+        {centers.map((center) => (
           <Card key={center.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex items-start justify-between">

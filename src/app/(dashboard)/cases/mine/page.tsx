@@ -6,6 +6,7 @@
 
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,43 +21,6 @@ import {
   Filter
 } from "lucide-react";
 import Link from "next/link";
-
-// Datos de ejemplo - en producción vendrían de la API
-const mockCases = [
-  {
-    id: "1",
-    code: "ARB-2025-0001",
-    title: "Controversia contractual - Servicios de consultoría",
-    status: "IN_PROCESS",
-    stage: "AUDIENCIAS",
-    role: "DEMANDANTE",
-    lastUpdate: "2025-01-25",
-    nextDeadline: "2025-02-01",
-    amount: 150000,
-  },
-  {
-    id: "2",
-    code: "ARB-2025-0002",
-    title: "Disputa comercial - Incumplimiento de contrato",
-    status: "SUBMITTED",
-    stage: "ADMISION",
-    role: "DEMANDANTE",
-    lastUpdate: "2025-01-24",
-    nextDeadline: "2025-01-30",
-    amount: 85000,
-  },
-  {
-    id: "3",
-    code: "ARB-2024-0089",
-    title: "Resolución de controversia - Compraventa",
-    status: "AWARD_ISSUED",
-    stage: "LAUDO",
-    role: "DEMANDADO",
-    lastUpdate: "2025-01-20",
-    nextDeadline: null,
-    amount: 200000,
-  },
-];
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   DRAFT: { label: "Borrador", variant: "outline" },
@@ -74,8 +38,39 @@ export default async function MyCasesPage() {
     redirect("/login");
   }
 
-  const activeCases = mockCases.filter(c => !["CLOSED", "AWARD_ISSUED"].includes(c.status));
-  const closedCases = mockCases.filter(c => ["CLOSED", "AWARD_ISSUED"].includes(c.status));
+  const userId = session.user.id;
+  const userEmail = session.user.email;
+
+  // Fetch cases where user is a member (demandante, demandado, arbitro, etc.)
+  const memberships = await prisma.caseMember.findMany({
+    where: {
+      OR: [
+        { userId },
+        ...(userEmail ? [{ email: userEmail }] : []),
+      ],
+    },
+    include: {
+      case: {
+        include: { arbitrationType: { select: { name: true } } },
+      },
+    },
+    orderBy: { case: { updatedAt: "desc" } },
+  });
+
+  const myCases = memberships.map((m) => ({
+    id: m.case.id,
+    code: m.case.code,
+    title: m.case.title || "Sin título",
+    status: m.case.status,
+    stage: m.case.currentStage || "DEMANDA",
+    role: m.role,
+    lastUpdate: m.case.updatedAt.toISOString().split("T")[0],
+    nextDeadline: null as string | null,
+    amount: m.case.disputeAmountCents ? Number(m.case.disputeAmountCents) / 100 : 0,
+  }));
+
+  const activeCases = myCases.filter(c => !["CLOSED", "AWARD_ISSUED"].includes(c.status));
+  const closedCases = myCases.filter(c => ["CLOSED", "AWARD_ISSUED"].includes(c.status));
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -109,7 +104,7 @@ export default async function MyCasesPage() {
                 <FileText className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockCases.length}</p>
+                <p className="text-2xl font-bold">{myCases.length}</p>
                 <p className="text-sm text-muted-foreground">Total</p>
               </div>
             </div>
@@ -136,7 +131,7 @@ export default async function MyCasesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockCases.filter(c => c.nextDeadline).length}
+                  {myCases.filter(c => c.nextDeadline).length}
                 </p>
                 <p className="text-sm text-muted-foreground">Con Plazos</p>
               </div>
@@ -168,7 +163,7 @@ export default async function MyCasesPage() {
             Finalizados ({closedCases.length})
           </TabsTrigger>
           <TabsTrigger value="all">
-            Todos ({mockCases.length})
+            Todos ({myCases.length})
           </TabsTrigger>
         </TabsList>
 
@@ -181,14 +176,14 @@ export default async function MyCasesPage() {
         </TabsContent>
 
         <TabsContent value="all">
-          <CaseList cases={mockCases} />
+          <CaseList cases={myCases} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function CaseList({ cases }: { cases: typeof mockCases }) {
+function CaseList({ cases }: { cases: { id: string; code: string; title: string; status: string; stage: string; role: string; lastUpdate: string; nextDeadline: string | null; amount: number }[] }) {
   if (cases.length === 0) {
     return (
       <Card>

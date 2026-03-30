@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,25 +44,16 @@ import {
   Trash2,
   RefreshCw,
   Upload,
+  Loader2,
 } from "lucide-react";
 
-// Datos de ejemplo de feriados 2025
-const mockHolidays = [
-  { id: "1", date: "2025-01-01", name: "Año Nuevo", type: "NACIONAL", isRecurring: true },
-  { id: "2", date: "2025-04-17", name: "Jueves Santo", type: "NACIONAL", isRecurring: false },
-  { id: "3", date: "2025-04-18", name: "Viernes Santo", type: "NACIONAL", isRecurring: false },
-  { id: "4", date: "2025-05-01", name: "Día del Trabajo", type: "NACIONAL", isRecurring: true },
-  { id: "5", date: "2025-06-29", name: "San Pedro y San Pablo", type: "NACIONAL", isRecurring: true },
-  { id: "6", date: "2025-07-28", name: "Fiestas Patrias", type: "NACIONAL", isRecurring: true },
-  { id: "7", date: "2025-07-29", name: "Fiestas Patrias", type: "NACIONAL", isRecurring: true },
-  { id: "8", date: "2025-08-30", name: "Santa Rosa de Lima", type: "NACIONAL", isRecurring: true },
-  { id: "9", date: "2025-10-08", name: "Combate de Angamos", type: "NACIONAL", isRecurring: true },
-  { id: "10", date: "2025-11-01", name: "Día de Todos los Santos", type: "NACIONAL", isRecurring: true },
-  { id: "11", date: "2025-12-08", name: "Inmaculada Concepción", type: "NACIONAL", isRecurring: true },
-  { id: "12", date: "2025-12-09", name: "Batalla de Ayacucho", type: "NACIONAL", isRecurring: true },
-  { id: "13", date: "2025-12-25", name: "Navidad", type: "NACIONAL", isRecurring: true },
-  { id: "14", date: "2025-01-18", name: "Aniversario de Lima", type: "LOCAL", isRecurring: true },
-];
+interface Holiday {
+  id: string;
+  date: string;
+  name: string;
+  type: string;
+  isRecurring: boolean;
+}
 
 const typeConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
   NACIONAL: { label: "Nacional", variant: "default" },
@@ -71,8 +62,23 @@ const typeConfig: Record<string, { label: string; variant: "default" | "secondar
 };
 
 export default function HolidaysConfigPage() {
-  const [holidays, setHolidays] = useState(mockHolidays);
-  const [selectedHoliday, setSelectedHoliday] = useState<typeof mockHolidays[0] | null>(null);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedHoliday, setSelectedHoliday] = useState<Holiday | null>(null);
+
+  useEffect(() => {
+    async function fetchHolidays() {
+      try {
+        // No dedicated holidays API yet; show empty state
+        setHolidays([]);
+      } catch (error) {
+        console.error("Error fetching holidays:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchHolidays();
+  }, []);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [filterYear, setFilterYear] = useState("2025");
@@ -111,6 +117,14 @@ export default function HolidaysConfigPage() {
 
     alert(`Se generarían ${newHolidays.length} feriados para el año ${nextYear}`);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6 space-y-6">

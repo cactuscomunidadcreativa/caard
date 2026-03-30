@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,99 +35,20 @@ import {
   Settings,
   Shield,
   Eye,
+  Loader2,
 } from "lucide-react";
 
-// Datos de ejemplo
-const mockAuditLogs = [
-  {
-    id: "1",
-    timestamp: "2025-01-26 10:45:32",
-    user: "admin@caard.pe",
-    userRole: "ADMIN",
-    action: "UPDATE",
-    resource: "Case",
-    resourceId: "ARB-2025-0001",
-    description: "Actualizó estado de caso a ADMITTED",
-    ipAddress: "192.168.1.100",
-  },
-  {
-    id: "2",
-    timestamp: "2025-01-26 10:30:15",
-    user: "secretaria@caard.pe",
-    userRole: "SECRETARIA",
-    action: "CREATE",
-    resource: "Document",
-    resourceId: "DOC-2025-0156",
-    description: "Subió documento: Contestación de demanda",
-    ipAddress: "192.168.1.105",
-  },
-  {
-    id: "3",
-    timestamp: "2025-01-26 10:15:00",
-    user: "arbitro@caard.pe",
-    userRole: "ARBITRO",
-    action: "READ",
-    resource: "Case",
-    resourceId: "ARB-2025-0002",
-    description: "Consultó expediente asignado",
-    ipAddress: "192.168.1.120",
-  },
-  {
-    id: "4",
-    timestamp: "2025-01-26 09:45:22",
-    user: "admin@caard.pe",
-    userRole: "ADMIN",
-    action: "UPDATE",
-    resource: "User",
-    resourceId: "USR-0045",
-    description: "Modificó rol de usuario",
-    ipAddress: "192.168.1.100",
-  },
-  {
-    id: "5",
-    timestamp: "2025-01-26 09:30:10",
-    user: "system",
-    userRole: "SYSTEM",
-    action: "CREATE",
-    resource: "Notification",
-    resourceId: "NOT-2025-0890",
-    description: "Envió notificación automática de plazo",
-    ipAddress: "127.0.0.1",
-  },
-  {
-    id: "6",
-    timestamp: "2025-01-26 09:00:00",
-    user: "staff@caard.pe",
-    userRole: "CENTER_STAFF",
-    action: "UPDATE",
-    resource: "Payment",
-    resourceId: "PAY-2025-0045",
-    description: "Verificó pago recibido",
-    ipAddress: "192.168.1.110",
-  },
-  {
-    id: "7",
-    timestamp: "2025-01-25 18:30:45",
-    user: "abogado@example.com",
-    userRole: "ABOGADO",
-    action: "CREATE",
-    resource: "Document",
-    resourceId: "DOC-2025-0155",
-    description: "Subió escrito de alegatos",
-    ipAddress: "200.48.15.25",
-  },
-  {
-    id: "8",
-    timestamp: "2025-01-25 17:15:00",
-    user: "admin@caard.pe",
-    userRole: "ADMIN",
-    action: "DELETE",
-    resource: "Document",
-    resourceId: "DOC-2025-0150",
-    description: "Eliminó documento duplicado",
-    ipAddress: "192.168.1.100",
-  },
-];
+interface AuditLog {
+  id: string;
+  timestamp: string;
+  user: string;
+  userRole: string;
+  action: string;
+  resource: string;
+  resourceId: string;
+  description: string;
+  ipAddress: string;
+}
 
 const actionConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   CREATE: { label: "Crear", variant: "default" },
@@ -137,11 +58,35 @@ const actionConfig: Record<string, { label: string; variant: "default" | "second
 };
 
 export default function AuditReportPage() {
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterAction, setFilterAction] = useState<string>("all");
   const [filterResource, setFilterResource] = useState<string>("all");
 
-  const filteredLogs = mockAuditLogs.filter(log => {
+  useEffect(() => {
+    async function fetchLogs() {
+      try {
+        // No dedicated audit API yet; show empty state
+        setAuditLogs([]);
+      } catch (error) {
+        console.error("Error fetching audit logs:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchLogs();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const filteredLogs = auditLogs.filter(log => {
     const matchesSearch =
       log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.resourceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -175,7 +120,7 @@ export default function AuditReportPage() {
                 <History className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockAuditLogs.length}</p>
+                <p className="text-2xl font-bold">{auditLogs.length}</p>
                 <p className="text-sm text-muted-foreground">Acciones Hoy</p>
               </div>
             </div>
@@ -190,7 +135,7 @@ export default function AuditReportPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {new Set(mockAuditLogs.map(l => l.user)).size}
+                  {new Set(auditLogs.map(l => l.user)).size}
                 </p>
                 <p className="text-sm text-muted-foreground">Usuarios Activos</p>
               </div>
@@ -206,7 +151,7 @@ export default function AuditReportPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockAuditLogs.filter(l => l.action === "UPDATE").length}
+                  {auditLogs.filter(l => l.action === "UPDATE").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Modificaciones</p>
               </div>
@@ -222,7 +167,7 @@ export default function AuditReportPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockAuditLogs.filter(l => l.action === "DELETE").length}
+                  {auditLogs.filter(l => l.action === "DELETE").length}
                 </p>
                 <p className="text-sm text-muted-foreground">Eliminaciones</p>
               </div>
