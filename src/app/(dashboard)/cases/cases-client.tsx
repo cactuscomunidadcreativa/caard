@@ -2,11 +2,12 @@
 
 /**
  * CAARD - Cases Client Component
- * Maneja traducciones y visualización de expedientes
+ * Maneja traducciones y visualización de expedientes con datos reales del API
  */
 
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { Plus, Search, Filter, MoreHorizontal } from "lucide-react";
+import { Plus, Search, Filter, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,72 +33,178 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { CaseStatusBadge } from "@/components/shared/case-status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useTranslation } from "@/lib/i18n";
+import type { CaseStatus } from "@prisma/client";
 
-// Mock data - will be replaced with real data from API
-const cases = [
-  {
-    id: "1",
-    code: "EXP-2026-CAARD-000123",
-    title: "Incumplimiento contractual",
-    status: "IN_PROCESS" as const,
-    arbitrationType: "Comercial",
-    claimantName: "Empresa ABC S.A.C.",
-    respondentName: "Constructora XYZ S.A.",
-    submittedAt: "15 Ene 2026",
-    updatedAt: "2h",
-  },
-  {
-    id: "2",
-    code: "EXP-2026-CAARD-000122",
-    title: "Resolución de contrato",
-    status: "UNDER_REVIEW" as const,
-    arbitrationType: "Comercial",
-    claimantName: "Juan Pérez García",
-    respondentName: "Inmobiliaria Sol S.A.",
-    submittedAt: "14 Ene 2026",
-    updatedAt: "5h",
-  },
-  {
-    id: "3",
-    code: "EXP-2026-CAARD-000121",
-    title: "Cobro de deuda comercial",
-    status: "OBSERVED" as const,
-    arbitrationType: "Comercial",
-    claimantName: "Comercializadora Norte S.A.C.",
-    respondentName: "Distribuidora Sur E.I.R.L.",
-    submittedAt: "12 Ene 2026",
-    updatedAt: "1d",
-  },
-  {
-    id: "4",
-    code: "EXP-2026-CAARD-000120",
-    title: "Controversia en contrato de construcción",
-    status: "ADMITTED" as const,
-    arbitrationType: "Construcción",
-    claimantName: "Corporación Delta S.A.",
-    respondentName: "Constructora Omega S.A.C.",
-    submittedAt: "10 Ene 2026",
-    updatedAt: "2d",
-  },
-  {
-    id: "5",
-    code: "EXP-2025-CAARD-000119",
-    title: "Indemnización por daños",
-    status: "CLOSED" as const,
-    arbitrationType: "Comercial",
-    claimantName: "María López Torres",
-    respondentName: "Seguros Pacífico S.A.",
-    submittedAt: "20 Dic 2025",
-    updatedAt: "1w",
-  },
-];
+interface ArbitrationType {
+  id: string;
+  code: string;
+  name: string;
+}
+
+interface CaseItem {
+  id: string;
+  code: string;
+  title: string;
+  status: CaseStatus;
+  claimantName: string;
+  respondentName: string;
+  createdAt: string;
+  arbitrationType: {
+    code: string;
+    name: string;
+  };
+  _count: {
+    documents: number;
+    payments: number;
+  };
+}
+
+interface CasesResponse {
+  items: CaseItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
+const PAGE_SIZE = 20;
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("es-PE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function TableSkeleton() {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <TableHead key={i}>
+              <Skeleton className="h-4 w-20" />
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {Array.from({ length: 5 }).map((_, rowIdx) => (
+          <TableRow key={rowIdx}>
+            {Array.from({ length: 8 }).map((_, colIdx) => (
+              <TableCell key={colIdx}>
+                <Skeleton className="h-4 w-full" />
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
 
 export function CasesClient() {
   const { t } = useTranslation();
+
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [arbitrationTypeId, setArbitrationTypeId] = useState("all");
+  const [page, setPage] = useState(1);
+
+  const [cases, setCases] = useState<CaseItem[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const [arbitrationTypes, setArbitrationTypes] = useState<ArbitrationType[]>([]);
+
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounce search input
+  useEffect(() => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, [search]);
+
+  // Fetch arbitration types on mount
+  useEffect(() => {
+    async function fetchArbitrationTypes() {
+      try {
+        const res = await fetch("/api/arbitration-types");
+        if (res.ok) {
+          const data: ArbitrationType[] = await res.json();
+          setArbitrationTypes(data);
+        }
+      } catch {
+        // Silently fail - dropdown will just show "Todos"
+      }
+    }
+    fetchArbitrationTypes();
+  }, []);
+
+  // Fetch cases when filters/page change
+  const fetchCases = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (status !== "all") params.set("status", status);
+      if (arbitrationTypeId !== "all") params.set("arbitrationTypeId", arbitrationTypeId);
+      params.set("page", String(page));
+      params.set("pageSize", String(PAGE_SIZE));
+
+      const res = await fetch(`/api/cases?${params.toString()}`);
+      if (res.ok) {
+        const data: CasesResponse = await res.json();
+        setCases(data.items);
+        setTotalPages(data.totalPages);
+        setTotal(data.total);
+      } else {
+        setCases([]);
+        setTotalPages(0);
+        setTotal(0);
+      }
+    } catch {
+      setCases([]);
+      setTotalPages(0);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, status, arbitrationTypeId, page]);
+
+  useEffect(() => {
+    fetchCases();
+  }, [fetchCases]);
+
+  // Reset page when filters change
+  const handleStatusChange = (value: string) => {
+    setStatus(value);
+    setPage(1);
+  };
+
+  const handleTypeChange = (value: string) => {
+    setArbitrationTypeId(value);
+    setPage(1);
+  };
 
   return (
     <div className="space-y-6">
@@ -123,9 +230,11 @@ export function CasesClient() {
               <Input
                 placeholder={`${t.common.search}...`}
                 className="pl-8"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Select defaultValue="all">
+            <Select value={status} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder={t.cases.status} />
               </SelectTrigger>
@@ -139,15 +248,17 @@ export function CasesClient() {
                 <SelectItem value="CLOSED">{t.cases.statusClosed}</SelectItem>
               </SelectContent>
             </Select>
-            <Select defaultValue="all">
+            <Select value={arbitrationTypeId} onValueChange={handleTypeChange}>
               <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder={t.cases.type} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t.common.all}</SelectItem>
-                <SelectItem value="comercial">Comercial</SelectItem>
-                <SelectItem value="construccion">Construcción</SelectItem>
-                <SelectItem value="emergencia">{t.sidebar.emergencies}</SelectItem>
+                {arbitrationTypes.map((at) => (
+                  <SelectItem key={at.id} value={at.id}>
+                    {at.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Button variant="outline" size="icon">
@@ -160,79 +271,115 @@ export function CasesClient() {
       {/* Cases Table */}
       <Card>
         <CardContent className="p-0">
-          {cases.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t.cases.caseNumber}</TableHead>
-                  <TableHead>{t.cases.caseTitle}</TableHead>
-                  <TableHead>{t.cases.status}</TableHead>
-                  <TableHead className="hidden lg:table-cell">{t.cases.type}</TableHead>
-                  <TableHead className="hidden md:table-cell">{t.cases.claimant}</TableHead>
-                  <TableHead className="hidden lg:table-cell">{t.cases.respondent}</TableHead>
-                  <TableHead className="hidden xl:table-cell">{t.cases.createdAt}</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cases.map((caseItem) => (
-                  <TableRow key={caseItem.id}>
-                    <TableCell>
-                      <Link
-                        href={`/cases/${caseItem.id}`}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {caseItem.code}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <span className="line-clamp-1">{caseItem.title}</span>
-                    </TableCell>
-                    <TableCell>
-                      <CaseStatusBadge status={caseItem.status} />
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {caseItem.arbitrationType}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <span className="line-clamp-1">{caseItem.claimantName}</span>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <span className="line-clamp-1">{caseItem.respondentName}</span>
-                    </TableCell>
-                    <TableCell className="hidden xl:table-cell text-muted-foreground">
-                      {caseItem.submittedAt}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/cases/${caseItem.id}`}>
-                              {t.common.view} {t.cases.title.toLowerCase()}
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/cases/${caseItem.id}/documents`}>
-                              {t.common.view} {t.documents.title.toLowerCase()}
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/cases/${caseItem.id}/payments`}>
-                              {t.common.view} {t.payments.title.toLowerCase()}
-                            </Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+          {loading ? (
+            <TableSkeleton />
+          ) : cases.length > 0 ? (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t.cases.caseNumber}</TableHead>
+                    <TableHead>{t.cases.caseTitle}</TableHead>
+                    <TableHead>{t.cases.status}</TableHead>
+                    <TableHead className="hidden lg:table-cell">{t.cases.type}</TableHead>
+                    <TableHead className="hidden md:table-cell">{t.cases.claimant}</TableHead>
+                    <TableHead className="hidden lg:table-cell">{t.cases.respondent}</TableHead>
+                    <TableHead className="hidden xl:table-cell">{t.cases.createdAt}</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {cases.map((caseItem) => (
+                    <TableRow key={caseItem.id}>
+                      <TableCell>
+                        <Link
+                          href={`/cases/${caseItem.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {caseItem.code}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <span className="line-clamp-1">{caseItem.title}</span>
+                      </TableCell>
+                      <TableCell>
+                        <CaseStatusBadge status={caseItem.status} />
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {caseItem.arbitrationType?.name}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <span className="line-clamp-1">{caseItem.claimantName}</span>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <span className="line-clamp-1">{caseItem.respondentName}</span>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-muted-foreground">
+                        {formatDate(caseItem.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/cases/${caseItem.id}`}>
+                                {t.common.view} {t.cases.title.toLowerCase()}
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/cases/${caseItem.id}/documents`}>
+                                {t.common.view} {t.documents.title.toLowerCase()}
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/cases/${caseItem.id}/payments`}>
+                                {t.common.view} {t.payments.title.toLowerCase()}
+                              </Link>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t px-4 py-3">
+                  <p className="text-sm text-muted-foreground">
+                    {total} {t.cases.title.toLowerCase()} encontrados
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                    >
+                      <ChevronLeft className="mr-1 h-4 w-4" />
+                      {t.common.previous}
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      {page} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                    >
+                      {t.common.next}
+                      <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <EmptyState
               title={t.common.noResults}

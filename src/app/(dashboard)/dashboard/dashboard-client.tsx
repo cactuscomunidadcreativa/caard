@@ -2,9 +2,10 @@
 
 /**
  * CAARD - Dashboard Client Component
- * Maneja traducciones y visualización del dashboard
+ * Maneja traducciones y visualización del dashboard con datos reales
  */
 
+import { useEffect, useState, useCallback } from "react";
 import {
   FileText,
   Clock,
@@ -18,6 +19,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/page-header";
 import { CaseStatusBadge } from "@/components/shared/case-status-badge";
 import { ROLE_LABELS } from "@/types";
@@ -28,96 +30,161 @@ interface DashboardClientProps {
   userRole: keyof typeof ROLE_LABELS;
 }
 
+interface CaseItem {
+  id: string;
+  code: string;
+  title: string;
+  status: string;
+  claimantName: string;
+  respondentName: string;
+  createdAt: string;
+  arbitrationType?: {
+    code: string;
+    name: string;
+  };
+}
+
+interface DeadlineItem {
+  id: string;
+  title: string;
+  dueAt: string;
+  daysRemaining: number;
+  isOverdue: boolean;
+  case: {
+    id: string;
+    code: string;
+    title: string;
+    status: string;
+  };
+}
+
+interface PaymentStats {
+  PENDING?: { count: number; amount: number };
+  REQUIRED?: { count: number; amount: number };
+  [key: string]: { count: number; amount: number } | undefined;
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("es-PE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatCurrency(amountCents: number): string {
+  return `S/ ${(amountCents / 100).toLocaleString("es-PE", {
+    minimumFractionDigits: 2,
+  })}`;
+}
+
 export function DashboardClient({ userName, userRole }: DashboardClientProps) {
   const { t } = useTranslation();
 
-  // Stats cards data (mock - will be replaced with real data)
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Data states
+  const [totalCases, setTotalCases] = useState(0);
+  const [recentCases, setRecentCases] = useState<CaseItem[]>([]);
+  const [deadlines, setDeadlines] = useState<DeadlineItem[]>([]);
+  const [deadlineCount, setDeadlineCount] = useState(0);
+  const [pendingPaymentAmount, setPendingPaymentAmount] = useState(0);
+  const [pendingPaymentCount, setPendingPaymentCount] = useState(0);
+  const [observedCount, setObservedCount] = useState(0);
+
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [casesRes, totalRes, observedRes, deadlinesRes, paymentsRes] =
+        await Promise.allSettled([
+          fetch("/api/cases?status=IN_PROCESS&pageSize=5"),
+          fetch("/api/cases?pageSize=1"),
+          fetch("/api/cases?status=OBSERVED&pageSize=1"),
+          fetch("/api/deadlines?upcoming=true"),
+          fetch("/api/payments?status=PENDING"),
+        ]);
+
+      // Recent cases (IN_PROCESS)
+      if (casesRes.status === "fulfilled" && casesRes.value.ok) {
+        const data = await casesRes.value.json();
+        setRecentCases(data.items || []);
+      }
+
+      // Total cases count
+      if (totalRes.status === "fulfilled" && totalRes.value.ok) {
+        const data = await totalRes.value.json();
+        setTotalCases(data.total || 0);
+      }
+
+      // Observed cases count
+      if (observedRes.status === "fulfilled" && observedRes.value.ok) {
+        const data = await observedRes.value.json();
+        setObservedCount(data.total || 0);
+      }
+
+      // Deadlines
+      if (deadlinesRes.status === "fulfilled" && deadlinesRes.value.ok) {
+        const data = await deadlinesRes.value.json();
+        setDeadlines(data.data || []);
+        setDeadlineCount(data.pagination?.total || 0);
+      }
+
+      // Payments
+      if (paymentsRes.status === "fulfilled" && paymentsRes.value.ok) {
+        const data = await paymentsRes.value.json();
+        const stats: PaymentStats = data.stats || {};
+        const pendingStats = stats.PENDING || stats.REQUIRED;
+        setPendingPaymentAmount(pendingStats?.amount || 0);
+        setPendingPaymentCount(pendingStats?.count || data.total || 0);
+      }
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+      setError("Error al cargar los datos del dashboard");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // Stats cards data
   const stats = [
     {
       title: t.dashboard.activeCases,
-      value: "12",
-      change: "+2 " + t.common.showMore.toLowerCase(),
+      value: loading ? null : String(totalCases),
+      change: loading ? "" : `${totalCases} ${t.cases.title.toLowerCase()}`,
       icon: FileText,
       href: "/cases?status=IN_PROCESS",
     },
     {
       title: t.dashboard.upcomingDeadlines,
-      value: "3",
-      change: t.cases.deadlines,
+      value: loading ? null : String(deadlineCount),
+      change: loading ? "" : t.cases.deadlines,
       icon: Clock,
       href: "/cases?deadlines=upcoming",
-      urgent: true,
+      urgent: deadlineCount > 0,
     },
     {
       title: t.dashboard.pendingPayments,
-      value: "S/ 2,450.00",
-      change: "2 " + t.payments.title.toLowerCase(),
+      value: loading ? null : formatCurrency(pendingPaymentAmount),
+      change: loading
+        ? ""
+        : `${pendingPaymentCount} ${t.payments.title.toLowerCase()}`,
       icon: CreditCard,
       href: "/payments?status=PENDING",
     },
     {
       title: t.cases.statusObserved,
-      value: "1",
-      change: t.dashboard.pendingTasks,
+      value: loading ? null : String(observedCount),
+      change: loading ? "" : t.dashboard.pendingTasks,
       icon: AlertTriangle,
       href: "/cases?status=OBSERVED",
-      urgent: true,
-    },
-  ];
-
-  // Recent cases (mock data)
-  const recentCases = [
-    {
-      id: "1",
-      code: "EXP-2026-CAARD-000123",
-      title: "Incumplimiento contractual",
-      status: "IN_PROCESS" as const,
-      claimant: "Empresa ABC S.A.C.",
-      respondent: "Constructora XYZ S.A.",
-      updatedAt: "2h",
-    },
-    {
-      id: "2",
-      code: "EXP-2026-CAARD-000122",
-      title: "Resolución de contrato",
-      status: "UNDER_REVIEW" as const,
-      claimant: "Juan Pérez García",
-      respondent: "Inmobiliaria Sol S.A.",
-      updatedAt: "5h",
-    },
-    {
-      id: "3",
-      code: "EXP-2026-CAARD-000121",
-      title: "Cobro de deuda comercial",
-      status: "OBSERVED" as const,
-      claimant: "Comercializadora Norte S.A.C.",
-      respondent: "Distribuidora Sur E.I.R.L.",
-      updatedAt: "1d",
-    },
-  ];
-
-  // Upcoming deadlines (mock data)
-  const upcomingDeadlines = [
-    {
-      id: "1",
-      caseCode: "EXP-2026-CAARD-000123",
-      title: "Presentación de contestación",
-      dueAt: "28 Ene 2026",
-      daysLeft: 2,
-    },
-    {
-      id: "2",
-      caseCode: "EXP-2026-CAARD-000120",
-      title: "Audiencia de pruebas",
-      dueAt: "30 Ene 2026",
-      daysLeft: 4,
-    },
-    {
-      id: "3",
-      caseCode: "EXP-2026-CAARD-000118",
-      title: "Alegatos finales",
-      dueAt: "02 Feb 2026",
-      daysLeft: 7,
+      urgent: observedCount > 0,
     },
   ];
 
@@ -134,6 +201,21 @@ export function DashboardClient({ userName, userRole }: DashboardClientProps) {
         }}
       />
 
+      {/* Error banner */}
+      {error && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          {error}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-2"
+            onClick={fetchDashboardData}
+          >
+            Reintentar
+          </Button>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
@@ -149,13 +231,24 @@ export function DashboardClient({ userName, userRole }: DashboardClientProps) {
               />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">{stat.change}</p>
+              {stat.value === null ? (
+                <>
+                  <Skeleton className="h-8 w-20 mb-1" />
+                  <Skeleton className="h-3 w-28" />
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground">{stat.change}</p>
+                </>
+              )}
               <Link
                 href={stat.href}
                 className="absolute inset-0 rounded-lg ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <span className="sr-only">{t.common.view} {stat.title}</span>
+                <span className="sr-only">
+                  {t.common.view} {stat.title}
+                </span>
               </Link>
             </CardContent>
           </Card>
@@ -177,33 +270,53 @@ export function DashboardClient({ userName, userRole }: DashboardClientProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentCases.map((caseItem) => (
-                <div
-                  key={caseItem.id}
-                  className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
-                >
-                  <div className="space-y-1">
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg border p-4 space-y-2"
+                  >
                     <div className="flex items-center gap-2">
-                      <Link
-                        href={`/cases/${caseItem.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {caseItem.code}
-                      </Link>
-                      <CaseStatusBadge status={caseItem.status} />
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-5 w-20" />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {caseItem.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {caseItem.claimant} vs. {caseItem.respondent}
-                    </p>
+                    <Skeleton className="h-4 w-64" />
+                    <Skeleton className="h-3 w-56" />
                   </div>
-                  <div className="text-right text-xs text-muted-foreground">
-                    {caseItem.updatedAt}
+                ))
+              ) : recentCases.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No hay expedientes recientes
+                </p>
+              ) : (
+                recentCases.map((caseItem) => (
+                  <div
+                    key={caseItem.id}
+                    className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/cases/${caseItem.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {caseItem.code}
+                        </Link>
+                        <CaseStatusBadge status={caseItem.status as any} />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {caseItem.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {caseItem.claimantName} vs. {caseItem.respondentName}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs text-muted-foreground">
+                      {formatDate(caseItem.createdAt)}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -221,29 +334,53 @@ export function DashboardClient({ userName, userRole }: DashboardClientProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {upcomingDeadlines.map((deadline) => (
-                <div
-                  key={deadline.id}
-                  className="flex items-center justify-between rounded-lg border p-4"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">{deadline.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {deadline.caseCode}
-                    </p>
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg border p-4 space-y-2"
+                  >
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-48" />
                   </div>
-                  <div className="text-right">
-                    <Badge
-                      variant={deadline.daysLeft <= 3 ? "destructive" : "secondary"}
-                    >
-                      {deadline.daysLeft} {deadline.daysLeft === 1 ? "día" : "días"}
-                    </Badge>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {deadline.dueAt}
-                    </p>
+                ))
+              ) : deadlines.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No hay plazos próximos
+                </p>
+              ) : (
+                deadlines.map((deadline) => (
+                  <div
+                    key={deadline.id}
+                    className="flex items-center justify-between rounded-lg border p-4"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{deadline.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {deadline.case.code}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <Badge
+                        variant={
+                          deadline.isOverdue || deadline.daysRemaining <= 3
+                            ? "destructive"
+                            : "secondary"
+                        }
+                      >
+                        {deadline.isOverdue
+                          ? "Vencido"
+                          : `${deadline.daysRemaining} ${
+                              deadline.daysRemaining === 1 ? "día" : "días"
+                            }`}
+                      </Badge>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatDate(deadline.dueAt)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
