@@ -134,12 +134,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       // Initial sign in - add custom fields to token
       if (user) {
-        token.id = user.id;
-        token.role = user.role || "DEMANDANTE";
-        token.centerId = user.centerId || null;
+        // Para OAuth (Google), cargar rol y centerId desde la DB
+        if (account?.provider !== "credentials" && user.email) {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            select: { id: true, role: true, centerId: true },
+          });
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.role = dbUser.role;
+            token.centerId = dbUser.centerId || null;
+          } else {
+            token.id = user.id;
+            token.role = "DEMANDANTE";
+            token.centerId = null;
+          }
+        } else {
+          token.id = user.id;
+          token.role = user.role || "DEMANDANTE";
+          token.centerId = user.centerId || null;
+        }
       }
       return token;
     },
@@ -154,15 +171,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
 
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       // For OAuth providers, check if user exists and is active
       if (account?.provider !== "credentials" && user.email) {
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email },
-          select: { isActive: true },
+          select: { id: true, isActive: true, name: true, image: true },
         });
 
-        if (existingUser && !existingUser.isActive) {
+        if (existingUser) {
+          if (!existingUser.isActive) {
+            return false;
+          }
+          // Actualizar nombre e imagen si están vacíos
+          const updates: any = {};
+          if (!existingUser.name && user.name) updates.name = user.name;
+          if (!existingUser.image && user.image) updates.image = user.image;
+          if (Object.keys(updates).length > 0) {
+            await prisma.user.update({ where: { id: existingUser.id }, data: updates });
+          }
+        } else {
+          // Usuario no existe en nuestra DB → no permitir login con Google
+          // Solo usuarios registrados pueden entrar
           return false;
         }
       }
