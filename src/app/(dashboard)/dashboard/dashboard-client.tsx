@@ -196,7 +196,7 @@ export function DashboardClient({ userName, userRole }: DashboardClientProps) {
         description={`${ROLE_LABELS[userRole]} • Dashboard CAARD`}
         action={{
           label: t.sidebar.newCase,
-          href: "/cases/new",
+          href: "/cases/quick-new",
           icon: Plus,
         }}
       />

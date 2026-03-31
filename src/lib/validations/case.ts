@@ -90,3 +90,18 @@ export const caseFiltersSchema = z.object({
 });
 
 export type CaseFilters = z.infer<typeof caseFiltersSchema>;
+
+// Esquema simplificado para creación rápida desde admin/secretaría
+export const quickCreateCaseSchema = z.object({
+  arbitrationTypeId: z.string().min(1, "Seleccione tipo de arbitraje"),
+  title: z.string().min(5, "Título requerido").max(300),
+  claimantName: z.string().min(2, "Nombre del demandante requerido"),
+  claimantEmail: z.string().email("Email inválido").optional().or(z.literal("")),
+  respondentName: z.string().min(2, "Nombre del demandado requerido"),
+  respondentEmail: z.string().email("Email inválido").optional().or(z.literal("")),
+  currency: z.enum(["PEN", "USD"]).default("PEN"),
+  disputeAmount: z.number().positive().optional(),
+  tribunalMode: z.enum(["SOLE_ARBITRATOR", "TRIBUNAL_3"]).default("TRIBUNAL_3"),
+});
+
+export type QuickCreateCaseInput = z.infer<typeof quickCreateCaseSchema>;

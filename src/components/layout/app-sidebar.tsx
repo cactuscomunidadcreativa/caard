@@ -220,7 +220,7 @@ function useNavigationItems() {
     },
     {
       title: t.sidebar.newCase,
-      href: "/cases/new",
+      href: "/cases/quick-new",
       icon: FilePlus,
       roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA"],
     },
