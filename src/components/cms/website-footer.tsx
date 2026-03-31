@@ -293,7 +293,7 @@ export function WebsiteFooter({ config }: WebsiteFooterProps) {
               <ul className="space-y-4">
                 <li>
                   <a
-                    href={`tel:${config.contactPhone || "+51977236143"}`}
+                    href={`tel:${config.contactPhone || "+51913755003"}`}
                     className="flex items-center gap-4 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors group"
                   >
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#D66829]/20 group-hover:bg-[#D66829] transition-colors">
@@ -301,7 +301,7 @@ export function WebsiteFooter({ config }: WebsiteFooterProps) {
                     </div>
                     <div>
                       <p className="text-xs text-white/50">{t.website.phone}</p>
-                      <p className="font-medium">{config.contactPhone || "(511) 977 236 143"}</p>
+                      <p className="font-medium">{config.contactPhone || "(51) 913 755 003"}</p>
                     </div>
                   </a>
                 </li>

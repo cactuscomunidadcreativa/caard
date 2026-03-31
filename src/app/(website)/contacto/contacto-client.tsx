@@ -36,7 +36,7 @@ export function ContactoClient() {
       icon: Building2,
       title: t.sidebar.admin,
       email: "administracion@caardpe.com",
-      phone: "+51 977 236 143",
+      phone: "+51 913 755 003",
       description: "Consultas administrativas, pagos y facturación.",
     },
     {

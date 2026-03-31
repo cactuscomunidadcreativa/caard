@@ -128,9 +128,9 @@ export function PublicHeader() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between text-sm">
             <div className="hidden md:flex items-center gap-6">
-              <a href="tel:+51977236143" className="flex items-center gap-2 hover:text-[#D66829] transition-colors">
+              <a href="tel:+51913755003" className="flex items-center gap-2 hover:text-[#D66829] transition-colors">
                 <Phone className="h-3 w-3" />
-                +51 977 236 143
+                +51 913 755 003
               </a>
               <a href="mailto:administracion@caardpe.com" className="flex items-center gap-2 hover:text-[#D66829] transition-colors">
                 <Mail className="h-3 w-3" />

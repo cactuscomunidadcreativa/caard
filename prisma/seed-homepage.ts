@@ -741,7 +741,7 @@ async function main() {
         buttonText: "Solicitar Emergencia",
         buttonUrl: "/solicitud-arbitral?tipo=emergencia",
         secondaryButtonText: "Llamar ahora",
-        secondaryButtonUrl: "tel:+51977236143",
+        secondaryButtonUrl: "tel:+51913755003",
       },
       bgColor: "#0B2A5B",
       padding: "lg",

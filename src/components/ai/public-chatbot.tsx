@@ -127,7 +127,7 @@ const KNOWLEDGE_BASE: KBEntry[] = [
       "sede",
     ],
     answer:
-      "Nuestra sede se encuentra en:\n\n\u{1F4CD} Jr. Aldebarán No. 596, oficina 1409 – Edificio IQ Surco, Santiago de Surco, Lima, Per\u00FA\n\n\u{1F552} Horario de atenci\u00F3n: Lunes a Viernes de 9:00 AM a 6:00 PM",
+      "Nuestra sede se encuentra en:\n\n\u{1F4CD} Jr. Aldebarán No. 596, oficina 1409, Santiago de Surco. Edificio IQ Surco\n\n\u{1F552} Horario de atenci\u00F3n: Lunes a Viernes de 9:00 AM a 6:00 PM",
   },
   // Contact
   {
@@ -145,7 +145,7 @@ const KNOWLEDGE_BASE: KBEntry[] = [
       "mesa de partes",
     ],
     answer:
-      "Puedes contactarnos por los siguientes medios:\n\n\u{1F4E7} Email: info@caardpe.com\n\u{1F4F1} WhatsApp: +51 977 236 143\n\n\u{1F552} Horario de atenci\u00F3n: Lunes a Viernes de 9:00 AM a 6:00 PM\n\u{1F4CD} Jr. Aldebarán No. 596, oficina 1409 – Edificio IQ Surco, Santiago de Surco, Lima, Per\u00FA",
+      "Puedes contactarnos por los siguientes medios:\n\n\u{1F4E7} Email: info@caardpe.com\n\u{1F4F1} WhatsApp: +51 913 755 003\n\n\u{1F552} Horario de atenci\u00F3n: Lunes a Viernes de 9:00 AM a 6:00 PM\n\u{1F4CD} Jr. Aldebarán No. 596, oficina 1409, Santiago de Surco. Edificio IQ Surco",
   },
   // Schedule
   {
@@ -161,7 +161,7 @@ const KNOWLEDGE_BASE: KBEntry[] = [
       "cuándo",
     ],
     answer:
-      "Nuestro horario de atenci\u00F3n es:\n\n\u{1F552} Lunes a Viernes de 9:00 AM a 6:00 PM\n\u{1F4CD} Jr. Aldebarán No. 596, oficina 1409 – Edificio IQ Surco, Santiago de Surco, Lima, Per\u00FA",
+      "Nuestro horario de atenci\u00F3n es:\n\n\u{1F552} Lunes a Viernes de 9:00 AM a 6:00 PM\n\u{1F4CD} Jr. Aldebarán No. 596, oficina 1409, Santiago de Surco. Edificio IQ Surco",
   },
   // Courses
   {
@@ -413,7 +413,7 @@ function findResponse(input: string): { answer: string; cta?: CTAButton } {
   // Fallback
   return {
     answer:
-      "No estoy seguro de c\u00F3mo ayudarte con eso. Puedes preguntarme sobre:\n\n\u2022 Informaci\u00F3n de CAARD\n\u2022 Cursos y capacitaciones\n\u2022 Tienda y productos\n\u2022 Proceso de arbitraje\n\u2022 Laudos arbitrales\n\u2022 Contacto y ubicaci\u00F3n\n\nO si prefieres, cont\u00E1ctanos directamente al correo info@caardpe.com o al WhatsApp +51 977 236 143.",
+      "No estoy seguro de c\u00F3mo ayudarte con eso. Puedes preguntarme sobre:\n\n\u2022 Informaci\u00F3n de CAARD\n\u2022 Cursos y capacitaciones\n\u2022 Tienda y productos\n\u2022 Proceso de arbitraje\n\u2022 Laudos arbitrales\n\u2022 Contacto y ubicaci\u00F3n\n\nO si prefieres, cont\u00E1ctanos directamente al correo info@caardpe.com o al WhatsApp +51 913 755 003.",
   };
 }
 

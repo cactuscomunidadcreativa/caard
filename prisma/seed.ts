@@ -30,11 +30,13 @@ const HOLIDAYS_PERU = [
   // Feriados fijos (se repiten cada año) - usamos 2024 como año base para recurrentes
   { date: new Date("2024-01-01"), name: "Año Nuevo", isRecurring: true },
   { date: new Date("2024-05-01"), name: "Día del Trabajo", isRecurring: true },
+  { date: new Date("2024-06-07"), name: "Batalla de Arica", isRecurring: true },
   { date: new Date("2024-06-29"), name: "San Pedro y San Pablo", isRecurring: true },
   { date: new Date("2024-07-28"), name: "Fiestas Patrias", isRecurring: true },
   { date: new Date("2024-07-29"), name: "Fiestas Patrias", isRecurring: true },
   { date: new Date("2024-08-06"), name: "Batalla de Junín", isRecurring: true },
   { date: new Date("2024-08-30"), name: "Santa Rosa de Lima", isRecurring: true },
+  { date: new Date("2024-09-23"), name: "Día de la Primavera / Día de la Juventud", isRecurring: true },
   { date: new Date("2024-10-08"), name: "Combate de Angamos", isRecurring: true },
   { date: new Date("2024-11-01"), name: "Día de Todos los Santos", isRecurring: true },
   { date: new Date("2024-12-08"), name: "Inmaculada Concepción", isRecurring: true },
@@ -49,6 +51,12 @@ const HOLIDAYS_PERU = [
   { date: new Date("2026-04-03"), name: "Viernes Santo 2026" },
   { date: new Date("2027-03-25"), name: "Jueves Santo 2027" },
   { date: new Date("2027-03-26"), name: "Viernes Santo 2027" },
+  { date: new Date("2028-04-13"), name: "Jueves Santo 2028" },
+  { date: new Date("2028-04-14"), name: "Viernes Santo 2028" },
+  { date: new Date("2029-03-29"), name: "Jueves Santo 2029" },
+  { date: new Date("2029-03-30"), name: "Viernes Santo 2029" },
+  { date: new Date("2030-04-18"), name: "Jueves Santo 2030" },
+  { date: new Date("2030-04-19"), name: "Viernes Santo 2030" },
 ];
 
 // Configuración de tasas
@@ -108,10 +116,10 @@ async function main() {
   console.log("⚖️  2. Creando Tipos de Arbitraje...");
 
   const tiposArbitraje = [
-    { code: "COMERCIAL", name: "Arbitraje Comercial", description: "Controversias derivadas de relaciones comerciales y mercantiles.", kind: "INSTITUTIONAL" as const, tribunalMode: "SOLE_ARBITRATOR" as const, baseFeeCents: 50000, currency: "PEN" }, // S/ 500 + IGV = S/ 590
-    { code: "CONTRATACION_PUBLICA", name: "Arbitraje de Contratación Pública", description: "Controversias derivadas de contrataciones con el Estado.", kind: "INSTITUTIONAL" as const, tribunalMode: "TRIBUNAL_3" as const, baseFeeCents: 50000, currency: "PEN" }, // S/ 500 + IGV = S/ 590
-    { code: "EMERGENCIA", name: "Arbitraje de Emergencia", description: "Procedimiento acelerado para medidas urgentes.", kind: "INSTITUTIONAL" as const, tribunalMode: "SOLE_ARBITRATOR" as const, baseFeeCents: 180000, currency: "PEN" }, // S/ 1,800 + IGV = S/ 2,124
-    { code: "INTERNACIONAL", name: "Arbitraje Internacional", description: "Controversias con elementos de extranjería.", kind: "INSTITUTIONAL" as const, tribunalMode: "TRIBUNAL_3" as const, baseFeeCents: 200000, currency: "USD" },
+    { code: "SOLICITUD_ARBITRAJE", name: "Solicitud de Arbitraje", description: "Solicitud de arbitraje institucional", kind: "INSTITUTIONAL" as const, tribunalMode: "SOLE_ARBITRATOR" as const, baseFeeCents: 50000, currency: "PEN" }, // S/ 500 + IGV = S/ 590
+    { code: "SOLICITUD_INTERNACIONAL", name: "Solicitud de Arbitraje Internacional", description: "Solicitud de arbitraje internacional", kind: "INSTITUTIONAL" as const, tribunalMode: "TRIBUNAL_3" as const, baseFeeCents: 40000, currency: "USD" }, // $400 + IGV = $472
+    { code: "EMERGENCIA", name: "Solicitud de Arbitraje de Emergencia", description: "Procedimiento acelerado para medidas urgentes", kind: "INSTITUTIONAL" as const, tribunalMode: "SOLE_ARBITRATOR" as const, baseFeeCents: 180000, currency: "PEN" }, // S/ 1,800 + IGV = S/ 2,124
+    { code: "EMERGENCIA_INTERNACIONAL", name: "Solicitud de Arbitraje de Emergencia Internacional", description: "Procedimiento de emergencia internacional", kind: "INSTITUTIONAL" as const, tribunalMode: "SOLE_ARBITRATOR" as const, baseFeeCents: 150000, currency: "USD" }, // $1,500 + IGV = $1,770
   ];
 
   for (const tipo of tiposArbitraje) {
@@ -321,10 +329,10 @@ async function main() {
       accentColor: "#D66829",
       instagramUrl: "https://www.instagram.com/caardpe",
       linkedinUrl: "https://www.linkedin.com/company/caardpe/",
-      whatsappNumber: "+51977236143",
+      whatsappNumber: "+51913755003",
       contactEmail: "info@caardpe.com",
-      contactPhone: "(511) 977 236 143",
-      contactAddress: "Jr. Aldebarán No. 596, oficina 1409 – Edificio IQ Surco, Santiago de Surco, Lima, Perú",
+      contactPhone: "(51) 913 755 003",
+      contactAddress: "Jr. Aldebarán No. 596, oficina 1409, Santiago de Surco. Edificio IQ Surco",
       defaultMetaTitle: "CAARD | Centro de Arbitraje",
       defaultMetaDescription: "Centro de Administración de Arbitrajes y Resolución de Disputas. Impulsamos el arbitraje como medio eficaz para la solución de controversias.",
       footerText: "El Centro de Administración de Arbitrajes y Resolución de Disputas es una institución arbitral que busca impulsar el arbitraje como medio eficaz para la solución de controversias.",

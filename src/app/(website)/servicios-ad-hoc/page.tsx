@@ -342,7 +342,7 @@ export default async function ServiciosAdHocPage() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <a href="tel:+51977236143">
+              <a href="tel:+51913755003">
                 <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
                   <Phone className="mr-2 h-5 w-5" />
                   Llamar

@@ -53,7 +53,7 @@ export default async function WebsiteLayout({
   const { menuItems, config } = await getWebsiteData();
 
   // Número de WhatsApp por defecto si no está configurado
-  const whatsappNumber = config.whatsappNumber || "+51977236143";
+  const whatsappNumber = config.whatsappNumber || "+51913755003";
 
   return (
     <>

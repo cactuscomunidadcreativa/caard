@@ -37,10 +37,10 @@ async function main() {
       accentColor: "#D66829",
       instagramUrl: "https://www.instagram.com/caardpe",
       linkedinUrl: "https://www.linkedin.com/company/caardpe/",
-      whatsappNumber: "+51977236143",
-      contactEmail: "mesadepartes@caardpe.com",
-      contactPhone: "(511) 977 236 143",
-      contactAddress: "Jr Paramonga 311, oficina 702, Santiago de Surco, Lima, Perú",
+      whatsappNumber: "+51913755003",
+      contactEmail: "info@caardpe.com",
+      contactPhone: "(51) 913 755 003",
+      contactAddress: "Jr. Aldebarán No. 596, oficina 1409, Santiago de Surco. Edificio IQ Surco",
       defaultMetaTitle: "CAARD | Centro de Arbitraje",
       defaultMetaDescription: "Centro de Administración de Arbitrajes y Resolución de Disputas. Impulsamos el arbitraje como medio eficaz para la solución de controversias.",
       footerText: "El Centro de Administración de Arbitrajes y Resolución de Disputas es una institución arbitral que busca impulsar el arbitraje como medio eficaz para la solución de controversias, innovando en sus prácticas y brindando servicios transparentes y eficientes.",
@@ -677,7 +677,7 @@ async function main() {
               },
               {
                 title: "Administración",
-                description: "administracion@caardpe.com\n(511) 977 236 143",
+                description: "administracion@caardpe.com\n(51) 913 755 003",
                 icon: "phone",
               },
               {

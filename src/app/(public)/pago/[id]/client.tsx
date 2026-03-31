@@ -256,9 +256,9 @@ export function PaymentPageClient({ paymentData }: PaymentPageClientProps) {
                 ¿Necesitas ayuda?
               </h3>
               <div className="space-y-3 text-sm">
-                <a href="tel:+51977236143" className="flex items-center gap-2 text-slate-600 hover:text-[#D66829]">
+                <a href="tel:+51913755003" className="flex items-center gap-2 text-slate-600 hover:text-[#D66829]">
                   <Phone className="h-4 w-4" />
-                  (511) 977 236 143
+                  (51) 913 755 003
                 </a>
                 <a href="mailto:mesadepartes@caardpe.com" className="flex items-center gap-2 text-slate-600 hover:text-[#D66829]">
                   <Mail className="h-4 w-4" />

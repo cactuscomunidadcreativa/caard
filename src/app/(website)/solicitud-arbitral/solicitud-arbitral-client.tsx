@@ -880,8 +880,8 @@ export function SolicitudArbitralClient() {
         {/* Nota de ayuda */}
         <p className="text-center text-sm text-muted-foreground mt-8">
           {t.website.needHelp} {t.website.contactUsAt}{" "}
-          <a href="tel:+51977236143" className="text-[#D66829] hover:underline">
-            (511) 977 236 143
+          <a href="tel:+51913755003" className="text-[#D66829] hover:underline">
+            (51) 913 755 003
           </a>{" "}
           {t.website.orWriteTo}{" "}
           <a href="mailto:mesadepartes@caardpe.com" className="text-[#D66829] hover:underline">

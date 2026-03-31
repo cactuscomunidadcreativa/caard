@@ -112,8 +112,8 @@ export function WebsiteHeader({
   // Usar config si está disponible
   const displayName = config?.siteName || siteName;
   const displayLogo = config?.logoUrl || logoUrl;
-  const phone = config?.contactPhone || "(51) 977 236 143";
-  const email = config?.contactEmail || "mesadepartes@caardpe.com";
+  const phone = config?.contactPhone || "(51) 913 755 003";
+  const email = config?.contactEmail || "info@caardpe.com";
 
   // Detectar scroll para cambiar el estilo del header
   useEffect(() => {

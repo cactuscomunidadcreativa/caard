@@ -36,7 +36,7 @@ const sedes = [
     district: "Santiago de Surco",
     city: "Lima",
     country: "Perú",
-    phone: "+51 977 236 143",
+    phone: "+51 913 755 003",
     email: "administracion@caardpe.com",
     hours: "Lun - Vie: 9:00 AM - 6:00 PM",
     isPrincipal: true,
@@ -244,7 +244,7 @@ export default async function SedesPage() {
                     Agendar Cita
                   </Button>
                 </Link>
-                <a href="tel:+51977236143">
+                <a href="tel:+51913755003">
                   <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
                     <Phone className="h-4 w-4 mr-2" />
                     Llamar Ahora

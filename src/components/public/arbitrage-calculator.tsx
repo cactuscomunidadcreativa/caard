@@ -71,10 +71,17 @@ const ARBITRATOR_FEE_TIERS = [
 
 // Gastos adicionales (montos SIN IGV)
 const ADDITIONAL_FEES = {
-  registrationFee: 500, // Tasa de presentación de solicitud de arbitraje (sin IGV)
   notificationFee: 150, // Gastos de notificación por parte (sin IGV)
   audiencePerHour: 200, // Gastos por hora de audiencia
-  emergencyFee: 1800, // Tasa fija de arbitraje de emergencia (sin IGV)
+  emergencyFee: 1800, // Tasa fija de arbitraje de emergencia S/ 1,800 (sin IGV) - solo para tipos no-emergencia con toggle
+};
+
+// Tasa de presentación por tipo de arbitraje (en centimos, sin IGV)
+const REGISTRATION_FEES: Record<string, { amountCents: number; currency: string }> = {
+  solicitud_arbitraje: { amountCents: 50000, currency: "PEN" }, // S/ 500
+  solicitud_internacional: { amountCents: 40000, currency: "USD" }, // $400
+  emergencia: { amountCents: 180000, currency: "PEN" }, // S/ 1,800
+  emergencia_internacional: { amountCents: 150000, currency: "USD" }, // $1,500
 };
 
 // Factor para cuantía indeterminada: 3.5% del valor del contrato
@@ -103,6 +110,9 @@ function calculateFees(
   isEmergency: boolean,
   numberOfParties: number
 ): CalculationResult {
+  const isInternational = arbitrationType === "solicitud_internacional" || arbitrationType === "emergencia_internacional";
+  const isEmergencyType = arbitrationType === "emergencia" || arbitrationType === "emergencia_internacional";
+
   // Encontrar tarifa administrativa
   const adminTier = ADMIN_FEE_TIERS.find(
     (tier) => amount >= tier.min && amount < tier.max
@@ -120,11 +130,13 @@ function calculateFees(
   // Multiplicar por número de árbitros
   arbitratorFee = arbitratorFee * numberOfArbitrators;
 
-  // Tasa de arbitraje de emergencia (S/ 1800 + IGV, es tasa fija)
-  const emergencyFee = isEmergency ? ADDITIONAL_FEES.emergencyFee : 0;
+  // Tasa de emergencia: 0 para tipos de emergencia (ya está incluida en la tasa de presentación)
+  const emergencyFee = (isEmergency && !isEmergencyType) ? ADDITIONAL_FEES.emergencyFee : 0;
 
-  // Gastos fijos
-  const registrationFee = ADDITIONAL_FEES.registrationFee;
+  // Tasa de presentación según tipo de arbitraje (convertir de centimos a soles/dólares)
+  const regFeeConfig = REGISTRATION_FEES[arbitrationType] || REGISTRATION_FEES.solicitud_arbitraje;
+  const registrationFee = regFeeConfig.amountCents / 100;
+
   const notificationFee = ADDITIONAL_FEES.notificationFee * numberOfParties;
 
   // Calcular subtotal
@@ -132,8 +144,9 @@ function calculateFees(
 
   // IGV (18%) - Solo aplica a: tasa de presentación, gastos del centro (admin), gastos de notificación
   // NO aplica a honorarios de árbitros
+  // Para tipos internacionales, IGV no aplica
   const igvBase = registrationFee + adminFee + notificationFee + emergencyFee;
-  const igv = igvBase * 0.18;
+  const igv = isInternational ? 0 : igvBase * 0.18;
 
   // Total
   const total = subtotal + igv;
@@ -164,19 +177,19 @@ export function ArbitrageCalculator() {
   // Estado del formulario
   const [amount, setAmount] = useState<string>("");
   const [currency, setCurrency] = useState<"PEN" | "USD">("PEN");
-  const [arbitrationType, setArbitrationType] = useState("civil_comercial");
+  const [arbitrationType, setArbitrationType] = useState("solicitud_arbitraje");
   const [numberOfArbitrators, setNumberOfArbitrators] = useState(1);
   const [numberOfParties, setNumberOfParties] = useState(2);
   const [isEmergency, setIsEmergency] = useState(false);
   const [isIndeterminate, setIsIndeterminate] = useState(false);
   const [contractValue, setContractValue] = useState<string>("");
 
-  // Tipos de arbitraje con traducciones
+  // Tipos de arbitraje
   const ARBITRATION_TYPES = [
-    { value: "civil_comercial", label: t.calculator.civilCommercial },
-    { value: "contratacion_publica", label: t.calculator.publicContracting },
-    { value: "laboral", label: t.calculator.labor },
-    { value: "consumidor", label: t.calculator.consumer },
+    { value: "solicitud_arbitraje", label: "Solicitud de Arbitraje" },
+    { value: "solicitud_internacional", label: "Solicitud de Arbitraje Internacional" },
+    { value: "emergencia", label: "Solicitud de Arbitraje de Emergencia" },
+    { value: "emergencia_internacional", label: "Solicitud de Arbitraje de Emergencia Internacional" },
   ];
 
   // Calcular resultado
@@ -213,11 +226,21 @@ export function ArbitrageCalculator() {
     return `${symbol} ${value.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  // Auto-switch currency for international types
+  const handleArbitrationTypeChange = (value: string) => {
+    setArbitrationType(value);
+    if (value === "solicitud_internacional" || value === "emergencia_internacional") {
+      setCurrency("USD");
+    } else {
+      setCurrency("PEN");
+    }
+  };
+
   // Limpiar formulario
   const handleReset = () => {
     setAmount("");
     setCurrency("PEN");
-    setArbitrationType("civil_comercial");
+    setArbitrationType("solicitud_arbitraje");
     setNumberOfArbitrators(1);
     setNumberOfParties(2);
     setIsEmergency(false);
@@ -248,7 +271,7 @@ export function ArbitrageCalculator() {
                     <Scale className="h-4 w-4 text-[#D66829]" />
                     {t.calculator.arbitrationType}
                   </Label>
-                  <Select value={arbitrationType} onValueChange={setArbitrationType}>
+                  <Select value={arbitrationType} onValueChange={handleArbitrationTypeChange}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

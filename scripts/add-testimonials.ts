@@ -163,7 +163,7 @@ async function main() {
                 role: "Secretaria General",
                 image: "/images/team/anais-boluarte.jpg",
                 email: "aboluarte@caardpe.com",
-                phone: "(511) 977 236 143",
+                phone: "(51) 913 755 003",
                 linkedin: "https://www.linkedin.com/in/anais-boluarte/",
                 bio: "Abogada especializada en contrataciones con el Estado, con amplia experiencia en la administración de procesos arbitrales. Lidera la Secretaría General de CAARD, garantizando la correcta tramitación de los procedimientos arbitrales y brindando soporte tanto a las partes como a los tribunales arbitrales.",
               },

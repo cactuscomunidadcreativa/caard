@@ -133,8 +133,8 @@ export function SecretariaGeneralClient() {
                       </div>
                       <div>
                         <p className="text-sm text-slate-500">{t.website.phone}</p>
-                        <a href="tel:+51977236143" className="text-[#D66829] hover:underline font-medium">
-                          +51 977 236 143
+                        <a href="tel:+51913755003" className="text-[#D66829] hover:underline font-medium">
+                          +51 913 755 003
                         </a>
                       </div>
                     </div>

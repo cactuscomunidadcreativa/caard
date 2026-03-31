@@ -909,7 +909,7 @@ function ContactFormSection({ section, paddingClass, bgStyle }: any) {
 
             <div className="space-y-6">
               <a
-                href="tel:+51977236143"
+                href="tel:+51913755003"
                 className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 hover:bg-[#D66829]/10 transition-colors group"
               >
                 <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#D66829] to-[#c45a22] text-white shadow-lg group-hover:scale-110 transition-transform">
@@ -917,7 +917,7 @@ function ContactFormSection({ section, paddingClass, bgStyle }: any) {
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Teléfono</p>
-                  <p className="font-semibold text-slate-900">(511) 977 236 143</p>
+                  <p className="font-semibold text-slate-900">(51) 913 755 003</p>
                 </div>
               </a>
 
