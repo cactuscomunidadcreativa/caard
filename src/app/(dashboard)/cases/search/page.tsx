@@ -7,6 +7,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -36,11 +37,24 @@ export default function CaseSearchPage() {
 
   const handleSearch = async () => {
     setIsSearching(true);
-    // TODO: Implementar búsqueda real
-    setTimeout(() => {
+    try {
+      const params = new URLSearchParams();
+      if (searchTerm) params.set("search", searchTerm);
+      if (filters.status) params.set("status", filters.status);
+      params.set("pageSize", "50");
+
+      const res = await fetch(`/api/cases?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setResults(data.items || []);
+      } else {
+        setResults([]);
+      }
+    } catch {
       setResults([]);
+    } finally {
       setIsSearching(false);
-    }, 1000);
+    }
   };
 
   const clearFilters = () => {
@@ -220,20 +234,27 @@ export default function CaseSearchPage() {
           ) : (
             <div className="space-y-4">
               {results.map((result) => (
-                <div
+                <Link
                   key={result.id}
-                  className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                  href={`/cases/${result.id}`}
+                  className="block border rounded-lg p-4 hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-medium">{result.code}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {result.title}
+                      <div className="font-semibold text-[#0B2A5B]">{result.code}</div>
+                      <div className="text-sm text-muted-foreground">{result.title}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {result.claimantName} vs. {result.respondentName}
                       </div>
                     </div>
-                    <Badge>{result.status}</Badge>
+                    <div className="text-right">
+                      <Badge>{result.status}</Badge>
+                      {result.arbitrationType && (
+                        <div className="text-xs text-muted-foreground mt-1">{result.arbitrationType.name}</div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
