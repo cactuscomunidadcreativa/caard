@@ -80,6 +80,7 @@ export class GoogleWorkspaceService {
   private _gmail: gmail_v1.Gmail | null = null;
   private _calendar: calendar_v3.Calendar | null = null;
   private configured: boolean;
+  private _dbTokenLoaded: boolean = false;
 
   constructor() {
     const clientId = process.env.GOOGLE_CLIENT_ID || "";
@@ -97,6 +98,45 @@ export class GoogleWorkspaceService {
     } else {
       this.configured = false;
     }
+  }
+
+  /**
+   * Carga el refresh token desde la BD del centro si no está en env vars.
+   * Esto permite que la autorización desde /admin/integrations funcione
+   * sin necesidad de agregar GOOGLE_REFRESH_TOKEN a Vercel manualmente.
+   */
+  async loadTokenFromDB(): Promise<boolean> {
+    if (this.configured || this._dbTokenLoaded) return this.configured;
+    this._dbTokenLoaded = true;
+
+    try {
+      // Import prisma dinámicamente para evitar circular deps
+      const { prisma } = await import("@/lib/prisma");
+      const center = await prisma.center.findFirst({
+        where: { code: "CAARD" },
+        select: { notificationSettings: true },
+      });
+
+      const settings = center?.notificationSettings as Record<string, any> | null;
+      const dbToken = settings?.googleRefreshToken;
+
+      if (dbToken) {
+        this.auth.setCredentials({ refresh_token: dbToken });
+        this.configured = true;
+        return true;
+      }
+    } catch (error) {
+      console.error("Error loading Google token from DB:", error);
+    }
+    return false;
+  }
+
+  /**
+   * Asegura que el servicio esté configurado (env vars o BD)
+   */
+  async ensureConfigured(): Promise<boolean> {
+    if (this.configured) return true;
+    return this.loadTokenFromDB();
   }
 
   /**
@@ -154,15 +194,16 @@ export class GoogleWorkspaceService {
    * Envía un email mediante la Gmail API
    */
   async sendEmail(options: GmailSendOptions): Promise<GmailSendResult> {
+    await this.ensureConfigured();
     if (!this.configured) {
-      return { success: false, error: "Google Workspace not configured (missing GOOGLE_REFRESH_TOKEN)" };
+      return { success: false, error: "Google Workspace no configurado. Autoriza desde /admin/integrations" };
     }
 
     try {
       const toAddresses = Array.isArray(options.to) ? options.to.join(", ") : options.to;
       const fromAddr = options.fromName
-        ? `"${options.fromName}" <${options.from || "info@caardpe.com"}>`
-        : options.from || "info@caardpe.com";
+        ? `"${options.fromName}" <${options.from || "sis@caardpe.com"}>`
+        : options.from || "sis@caardpe.com";
 
       // Construir headers del email
       const headers: string[] = [
@@ -297,8 +338,9 @@ export class GoogleWorkspaceService {
     calendarId: string = "primary",
     event: CalendarEvent
   ): Promise<CalendarEventResult> {
+    await this.ensureConfigured();
     if (!this.configured) {
-      throw new Error("Google Workspace not configured");
+      throw new Error("Google Workspace no configurado. Autoriza desde /admin/integrations");
     }
 
     const requestBody: calendar_v3.Schema$Event = {
