@@ -56,7 +56,7 @@ interface Product {
 
 const TYPE_BADGE: Record<string, { label: string; className: string; icon: typeof Package }> = {
   DIGITAL: { label: "Digital", className: "bg-blue-100 text-blue-700", icon: FileDigit },
-  PHYSICAL: { label: "F\u00edsico", className: "bg-green-100 text-green-700", icon: Package },
+  PHYSICAL: { label: "Físico", className: "bg-green-100 text-green-700", icon: Package },
   SERVICE: { label: "Servicio", className: "bg-purple-100 text-purple-700", icon: Wrench },
 };
 
@@ -85,7 +85,7 @@ export default function StoreProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("\u00bfEst\u00e1s seguro de eliminar este producto?")) return;
+    if (!confirm("¿Estás seguro de eliminar este producto?")) return;
     try {
       const res = await fetch(`/api/store/products/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Error al eliminar");
@@ -172,7 +172,7 @@ export default function StoreProductsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2 p-3 sm:p-6 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm text-muted-foreground">F\u00edsico</CardTitle>
+            <CardTitle className="text-xs sm:text-sm text-muted-foreground">Físico</CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
             <p className="text-xl sm:text-2xl font-bold text-green-600">{physical}</p>
@@ -208,7 +208,7 @@ export default function StoreProductsPage() {
               <SelectContent>
                 <SelectItem value="ALL">Todos</SelectItem>
                 <SelectItem value="DIGITAL">Digital</SelectItem>
-                <SelectItem value="PHYSICAL">F\u00edsico</SelectItem>
+                <SelectItem value="PHYSICAL">Físico</SelectItem>
                 <SelectItem value="SERVICE">Servicio</SelectItem>
               </SelectContent>
             </Select>
@@ -230,7 +230,7 @@ export default function StoreProductsPage() {
       <Card>
         <CardHeader className="p-4 sm:p-6">
           <CardTitle className="text-base sm:text-lg">Listado de Productos</CardTitle>
-          <CardDescription>Productos digitales, f\u00edsicos y servicios</CardDescription>
+          <CardDescription>Productos digitales, físicos y servicios</CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0">
           {filtered.length === 0 ? (
@@ -243,7 +243,7 @@ export default function StoreProductsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>T\u00edtulo</TableHead>
+                  <TableHead>Título</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Precio</TableHead>
                   <TableHead>Stock</TableHead>

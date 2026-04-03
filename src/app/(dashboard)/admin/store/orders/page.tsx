@@ -201,7 +201,7 @@ export default function StoreOrdersPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por n\u00famero, cliente o email..."
+                placeholder="Buscar por número, cliente o email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -237,7 +237,7 @@ export default function StoreOrdersPage() {
               <ShoppingCart className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
               <p className="text-muted-foreground">No se encontraron pedidos</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Los pedidos aparecer\u00e1n aqu\u00ed cuando los clientes realicen compras
+                Los pedidos aparecerán aquí cuando los clientes realicen compras
               </p>
             </div>
           ) : (

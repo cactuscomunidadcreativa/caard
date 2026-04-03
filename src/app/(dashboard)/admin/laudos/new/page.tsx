@@ -109,7 +109,7 @@ export default function NewLaudoPage() {
     e.preventDefault();
 
     if (!formData.title.trim()) {
-      toast.error("El t\u00edtulo es requerido");
+      toast.error("El título es requerido");
       return;
     }
 
@@ -205,11 +205,11 @@ export default function NewLaudoPage() {
           <TabsContent value="general" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Informaci\u00f3n B\u00e1sica</CardTitle>
+                <CardTitle className="text-base">Información Básica</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">T\u00edtulo del Laudo *</Label>
+                  <Label htmlFor="title">Título del Laudo *</Label>
                   <Input
                     id="title"
                     value={formData.title}
@@ -322,7 +322,7 @@ export default function NewLaudoPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="pageCount">N\u00famero de P\u00e1ginas</Label>
+                  <Label htmlFor="pageCount">Número de Páginas</Label>
                   <Input
                     id="pageCount"
                     type="number"
@@ -342,13 +342,13 @@ export default function NewLaudoPage() {
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <Tag className="h-4 w-4" />
-                  Informaci\u00f3n del Caso
+                  Información del Caso
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="year">A\u00f1o</Label>
+                    <Label htmlFor="year">Año</Label>
                     <Input
                       id="year"
                       type="number"
@@ -371,9 +371,9 @@ export default function NewLaudoPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="COMERCIAL">Comercial</SelectItem>
-                        <SelectItem value="INVERSION">Inversi\u00f3n</SelectItem>
-                        <SelectItem value="CONTRATACION_PUBLICA">Contrataci\u00f3n P\u00fablica</SelectItem>
-                        <SelectItem value="CONSTRUCCION">Construcci\u00f3n</SelectItem>
+                        <SelectItem value="INVERSION">Inversión</SelectItem>
+                        <SelectItem value="CONTRATACION_PUBLICA">Contratación Pública</SelectItem>
+                        <SelectItem value="CONSTRUCCION">Construcción</SelectItem>
                         <SelectItem value="LABORAL">Laboral</SelectItem>
                         <SelectItem value="CONSUMO">Consumo</SelectItem>
                         <SelectItem value="OTRO">Otro</SelectItem>
@@ -388,13 +388,13 @@ export default function NewLaudoPage() {
                     id="subject"
                     value={formData.subject}
                     onChange={(e) => updateField("subject", e.target.value)}
-                    placeholder="Ej: Incumplimiento contractual, Indemnizaci\u00f3n"
+                    placeholder="Ej: Incumplimiento contractual, Indemnización"
                   />
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="claimAmountRange">Rango de Cuant\u00eda</Label>
+                    <Label htmlFor="claimAmountRange">Rango de Cuantía</Label>
                     <Select
                       value={formData.claimAmountRange}
                       onValueChange={(v) => updateField("claimAmountRange", v)}
@@ -406,7 +406,7 @@ export default function NewLaudoPage() {
                         <SelectItem value="0-50000">Hasta S/ 50,000</SelectItem>
                         <SelectItem value="50000-200000">S/ 50,000 - S/ 200,000</SelectItem>
                         <SelectItem value="200000-1000000">S/ 200,000 - S/ 1,000,000</SelectItem>
-                        <SelectItem value="1000000+">M\u00e1s de S/ 1,000,000</SelectItem>
+                        <SelectItem value="1000000+">Más de S/ 1,000,000</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -424,7 +424,7 @@ export default function NewLaudoPage() {
                         <SelectItem value="FAVORABLE_DEMANDANTE">Favorable al Demandante</SelectItem>
                         <SelectItem value="FAVORABLE_DEMANDADO">Favorable al Demandado</SelectItem>
                         <SelectItem value="PARCIAL">Parcialmente Favorable</SelectItem>
-                        <SelectItem value="CONCILIACION">Conciliaci\u00f3n</SelectItem>
+                        <SelectItem value="CONCILIACION">Conciliación</SelectItem>
                         <SelectItem value="OTRO">Otro</SelectItem>
                       </SelectContent>
                     </Select>
@@ -432,7 +432,7 @@ export default function NewLaudoPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="arbitratorCount">N\u00famero de \u00c1rbitros</Label>
+                  <Label htmlFor="arbitratorCount">Número de Árbitros</Label>
                   <Select
                     value={formData.arbitratorCount}
                     onValueChange={(v) => updateField("arbitratorCount", v)}
@@ -441,8 +441,8 @@ export default function NewLaudoPage() {
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">\u00c1rbitro \u00danico</SelectItem>
-                      <SelectItem value="3">Tribunal (3 \u00e1rbitros)</SelectItem>
+                      <SelectItem value="1">Árbitro Único</SelectItem>
+                      <SelectItem value="3">Tribunal (3 árbitros)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -466,7 +466,7 @@ export default function NewLaudoPage() {
                     id="tags"
                     value={formData.tags}
                     onChange={(e) => updateField("tags", e.target.value)}
-                    placeholder="arbitraje, comercial, indemnizaci\u00f3n (separar con comas)"
+                    placeholder="arbitraje, comercial, indemnización (separar con comas)"
                   />
                   <p className="text-xs text-muted-foreground">Separar con comas</p>
                   {formData.tags && (
@@ -517,7 +517,7 @@ export default function NewLaudoPage() {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Precio en {formData.currency === "PEN" ? "soles" : "d\u00f3lares"}. Dejar vac\u00edo si es gratuito.
+                      Precio en {formData.currency === "PEN" ? "soles" : "dólares"}. Dejar vacío si es gratuito.
                     </p>
                   </div>
 
@@ -532,7 +532,7 @@ export default function NewLaudoPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="PEN">Soles (PEN)</SelectItem>
-                        <SelectItem value="USD">D\u00f3lares (USD)</SelectItem>
+                        <SelectItem value="USD">Dólares (USD)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

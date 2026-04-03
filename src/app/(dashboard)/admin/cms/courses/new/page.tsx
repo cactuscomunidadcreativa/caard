@@ -157,7 +157,7 @@ export default function NewCoursePage() {
     e.preventDefault();
 
     if (!formData.title.trim()) {
-      toast.error("El t\u00edtulo es requerido");
+      toast.error("El título es requerido");
       return;
     }
 
@@ -253,7 +253,7 @@ export default function NewCoursePage() {
             Nuevo Curso
           </h1>
           <p className="text-sm text-muted-foreground">
-            Crea un nuevo curso o programa de formaci\u00f3n
+            Crea un nuevo curso o programa de formación
           </p>
         </div>
       </div>
@@ -271,11 +271,11 @@ export default function NewCoursePage() {
           <TabsContent value="general" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Informaci\u00f3n B\u00e1sica</CardTitle>
+                <CardTitle className="text-base">Información Básica</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">T\u00edtulo del Curso *</Label>
+                  <Label htmlFor="title">Título del Curso *</Label>
                   <Input
                     id="title"
                     value={formData.title}
@@ -314,12 +314,12 @@ export default function NewCoursePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Descripci\u00f3n</Label>
+                  <Label htmlFor="description">Descripción</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => updateField("description", e.target.value)}
-                    placeholder="Descripci\u00f3n del curso..."
+                    placeholder="Descripción del curso..."
                     rows={4}
                     maxLength={2000}
                   />
@@ -341,18 +341,18 @@ export default function NewCoursePage() {
                       <SelectContent>
                         <SelectItem value="ONLINE">Online</SelectItem>
                         <SelectItem value="PRESENCIAL">Presencial</SelectItem>
-                        <SelectItem value="HIBRIDO">H\u00edbrido</SelectItem>
+                        <SelectItem value="HIBRIDO">Híbrido</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="category">Categor\u00eda</Label>
+                    <Label htmlFor="category">Categoría</Label>
                     <Input
                       id="category"
                       value={formData.category}
                       onChange={(e) => updateField("category", e.target.value)}
-                      placeholder="Ej: Arbitraje, Mediaci\u00f3n"
+                      placeholder="Ej: Arbitraje, Mediación"
                     />
                   </div>
                 </div>
@@ -390,10 +390,10 @@ export default function NewCoursePage() {
                   {formData.lessons.length === 0 ? (
                     <div className="text-center py-8 border-2 border-dashed rounded-lg">
                       <BookOpen className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-50" />
-                      <p className="text-sm text-muted-foreground mb-3">No hay lecciones a\u00fan</p>
+                      <p className="text-sm text-muted-foreground mb-3">No hay lecciones aún</p>
                       <Button type="button" variant="outline" onClick={addLesson}>
                         <Plus className="h-4 w-4 mr-2" />
-                        Agregar Lecci\u00f3n
+                        Agregar Lección
                       </Button>
                     </div>
                   ) : (
@@ -405,7 +405,7 @@ export default function NewCoursePage() {
                               <div className="flex items-center gap-2">
                                 <GripVertical className="h-4 w-4 text-muted-foreground" />
                                 <Badge variant="outline" className="text-xs">
-                                  Lecci\u00f3n {idx + 1}
+                                  Lección {idx + 1}
                                 </Badge>
                               </div>
                               <Button
@@ -420,11 +420,11 @@ export default function NewCoursePage() {
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div className="space-y-1">
-                                <Label className="text-xs">T\u00edtulo</Label>
+                                <Label className="text-xs">Título</Label>
                                 <Input
                                   value={lesson.title}
                                   onChange={(e) => updateLesson(lesson.id, "title", e.target.value)}
-                                  placeholder="T\u00edtulo de la lecci\u00f3n"
+                                  placeholder="Título de la lección"
                                 />
                               </div>
                               <div className="space-y-1">
@@ -438,17 +438,17 @@ export default function NewCoursePage() {
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div className="space-y-1">
-                                <Label className="text-xs">Descripci\u00f3n</Label>
+                                <Label className="text-xs">Descripción</Label>
                                 <Input
                                   value={lesson.description}
                                   onChange={(e) =>
                                     updateLesson(lesson.id, "description", e.target.value)
                                   }
-                                  placeholder="Breve descripci\u00f3n"
+                                  placeholder="Breve descripción"
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-xs">Duraci\u00f3n (min)</Label>
+                                <Label className="text-xs">Duración (min)</Label>
                                 <Input
                                   type="number"
                                   value={lesson.durationMinutes}
@@ -465,7 +465,7 @@ export default function NewCoursePage() {
                       ))}
                       <Button type="button" variant="outline" onClick={addLesson} className="w-full">
                         <Plus className="h-4 w-4 mr-2" />
-                        Agregar Lecci\u00f3n
+                        Agregar Lección
                       </Button>
                     </>
                   )}
@@ -504,7 +504,7 @@ export default function NewCoursePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="location">Ubicaci\u00f3n</Label>
+                    <Label htmlFor="location">Ubicación</Label>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -518,7 +518,7 @@ export default function NewCoursePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="maxCapacity">Capacidad M\u00e1xima</Label>
+                    <Label htmlFor="maxCapacity">Capacidad Máxima</Label>
                     <div className="relative">
                       <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -541,7 +541,7 @@ export default function NewCoursePage() {
           <TabsContent value="instructor" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Informaci\u00f3n del Instructor</CardTitle>
+                <CardTitle className="text-base">Información del Instructor</CardTitle>
                 <CardDescription>Datos del instructor o facilitador del curso</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -551,17 +551,17 @@ export default function NewCoursePage() {
                     id="instructorName"
                     value={formData.instructorName}
                     onChange={(e) => updateField("instructorName", e.target.value)}
-                    placeholder="Dr. Juan P\u00e9rez"
+                    placeholder="Dr. Juan Pérez"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="instructorBio">Biograf\u00eda</Label>
+                  <Label htmlFor="instructorBio">Biografía</Label>
                   <Textarea
                     id="instructorBio"
                     value={formData.instructorBio}
                     onChange={(e) => updateField("instructorBio", e.target.value)}
-                    placeholder="Breve biograf\u00eda profesional del instructor..."
+                    placeholder="Breve biografía profesional del instructor..."
                     rows={4}
                   />
                 </div>
@@ -585,7 +585,7 @@ export default function NewCoursePage() {
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
-                  Configuraci\u00f3n de Precio
+                  Configuración de Precio
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -618,7 +618,7 @@ export default function NewCoursePage() {
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Precio en {formData.currency === "PEN" ? "soles" : "d\u00f3lares"}
+                        Precio en {formData.currency === "PEN" ? "soles" : "dólares"}
                       </p>
                     </div>
 
@@ -633,7 +633,7 @@ export default function NewCoursePage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="PEN">Soles (PEN)</SelectItem>
-                          <SelectItem value="USD">D\u00f3lares (USD)</SelectItem>
+                          <SelectItem value="USD">Dólares (USD)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -644,7 +644,7 @@ export default function NewCoursePage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Configuraci\u00f3n Tributaria</CardTitle>
+                <CardTitle className="text-base">Configuración Tributaria</CardTitle>
                 <CardDescription>Impuestos aplicables al precio</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -665,7 +665,7 @@ export default function NewCoursePage() {
                     onCheckedChange={(v) => updateField("taxDetraccion", v as boolean)}
                   />
                   <Label htmlFor="taxDetraccion" className="text-sm font-normal">
-                    Detracci\u00f3n
+                    Detracción
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -675,7 +675,7 @@ export default function NewCoursePage() {
                     onCheckedChange={(v) => updateField("taxPercepcion", v as boolean)}
                   />
                   <Label htmlFor="taxPercepcion" className="text-sm font-normal">
-                    Percepci\u00f3n
+                    Percepción
                   </Label>
                 </div>
               </CardContent>
@@ -684,7 +684,7 @@ export default function NewCoursePage() {
             {/* Publish */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Publicaci\u00f3n</CardTitle>
+                <CardTitle className="text-base">Publicación</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between p-4 border rounded-lg">

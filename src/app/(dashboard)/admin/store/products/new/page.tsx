@@ -80,7 +80,7 @@ interface FormData {
 
 const PRODUCT_TYPES = [
   { value: "DIGITAL", label: "Digital", icon: FileDigit, color: "bg-blue-100 text-blue-700" },
-  { value: "PHYSICAL", label: "F\u00edsico", icon: Package, color: "bg-green-100 text-green-700" },
+  { value: "PHYSICAL", label: "Físico", icon: Package, color: "bg-green-100 text-green-700" },
   { value: "SERVICE", label: "Servicio", icon: Wrench, color: "bg-purple-100 text-purple-700" },
 ];
 
@@ -124,7 +124,7 @@ export default function NewProductPage() {
     e.preventDefault();
 
     if (!formData.title.trim()) {
-      toast.error("El t\u00edtulo es requerido");
+      toast.error("El título es requerido");
       return;
     }
 
@@ -263,11 +263,11 @@ export default function NewProductPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Informaci\u00f3n B\u00e1sica</CardTitle>
+                <CardTitle className="text-base">Información Básica</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">T\u00edtulo *</Label>
+                  <Label htmlFor="title">Título *</Label>
                   <Input
                     id="title"
                     value={formData.title}
@@ -306,12 +306,12 @@ export default function NewProductPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Descripci\u00f3n</Label>
+                  <Label htmlFor="description">Descripción</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => updateField("description", e.target.value)}
-                    placeholder="Descripci\u00f3n del producto..."
+                    placeholder="Descripción del producto..."
                     rows={4}
                     maxLength={2000}
                   />
@@ -389,7 +389,7 @@ export default function NewProductPage() {
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
                     <Package className="h-4 w-4" />
-                    Producto F\u00edsico
+                    Producto Físico
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -428,8 +428,8 @@ export default function NewProductPage() {
                         <Truck className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-medium">Requiere Env\u00edo</p>
-                        <p className="text-xs text-muted-foreground">Producto necesita despacho f\u00edsico</p>
+                        <p className="font-medium">Requiere Envío</p>
+                        <p className="text-xs text-muted-foreground">Producto necesita despacho físico</p>
                       </div>
                     </div>
                     <Switch
@@ -451,7 +451,7 @@ export default function NewProductPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="serviceDurationMinutes">Duraci\u00f3n (minutos)</Label>
+                    <Label htmlFor="serviceDurationMinutes">Duración (minutos)</Label>
                     <div className="relative">
                       <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -485,7 +485,7 @@ export default function NewProductPage() {
             {/* Publish */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Publicaci\u00f3n</CardTitle>
+                <CardTitle className="text-base">Publicación</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -559,7 +559,7 @@ export default function NewProductPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="PEN">Soles (PEN)</SelectItem>
-                        <SelectItem value="USD">D\u00f3lares (USD)</SelectItem>
+                        <SelectItem value="USD">Dólares (USD)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -569,7 +569,7 @@ export default function NewProductPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Configuraci\u00f3n Tributaria</CardTitle>
+                <CardTitle className="text-base">Configuración Tributaria</CardTitle>
                 <CardDescription>Impuestos aplicables al precio</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -590,7 +590,7 @@ export default function NewProductPage() {
                     onCheckedChange={(v) => updateField("taxDetraccion", v as boolean)}
                   />
                   <Label htmlFor="taxDetraccion" className="text-sm font-normal">
-                    Detracci\u00f3n
+                    Detracción
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -600,7 +600,7 @@ export default function NewProductPage() {
                     onCheckedChange={(v) => updateField("taxPercepcion", v as boolean)}
                   />
                   <Label htmlFor="taxPercepcion" className="text-sm font-normal">
-                    Percepci\u00f3n
+                    Percepción
                   </Label>
                 </div>
               </CardContent>

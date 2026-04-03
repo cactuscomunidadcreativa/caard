@@ -59,7 +59,7 @@ interface Course {
 const MODALITY_BADGE: Record<string, { label: string; className: string }> = {
   ONLINE: { label: "Online", className: "bg-blue-100 text-blue-700" },
   PRESENCIAL: { label: "Presencial", className: "bg-green-100 text-green-700" },
-  HIBRIDO: { label: "H\u00edbrido", className: "bg-purple-100 text-purple-700" },
+  HIBRIDO: { label: "Híbrido", className: "bg-purple-100 text-purple-700" },
 };
 
 export default function CoursesListPage() {
@@ -87,7 +87,7 @@ export default function CoursesListPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("\u00bfEst\u00e1s seguro de eliminar este curso?")) return;
+    if (!confirm("¿Estás seguro de eliminar este curso?")) return;
     try {
       const res = await fetch(`/api/cms/courses/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Error al eliminar");
@@ -216,7 +216,7 @@ export default function CoursesListPage() {
                 <SelectItem value="ALL">Todas</SelectItem>
                 <SelectItem value="ONLINE">Online</SelectItem>
                 <SelectItem value="PRESENCIAL">Presencial</SelectItem>
-                <SelectItem value="HIBRIDO">H\u00edbrido</SelectItem>
+                <SelectItem value="HIBRIDO">Híbrido</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -227,7 +227,7 @@ export default function CoursesListPage() {
       <Card>
         <CardHeader className="p-4 sm:p-6">
           <CardTitle className="text-base sm:text-lg">Listado de Cursos</CardTitle>
-          <CardDescription>Gestiona los cursos y programas de formaci\u00f3n</CardDescription>
+          <CardDescription>Gestiona los cursos y programas de formación</CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0">
           {filtered.length === 0 ? (
@@ -240,7 +240,7 @@ export default function CoursesListPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>T\u00edtulo</TableHead>
+                  <TableHead>Título</TableHead>
                   <TableHead>Modalidad</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Precio</TableHead>

@@ -88,7 +88,7 @@ export default function LaudosListPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("\u00bfEst\u00e1s seguro de eliminar este laudo?")) return;
+    if (!confirm("¿Estás seguro de eliminar este laudo?")) return;
     try {
       const res = await fetch(`/api/laudos/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Error al eliminar");
@@ -219,7 +219,7 @@ export default function LaudosListPage() {
             </Select>
             <Select value={yearFilter} onValueChange={setYearFilter}>
               <SelectTrigger className="w-full sm:w-[130px]">
-                <SelectValue placeholder="A\u00f1o" />
+                <SelectValue placeholder="Año" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Todos</SelectItem>
@@ -266,8 +266,8 @@ export default function LaudosListPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>T\u00edtulo</TableHead>
-                  <TableHead>A\u00f1o</TableHead>
+                  <TableHead>Título</TableHead>
+                  <TableHead>Año</TableHead>
                   <TableHead>Materia</TableHead>
                   <TableHead>Acceso</TableHead>
                   <TableHead>Descargas</TableHead>
