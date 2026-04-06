@@ -245,7 +245,7 @@ export default async function SedesPage() {
                   </Button>
                 </Link>
                 <a href="tel:+51913755003">
-                  <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+                  <Button size="lg" variant="outline" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#0B2A5B]">
                     <Phone className="h-4 w-4 mr-2" />
                     Llamar Ahora
                   </Button>

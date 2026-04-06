@@ -106,7 +106,7 @@ export function HomePageClient() {
                 </Button>
               </Link>
               <Link href="/calculadora">
-                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+                <Button size="lg" variant="outline" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#0B2A5B]">
                   <Calculator className="mr-2 h-5 w-5" />
                   {t.website.calculateExpenses}
                 </Button>
@@ -242,7 +242,7 @@ export function HomePageClient() {
                 </Button>
               </Link>
               <Link href="/contacto">
-                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+                <Button size="lg" variant="outline" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#0B2A5B]">
                   <Phone className="mr-2 h-5 w-5" />
                   {t.website.contactUs}
                 </Button>

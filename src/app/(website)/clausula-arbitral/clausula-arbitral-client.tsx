@@ -368,7 +368,7 @@ El idioma del arbitraje será el español.`,
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white text-white hover:bg-white/10"
+                  className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#0B2A5B]"
                 >
                   {t.website.requestArbitrationBtn}
                 </Button>

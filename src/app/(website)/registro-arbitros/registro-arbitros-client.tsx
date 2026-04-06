@@ -629,7 +629,7 @@ export function RegistroArbitrosClient() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white text-white hover:bg-white/10"
+                  className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#D66829]"
                 >
                   {t.website.moreInfo}
                 </Button>
@@ -971,7 +971,7 @@ export function RegistroArbitrosClient() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white text-white hover:bg-white/10"
+                  className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-[#D66829]"
                 >
                   {t.website.moreInfo}
                 </Button>
