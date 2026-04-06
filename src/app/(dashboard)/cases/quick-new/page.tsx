@@ -154,7 +154,7 @@ export default function QuickNewCasePage() {
                     <p className="font-medium text-sm">{type.name}</p>
                     {type.baseFeeCents && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Tasa: {type.currency} {(type.baseFeeCents / 100).toFixed(2)} + IGV
+                        Tasa: {type.currency === "USD" ? "$" : "S/"} {(type.baseFeeCents / 100 * 1.18).toFixed(2)} (inc. IGV)
                       </p>
                     )}
                   </div>
@@ -291,7 +291,7 @@ export default function QuickNewCasePage() {
                   </p>
                   {selectedType?.baseFeeCents && (
                     <p className="text-muted-foreground">
-                      Tasa: {selectedType.currency} {(selectedType.baseFeeCents / 100).toFixed(2)} + IGV
+                      Tasa: {selectedType.currency === "USD" ? "$" : "S/"} {(selectedType.baseFeeCents / 100 * 1.18).toFixed(2)} (inc. IGV)
                     </p>
                   )}
                 </div>

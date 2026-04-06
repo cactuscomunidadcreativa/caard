@@ -113,12 +113,15 @@ export function SolicitudArbitralClient() {
   const selectedType = arbitrationTypes.find(t => t.id === selectedArbitrationType);
 
   // Formatear moneda
-  const formatCurrency = (cents: number, currency: string) => {
-    const amount = cents / 100;
+  const formatCurrency = (cents: number, currency: string, includeIGV: boolean = true) => {
+    const base = cents / 100;
+    // IGV 18% aplica solo a moneda nacional (PEN)
+    const amount = includeIGV && currency === "PEN" ? base * 1.18 : includeIGV && currency === "USD" ? base * 1.18 : base;
+    const rounded = Math.round(amount * 100) / 100;
     return new Intl.NumberFormat("es-PE", {
       style: "currency",
       currency: currency,
-    }).format(amount);
+    }).format(rounded) + (includeIGV ? " (inc. IGV)" : "");
   };
 
   // Manejar envío
