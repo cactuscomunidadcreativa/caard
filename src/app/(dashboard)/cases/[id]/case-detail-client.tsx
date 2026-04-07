@@ -7,6 +7,8 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Calendar,
@@ -23,12 +25,45 @@ import {
   CheckCircle2,
   Circle,
   AlertTriangle,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+  Check,
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { CaseStatusBadge } from "@/components/shared/case-status-badge";
 import {
   CASE_STATUS_LABELS,
@@ -252,6 +287,38 @@ interface CaseDetailClientProps {
   caseData: SerializedCase;
 }
 
+const CASE_STATUSES: CaseStatus[] = [
+  "DRAFT",
+  "SUBMITTED",
+  "UNDER_REVIEW",
+  "OBSERVED",
+  "ADMITTED",
+  "REJECTED",
+  "IN_PROCESS",
+  "AWAITING_PAYMENT",
+  "PAYMENT_OVERDUE",
+  "SUSPENDED",
+  "CLOSED",
+  "ARCHIVED",
+];
+
+const PROCESS_STAGES: ProcessStage[] = [
+  "DEMANDA",
+  "CONTESTACION",
+  "RECONVENCION",
+  "PROBATORIA",
+  "AUDIENCIA_PRUEBAS",
+  "INFORMES_ORALES",
+  "LAUDO",
+];
+
+interface UserSearchItem {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role: string;
+}
+
 export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
   const router = useRouter();
 
@@ -259,6 +326,261 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
   const parties = caseData.members.filter(
     (m) => m.role === "DEMANDANTE" || m.role === "DEMANDADO"
   );
+
+  // -------- Edit Case dialog --------
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: caseData.title || "",
+    status: caseData.status,
+    currentStage: caseData.currentStage || ("" as ProcessStage | ""),
+    tribunalMode: caseData.tribunalMode,
+    disputeAmount: caseData.disputeAmountCents
+      ? (Number(caseData.disputeAmountCents) / 100).toString()
+      : "",
+    currency: caseData.currency,
+    isBlocked: caseData.isBlocked,
+    blockReason: caseData.blockReason || "",
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  async function handleSaveEdit() {
+    setSavingEdit(true);
+    try {
+      const payload: any = {
+        title: editForm.title || null,
+        status: editForm.status,
+        currentStage: editForm.currentStage || null,
+        tribunalMode: editForm.tribunalMode,
+        currency: editForm.currency,
+        isBlocked: editForm.isBlocked,
+        blockReason: editForm.isBlocked ? editForm.blockReason || null : null,
+      };
+      if (editForm.disputeAmount !== "") {
+        payload.disputeAmount = Number(editForm.disputeAmount);
+      }
+      const res = await fetch(`/api/cases/${caseData.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error al actualizar");
+      }
+      toast.success("Expediente actualizado");
+      setEditOpen(false);
+      window.location.reload();
+    } catch (e: any) {
+      toast.error(e.message || "Error al actualizar");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  // -------- Add Member dialog (parties + arbitros) --------
+  const [memberDialog, setMemberDialog] = useState<{
+    open: boolean;
+    mode: "PARTE" | "ARBITRO";
+  }>({ open: false, mode: "PARTE" });
+
+  const [memberForm, setMemberForm] = useState<{
+    role: Role;
+    userId: string | null;
+    displayName: string;
+    email: string;
+    isPrimary: boolean;
+  }>({
+    role: "DEMANDANTE",
+    userId: null,
+    displayName: "",
+    email: "",
+    isPrimary: false,
+  });
+  const [savingMember, setSavingMember] = useState(false);
+
+  function openAddMember(mode: "PARTE" | "ARBITRO") {
+    setMemberForm({
+      role: mode === "ARBITRO" ? "ARBITRO" : "DEMANDANTE",
+      userId: null,
+      displayName: "",
+      email: "",
+      isPrimary: false,
+    });
+    setMemberDialog({ open: true, mode });
+  }
+
+  async function handleAddMember() {
+    if (!memberForm.displayName.trim()) {
+      toast.error("Ingrese un nombre");
+      return;
+    }
+    setSavingMember(true);
+    try {
+      const res = await fetch(`/api/cases/${caseData.id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: memberForm.userId || undefined,
+          displayName: memberForm.displayName,
+          email: memberForm.email || undefined,
+          role: memberForm.role,
+          isPrimary: memberForm.isPrimary,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error");
+      }
+      toast.success("Miembro agregado");
+      setMemberDialog({ open: false, mode: "PARTE" });
+      window.location.reload();
+    } catch (e: any) {
+      toast.error(e.message || "Error al agregar miembro");
+    } finally {
+      setSavingMember(false);
+    }
+  }
+
+  async function handleRemoveMember(memberId: string) {
+    if (!confirm("¿Eliminar este miembro?")) return;
+    try {
+      const res = await fetch(
+        `/api/cases/${caseData.id}/members/${memberId}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error");
+      }
+      toast.success("Miembro eliminado");
+      window.location.reload();
+    } catch (e: any) {
+      toast.error(e.message || "Error al eliminar");
+    }
+  }
+
+  // -------- Add Deadline dialog --------
+  const [deadlineDialog, setDeadlineDialog] = useState(false);
+  const [deadlineForm, setDeadlineForm] = useState({
+    title: "",
+    description: "",
+    dueAt: "",
+  });
+  const [savingDeadline, setSavingDeadline] = useState(false);
+
+  async function handleAddDeadline() {
+    if (!deadlineForm.title || !deadlineForm.dueAt) {
+      toast.error("Complete título y fecha");
+      return;
+    }
+    setSavingDeadline(true);
+    try {
+      const res = await fetch(`/api/cases/${caseData.id}/deadlines`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: deadlineForm.title,
+          description: deadlineForm.description || undefined,
+          dueAt: new Date(deadlineForm.dueAt).toISOString(),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error");
+      }
+      toast.success("Plazo agregado");
+      setDeadlineDialog(false);
+      setDeadlineForm({ title: "", description: "", dueAt: "" });
+      window.location.reload();
+    } catch (e: any) {
+      toast.error(e.message || "Error");
+    } finally {
+      setSavingDeadline(false);
+    }
+  }
+
+  async function handleCompleteDeadline(deadlineId: string) {
+    try {
+      const res = await fetch(
+        `/api/cases/${caseData.id}/deadlines/${deadlineId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isCompleted: true }),
+        }
+      );
+      if (!res.ok) throw new Error("Error");
+      toast.success("Plazo completado");
+      window.location.reload();
+    } catch {
+      toast.error("Error al completar plazo");
+    }
+  }
+
+  async function handleDeleteDeadline(deadlineId: string) {
+    if (!confirm("¿Eliminar este plazo?")) return;
+    try {
+      const res = await fetch(
+        `/api/cases/${caseData.id}/deadlines/${deadlineId}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) throw new Error("Error");
+      toast.success("Plazo eliminado");
+      window.location.reload();
+    } catch {
+      toast.error("Error al eliminar plazo");
+    }
+  }
+
+  // -------- Add Note dialog --------
+  const [noteDialog, setNoteDialog] = useState(false);
+  const [noteForm, setNoteForm] = useState({ content: "", isPrivate: true });
+  const [savingNote, setSavingNote] = useState(false);
+
+  async function handleAddNote() {
+    if (!noteForm.content.trim()) {
+      toast.error("Ingrese contenido");
+      return;
+    }
+    setSavingNote(true);
+    try {
+      const res = await fetch(`/api/cases/${caseData.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: noteForm.content,
+          isPrivate: noteForm.isPrivate,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error");
+      }
+      toast.success("Nota agregada");
+      setNoteDialog(false);
+      setNoteForm({ content: "", isPrivate: true });
+      window.location.reload();
+    } catch (e: any) {
+      toast.error(e.message || "Error");
+    } finally {
+      setSavingNote(false);
+    }
+  }
+
+  async function handleDeleteNote(noteId: string) {
+    if (!confirm("¿Eliminar esta nota?")) return;
+    try {
+      const res = await fetch(
+        `/api/cases/${caseData.id}/notes/${noteId}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) throw new Error("Error");
+      toast.success("Nota eliminada");
+      window.location.reload();
+    } catch {
+      toast.error("Error al eliminar nota");
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -291,6 +613,14 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
             )}
           </div>
         </div>
+        <Button
+          onClick={() => setEditOpen(true)}
+          style={{ backgroundColor: "#0B2A5B", color: "white" }}
+          className="gap-2"
+        >
+          <Pencil className="h-4 w-4" />
+          Editar Expediente
+        </Button>
       </div>
 
       {/* Blocked warning */}
@@ -507,8 +837,16 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
         {/* ---- Tab: Partes ---- */}
         <TabsContent value="partes">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Partes del Expediente</CardTitle>
+              <Button
+                size="sm"
+                onClick={() => openAddMember("PARTE")}
+                style={{ backgroundColor: "#D66829", color: "white" }}
+                className="gap-1"
+              >
+                <Plus className="h-4 w-4" /> Agregar parte
+              </Button>
             </CardHeader>
             <CardContent>
               {parties.length === 0 ? (
@@ -522,7 +860,8 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                         <th className="pb-3 pr-4 font-medium">Rol</th>
                         <th className="pb-3 pr-4 font-medium">Email</th>
                         <th className="pb-3 pr-4 font-medium">Telefono</th>
-                        <th className="pb-3 font-medium">Principal</th>
+                        <th className="pb-3 pr-4 font-medium">Principal</th>
+                        <th className="pb-3 font-medium"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -547,10 +886,20 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                           <td className="py-3 pr-4 text-muted-foreground">
                             {member.phoneE164 || "-"}
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 pr-4">
                             {member.isPrimary && (
                               <CheckCircle2 className="h-4 w-4 text-green-600" />
                             )}
+                          </td>
+                          <td className="py-3">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveMember(member.id)}
+                              title="Eliminar"
+                            >
+                              <X className="h-4 w-4 text-red-600" />
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -613,8 +962,16 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
         {/* ---- Tab: Arbitros ---- */}
         <TabsContent value="arbitros">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Arbitros</CardTitle>
+              <Button
+                size="sm"
+                onClick={() => openAddMember("ARBITRO")}
+                style={{ backgroundColor: "#D66829", color: "white" }}
+                className="gap-1"
+              >
+                <Plus className="h-4 w-4" /> Agregar árbitro
+              </Button>
             </CardHeader>
             <CardContent>
               {arbitrators.length === 0 ? (
@@ -626,7 +983,8 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                       <tr className="border-b text-left text-muted-foreground">
                         <th className="pb-3 pr-4 font-medium">Nombre</th>
                         <th className="pb-3 pr-4 font-medium">Email</th>
-                        <th className="pb-3 font-medium">Principal</th>
+                        <th className="pb-3 pr-4 font-medium">Principal</th>
+                        <th className="pb-3 font-medium"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -641,10 +999,20 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                           <td className="py-3 pr-4 text-muted-foreground">
                             {arb.email || arb.user?.email || "-"}
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 pr-4">
                             {arb.isPrimary && (
                               <CheckCircle2 className="h-4 w-4 text-green-600" />
                             )}
+                          </td>
+                          <td className="py-3">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveMember(arb.id)}
+                              title="Eliminar"
+                            >
+                              <X className="h-4 w-4 text-red-600" />
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -790,8 +1158,16 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
         {/* ---- Tab: Plazos ---- */}
         <TabsContent value="plazos">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Plazos</CardTitle>
+              <Button
+                size="sm"
+                onClick={() => setDeadlineDialog(true)}
+                style={{ backgroundColor: "#D66829", color: "white" }}
+                className="gap-1"
+              >
+                <Plus className="h-4 w-4" /> Agregar plazo
+              </Button>
             </CardHeader>
             <CardContent>
               {caseData.deadlines.length === 0 ? (
@@ -848,6 +1224,26 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                             Vencido
                           </Badge>
                         )}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {!deadline.isCompleted && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleCompleteDeadline(deadline.id)}
+                              title="Marcar completado"
+                            >
+                              <Check className="h-4 w-4 text-green-600" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteDeadline(deadline.id)}
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}
@@ -862,6 +1258,14 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Notas</CardTitle>
+              <Button
+                size="sm"
+                onClick={() => setNoteDialog(true)}
+                style={{ backgroundColor: "#D66829", color: "white" }}
+                className="gap-1"
+              >
+                <Plus className="h-4 w-4" /> Agregar nota
+              </Button>
             </CardHeader>
             <CardContent>
               {caseData.notes.length === 0 ? (
@@ -894,6 +1298,17 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                       <p className="text-sm whitespace-pre-wrap">
                         {note.content}
                       </p>
+                      <div className="mt-2 flex justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteNote(note.id)}
+                          className="gap-1 text-red-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Eliminar
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -902,7 +1317,464 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* ---- Edit Case Dialog ---- */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Expediente</DialogTitle>
+            <DialogDescription>
+              Modifica los datos generales del expediente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <Label>Título</Label>
+              <Input
+                value={editForm.title}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, title: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Estado</Label>
+              <Select
+                value={editForm.status}
+                onValueChange={(v) =>
+                  setEditForm({ ...editForm, status: v as CaseStatus })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CASE_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {CASE_STATUS_LABELS[s] || s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Etapa Procesal</Label>
+              <Select
+                value={editForm.currentStage || "__none__"}
+                onValueChange={(v) =>
+                  setEditForm({
+                    ...editForm,
+                    currentStage: v === "__none__" ? "" : (v as ProcessStage),
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Sin asignar</SelectItem>
+                  {PROCESS_STAGES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STAGE_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Modo de Tribunal</Label>
+              <Select
+                value={editForm.tribunalMode}
+                onValueChange={(v) =>
+                  setEditForm({ ...editForm, tribunalMode: v as TribunalMode })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SOLE_ARBITRATOR">Árbitro Único</SelectItem>
+                  <SelectItem value="TRIBUNAL_3">Tribunal (3)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Cuantía</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={editForm.disputeAmount}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, disputeAmount: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Moneda</Label>
+              <Select
+                value={editForm.currency}
+                onValueChange={(v) =>
+                  setEditForm({ ...editForm, currency: v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PEN">PEN</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2 flex items-center gap-3">
+              <Switch
+                checked={editForm.isBlocked}
+                onCheckedChange={(v) =>
+                  setEditForm({ ...editForm, isBlocked: v })
+                }
+              />
+              <Label>Expediente bloqueado</Label>
+            </div>
+            {editForm.isBlocked && (
+              <div className="md:col-span-2">
+                <Label>Motivo de bloqueo</Label>
+                <Textarea
+                  value={editForm.blockReason}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, blockReason: e.target.value })
+                  }
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={savingEdit}
+              style={{ backgroundColor: "#0B2A5B", color: "white" }}
+            >
+              {savingEdit ? "Guardando..." : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Add Member Dialog ---- */}
+      <Dialog
+        open={memberDialog.open}
+        onOpenChange={(o) => setMemberDialog({ ...memberDialog, open: o })}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {memberDialog.mode === "ARBITRO"
+                ? "Agregar Árbitro"
+                : "Agregar Parte"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {memberDialog.mode === "PARTE" && (
+              <div>
+                <Label>Rol</Label>
+                <Select
+                  value={memberForm.role}
+                  onValueChange={(v) =>
+                    setMemberForm({ ...memberForm, role: v as Role })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DEMANDANTE">Demandante</SelectItem>
+                    <SelectItem value="DEMANDADO">Demandado</SelectItem>
+                    <SelectItem value="ABOGADO">Abogado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div>
+              <Label>Buscar usuario existente</Label>
+              <UserSearchCombobox
+                role={
+                  memberDialog.mode === "ARBITRO" ? "ARBITRO" : memberForm.role
+                }
+                onSelect={(u) => {
+                  setMemberForm({
+                    ...memberForm,
+                    userId: u?.id || null,
+                    displayName: u?.name || memberForm.displayName,
+                    email: u?.email || memberForm.email,
+                  });
+                }}
+              />
+            </div>
+            <div>
+              <Label>Nombre a mostrar</Label>
+              <Input
+                value={memberForm.displayName}
+                onChange={(e) =>
+                  setMemberForm({
+                    ...memberForm,
+                    displayName: e.target.value,
+                    userId: null,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={memberForm.email}
+                onChange={(e) =>
+                  setMemberForm({ ...memberForm, email: e.target.value })
+                }
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={memberForm.isPrimary}
+                onCheckedChange={(v) =>
+                  setMemberForm({ ...memberForm, isPrimary: v })
+                }
+              />
+              <Label>Miembro principal</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setMemberDialog({ ...memberDialog, open: false })
+              }
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAddMember}
+              disabled={savingMember}
+              style={{ backgroundColor: "#0B2A5B", color: "white" }}
+            >
+              {savingMember ? "Guardando..." : "Agregar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Add Deadline Dialog ---- */}
+      <Dialog open={deadlineDialog} onOpenChange={setDeadlineDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agregar Plazo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Título</Label>
+              <Input
+                value={deadlineForm.title}
+                onChange={(e) =>
+                  setDeadlineForm({ ...deadlineForm, title: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Descripción</Label>
+              <Textarea
+                value={deadlineForm.description}
+                onChange={(e) =>
+                  setDeadlineForm({
+                    ...deadlineForm,
+                    description: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div>
+              <Label>Fecha de vencimiento</Label>
+              <Input
+                type="datetime-local"
+                value={deadlineForm.dueAt}
+                onChange={(e) =>
+                  setDeadlineForm({ ...deadlineForm, dueAt: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeadlineDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAddDeadline}
+              disabled={savingDeadline}
+              style={{ backgroundColor: "#0B2A5B", color: "white" }}
+            >
+              {savingDeadline ? "Guardando..." : "Agregar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Add Note Dialog ---- */}
+      <Dialog open={noteDialog} onOpenChange={setNoteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agregar Nota</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Contenido</Label>
+              <Textarea
+                rows={6}
+                value={noteForm.content}
+                onChange={(e) =>
+                  setNoteForm({ ...noteForm, content: e.target.value })
+                }
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={noteForm.isPrivate}
+                onCheckedChange={(v) =>
+                  setNoteForm({ ...noteForm, isPrivate: v })
+                }
+              />
+              <Label>Nota privada (solo staff)</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoteDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAddNote}
+              disabled={savingNote}
+              style={{ backgroundColor: "#0B2A5B", color: "white" }}
+            >
+              {savingNote ? "Guardando..." : "Agregar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// User Search Combobox
+// ---------------------------------------------------------------------------
+
+function UserSearchCombobox({
+  role,
+  onSelect,
+}: {
+  role: Role;
+  onSelect: (user: UserSearchItem | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [items, setItems] = useState<UserSearchItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<UserSearchItem | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (query) params.set("q", query);
+        if (role) params.set("role", role);
+        params.set("limit", "20");
+        const res = await fetch(`/api/users/search?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          setItems(data.items || []);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, role]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          className="w-full justify-between"
+        >
+          {selected
+            ? `${selected.name || selected.email} (${selected.role})`
+            : "Buscar usuario..."}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[400px] p-0">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Buscar por nombre o email..."
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            {loading && (
+              <div className="py-4 text-center text-sm text-muted-foreground">
+                Buscando...
+              </div>
+            )}
+            {!loading && items.length === 0 && (
+              <CommandEmpty>Sin resultados. Crea uno nuevo abajo.</CommandEmpty>
+            )}
+            <CommandGroup>
+              {items.map((u) => (
+                <CommandItem
+                  key={u.id}
+                  value={u.id}
+                  onSelect={() => {
+                    setSelected(u);
+                    onSelect(u);
+                    setOpen(false);
+                  }}
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium">{u.name || "(sin nombre)"}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {u.email} - {u.role}
+                    </span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            {selected && (
+              <div className="border-t p-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setSelected(null);
+                    onSelect(null);
+                  }}
+                >
+                  Limpiar selección
+                </Button>
+              </div>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 

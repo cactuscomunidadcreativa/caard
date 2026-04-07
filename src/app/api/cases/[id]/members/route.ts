@@ -12,11 +12,12 @@ import { Role } from "@prisma/client";
 import { z } from "zod";
 
 const addMemberSchema = z.object({
-  userId: z.string().optional(), // Si ya existe el usuario
-  email: z.string().email(),
-  name: z.string().min(2),
-  role: z.enum(["ARBITRO", "DEMANDANTE", "DEMANDADO", "SECRETARIA"]),
-  phoneE164: z.string().optional(),
+  userId: z.string().optional().nullable(),
+  email: z.string().email().optional().nullable(),
+  name: z.string().min(2).optional().nullable(),
+  displayName: z.string().min(2).optional().nullable(),
+  role: z.enum(["ARBITRO", "DEMANDANTE", "DEMANDADO", "SECRETARIA", "ABOGADO"]),
+  phoneE164: z.string().optional().nullable(),
   isPrimary: z.boolean().optional(),
 });
 
@@ -143,6 +144,14 @@ export async function POST(
     const body = await request.json();
     const validatedData = addMemberSchema.parse(body);
 
+    const display = validatedData.displayName || validatedData.name || null;
+    if (!display && !validatedData.userId) {
+      return NextResponse.json(
+        { error: "Se requiere displayName o userId" },
+        { status: 400 }
+      );
+    }
+
     // Obtener el caso
     const caseData = await prisma.case.findUnique({
       where: { id: caseId },
@@ -156,47 +165,50 @@ export async function POST(
       );
     }
 
-    // Buscar o crear el usuario
-    let memberUser = validatedData.userId
-      ? await prisma.user.findUnique({ where: { id: validatedData.userId } })
-      : await prisma.user.findUnique({ where: { email: validatedData.email } });
+    // Si viene userId, vincular al usuario existente. Si no, crear miembro standalone.
+    let memberUser = null;
+    if (validatedData.userId) {
+      memberUser = await prisma.user.findUnique({
+        where: { id: validatedData.userId },
+      });
+      if (!memberUser) {
+        return NextResponse.json(
+          { error: "Usuario no encontrado" },
+          { status: 404 }
+        );
+      }
+    }
 
-    if (!memberUser) {
-      memberUser = await prisma.user.create({
-        data: {
-          email: validatedData.email,
-          name: validatedData.name,
-          role: validatedData.role as Role,
-          centerId: caseData.centerId,
-          phoneE164: validatedData.phoneE164 || null,
+    // Verificar duplicado por usuario
+    if (memberUser) {
+      const existingMember = await prisma.caseMember.findFirst({
+        where: {
+          caseId,
+          userId: memberUser.id,
+          role: validatedData.role,
         },
       });
+
+      if (existingMember) {
+        return NextResponse.json(
+          { error: `El usuario ya es ${validatedData.role} en este caso` },
+          { status: 400 }
+        );
+      }
     }
 
-    // Verificar si ya es miembro con ese rol
-    const existingMember = await prisma.caseMember.findFirst({
-      where: {
-        caseId,
-        userId: memberUser.id,
-        role: validatedData.role,
-      },
-    });
-
-    if (existingMember) {
-      return NextResponse.json(
-        { error: `El usuario ya es ${validatedData.role} en este caso` },
-        { status: 400 }
-      );
-    }
+    const finalDisplayName =
+      display || memberUser?.name || memberUser?.email || "Sin nombre";
+    const finalEmail = validatedData.email || memberUser?.email || null;
 
     // Crear el miembro
     const member = await prisma.caseMember.create({
       data: {
         caseId,
-        userId: memberUser.id,
+        userId: memberUser?.id ?? null,
         role: validatedData.role as Role,
-        displayName: validatedData.name,
-        email: validatedData.email,
+        displayName: finalDisplayName,
+        email: finalEmail,
         phoneE164: validatedData.phoneE164 || null,
         isPrimary: validatedData.isPrimary ?? false,
       },
@@ -211,7 +223,6 @@ export async function POST(
       },
     });
 
-    // Registrar en audit log
     await prisma.auditLog.create({
       data: {
         centerId: caseData.centerId,
@@ -221,7 +232,7 @@ export async function POST(
         entity: "CaseMember",
         entityId: member.id,
         meta: {
-          memberName: validatedData.name,
+          memberName: finalDisplayName,
           memberRole: validatedData.role,
           caseCode: caseData.code,
         },
@@ -231,7 +242,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       member,
-      message: `${validatedData.name} agregado como ${validatedData.role}`,
+      message: `${finalDisplayName} agregado como ${validatedData.role}`,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

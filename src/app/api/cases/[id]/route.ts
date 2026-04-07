@@ -188,13 +188,42 @@ export async function PATCH(
     const body = await request.json();
 
     // Campos permitidos para actualizar
-    const allowedFields = ["title", "status", "claimantName", "respondentName"];
+    const allowedFields = [
+      "title",
+      "status",
+      "claimantName",
+      "respondentName",
+      "currentStage",
+      "tribunalMode",
+      "currency",
+      "isBlocked",
+      "blockReason",
+    ];
     const updateData: any = {};
 
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
         updateData[field] = body[field];
       }
+    }
+
+    // disputeAmount comes as decimal number; store as cents BigInt
+    if (body.disputeAmount !== undefined) {
+      const n = Number(body.disputeAmount);
+      if (!isNaN(n)) {
+        updateData.disputeAmountCents = BigInt(Math.round(n * 100));
+      } else if (body.disputeAmount === null || body.disputeAmount === "") {
+        updateData.disputeAmountCents = null;
+      }
+    }
+
+    if (body.isBlocked === true) {
+      updateData.blockedAt = new Date();
+      updateData.blockedBy = session.user.id;
+    } else if (body.isBlocked === false) {
+      updateData.blockedAt = null;
+      updateData.blockedBy = null;
+      updateData.blockReason = null;
     }
 
     // Actualizar fechas según el status
@@ -229,7 +258,10 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      case: updatedCase,
+      case: {
+        ...updatedCase,
+        disputeAmountCents: updatedCase.disputeAmountCents?.toString() ?? null,
+      },
     });
   } catch (error) {
     console.error("Error updating case:", error);
