@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
 
     // Intercambiar codigo por tokens
     const workspace = getGoogleWorkspaceService();
+    workspace.reset(); // Limpiar estado previo
     const tokens = await workspace.getTokensFromCode(code);
 
     // Guardar refresh token en la BD (notificationSettings del centro)

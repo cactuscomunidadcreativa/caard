@@ -105,9 +105,9 @@ export class GoogleWorkspaceService {
    * Esto permite que la autorización desde /admin/integrations funcione
    * sin necesidad de agregar GOOGLE_REFRESH_TOKEN a Vercel manualmente.
    */
-  async loadTokenFromDB(): Promise<boolean> {
-    if (this.configured || this._dbTokenLoaded) return this.configured;
-    this._dbTokenLoaded = true;
+  async loadTokenFromDB(force: boolean = false): Promise<boolean> {
+    if (this.configured && !force) return true;
+    if (this._dbTokenLoaded && !force) return this.configured;
 
     try {
       // Import prisma dinámicamente para evitar circular deps
@@ -119,6 +119,8 @@ export class GoogleWorkspaceService {
 
       const settings = center?.notificationSettings as Record<string, any> | null;
       const dbToken = settings?.googleRefreshToken;
+
+      this._dbTokenLoaded = true;
 
       if (dbToken) {
         this.auth.setCredentials({ refresh_token: dbToken });
@@ -134,9 +136,19 @@ export class GoogleWorkspaceService {
   /**
    * Asegura que el servicio esté configurado (env vars o BD)
    */
-  async ensureConfigured(): Promise<boolean> {
-    if (this.configured) return true;
-    return this.loadTokenFromDB();
+  async ensureConfigured(force: boolean = false): Promise<boolean> {
+    if (this.configured && !force) return true;
+    return this.loadTokenFromDB(force);
+  }
+
+  /**
+   * Resetea el estado del singleton (útil después de re-autorización)
+   */
+  reset(): void {
+    this.configured = false;
+    this._dbTokenLoaded = false;
+    this._gmail = null;
+    this._calendar = null;
   }
 
   /**

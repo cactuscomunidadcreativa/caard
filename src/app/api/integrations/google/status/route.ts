@@ -16,7 +16,8 @@ export async function GET() {
     }
 
     const workspace = getGoogleWorkspaceService();
-    const configured = workspace.isConfigured();
+    // Forzar recarga desde BD para reflejar autorizaciones recientes
+    const configured = await workspace.ensureConfigured(true);
 
     return NextResponse.json({
       configured,
