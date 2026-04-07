@@ -348,30 +348,69 @@ export function CasesClient() {
                 </TableBody>
               </Table>
 
-              {/* Pagination */}
+              {/* Pagination - sticky bottom for visibility */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between border-t px-4 py-3">
-                  <p className="text-sm text-muted-foreground">
-                    {total} {t.cases.title.toLowerCase()} encontrados
+                <div className="sticky bottom-0 z-10 flex flex-col sm:flex-row items-center justify-between gap-3 border-t-2 border-[#0B2A5B]/10 bg-white/95 backdrop-blur px-4 py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+                  <p className="text-sm font-medium text-slate-700">
+                    <span className="font-bold text-[#0B2A5B]">{total}</span> {t.cases.title.toLowerCase()} • Página <span className="font-bold text-[#0B2A5B]">{page}</span> de <span className="font-bold text-[#0B2A5B]">{totalPages}</span>
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      size="default"
+                      onClick={() => {
+                        setPage((p) => Math.max(1, p - 1));
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
                       disabled={page <= 1}
+                      className="border-2 border-[#0B2A5B]/20 hover:bg-[#0B2A5B] hover:text-white hover:border-[#0B2A5B] transition-all"
                     >
                       <ChevronLeft className="mr-1 h-4 w-4" />
                       {t.common.previous}
                     </Button>
-                    <span className="text-sm text-muted-foreground">
-                      {page} / {totalPages}
-                    </span>
+                    {/* Page numbers */}
+                    <div className="hidden sm:flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                        let pageNum: number;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (page <= 3) {
+                          pageNum = i + 1;
+                        } else if (page >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = page - 2 + i;
+                        }
+                        const isActive = pageNum === page;
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={isActive ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setPage(pageNum);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            className={
+                              isActive
+                                ? "bg-[#D66829] hover:bg-[#c45a22] text-white min-w-[40px]"
+                                : "border-2 border-[#0B2A5B]/20 hover:bg-[#0B2A5B] hover:text-white hover:border-[#0B2A5B] min-w-[40px]"
+                            }
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
                     <Button
                       variant="outline"
-                      size="sm"
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      size="default"
+                      onClick={() => {
+                        setPage((p) => Math.min(totalPages, p + 1));
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
                       disabled={page >= totalPages}
+                      className="border-2 border-[#0B2A5B]/20 hover:bg-[#0B2A5B] hover:text-white hover:border-[#0B2A5B] transition-all"
                     >
                       {t.common.next}
                       <ChevronRight className="ml-1 h-4 w-4" />

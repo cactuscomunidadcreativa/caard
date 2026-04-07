@@ -55,10 +55,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const email = credentials.email as string;
+        // Normalize email: lowercase + trim
+        const email = (credentials.email as string).toLowerCase().trim();
         const password = credentials.password as string;
 
-        const user = await prisma.user.findUnique({
+        // Try exact match first (faster)
+        let user = await prisma.user.findUnique({
           where: { email },
           select: {
             id: true,
@@ -71,6 +73,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             isActive: true,
           },
         });
+
+        // Fallback: case-insensitive search if exact match failed
+        if (!user) {
+          user = await prisma.user.findFirst({
+            where: { email: { equals: email, mode: "insensitive" } },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              image: true,
+              passwordHash: true,
+              role: true,
+              centerId: true,
+              isActive: true,
+            },
+          });
+        }
 
         if (!user) {
           return null;
