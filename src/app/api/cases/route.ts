@@ -109,9 +109,11 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy: [
+          { year: "desc" },
+          { sequence: "desc" },
+          { id: "desc" },
+        ],
         skip,
         take: pageSize,
       }),
