@@ -12,6 +12,7 @@ import { CASE_FOLDER_STRUCTURE } from "@/config/constants";
 import { getCaseFilters, hasFullAccess } from "@/lib/case-authorization";
 import { Role } from "@prisma/client";
 import { generateCaseCode, isEmergencyArbitrationType } from "@/lib/case-code";
+import { ensureCaseDriveFolders } from "@/lib/drive-case-folders";
 
 /**
  * Crea la estructura de carpetas para el expediente
@@ -337,6 +338,9 @@ export async function POST(request: NextRequest) {
 
       return createdCase;
     });
+
+    // Crear carpetas en Drive (fuera de la transacción, tolerante a fallos)
+    await ensureCaseDriveFolders(newCase.id);
 
     return NextResponse.json(
       {
