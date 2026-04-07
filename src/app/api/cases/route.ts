@@ -120,8 +120,14 @@ export async function GET(request: NextRequest) {
       prisma.case.count({ where: whereClause }),
     ]);
 
+    // Serialize BigInt values for JSON
+    const serializedCases = cases.map((c: any) => ({
+      ...c,
+      disputeAmountCents: c.disputeAmountCents != null ? c.disputeAmountCents.toString() : null,
+    }));
+
     return NextResponse.json({
-      items: cases,
+      items: serializedCases,
       total,
       page,
       pageSize,

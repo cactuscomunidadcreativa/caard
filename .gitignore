@@ -44,3 +44,6 @@ next-env.d.ts
 
 # Carpeta embebida
 caard/
+
+# WordPress old /v2 system files - migrated to Drive
+public/v2/
