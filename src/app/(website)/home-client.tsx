@@ -61,10 +61,10 @@ export function HomePageClient() {
   ];
 
   const stats = [
-    { value: "+500", label: t.website.casesManaged },
-    { value: "+50", label: t.website.registeredArbitrators },
-    { value: "98%", label: t.website.satisfaction },
-    { value: "10+", label: t.website.yearsExperience },
+    { value: "128", label: t.website.casesManaged },
+    { value: "53", label: t.website.registeredArbitrators },
+    { value: "100%", label: t.website.satisfaction },
+    { value: "+90", label: t.website.yearsExperience },
   ];
 
   const team = [

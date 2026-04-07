@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
+import { getGoogleWorkspaceService } from "@/lib/google-workspace";
+import { google } from "googleapis";
 
 // Roles que pueden sincronizar
 const SYNC_ROLES: Role[] = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"];
@@ -55,42 +57,62 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar configuración de Google Drive
-    if (!center.driveRootFolderId) {
+    // Verificar que Google Workspace esté autorizado
+    const workspace = getGoogleWorkspaceService();
+    const configured = await workspace.ensureConfigured(true);
+
+    if (!configured) {
       return NextResponse.json({
         success: false,
-        error: "Google Drive no configurado",
-        message: "Configure la carpeta raíz de Google Drive en la configuración del centro",
+        error: "Google Workspace no autorizado",
+        message: "Autorice Google Workspace desde /admin/integrations primero",
         needsConfiguration: true,
       }, { status: 400 });
     }
 
-    // Obtener casos que necesitan sincronización
+    // Cliente de Google Drive con OAuth ya autorizado
+    const drive = google.drive({ version: "v3", auth: workspace.getAuthClient() });
+
+    // Determinar carpeta raíz: usar la configurada o crear una "CAARD - Expedientes"
+    let rootFolderId = center.driveRootFolderId;
+    if (!rootFolderId) {
+      // Crear carpeta raíz en Drive
+      const rootFolder = await drive.files.create({
+        requestBody: {
+          name: `CAARD - Expedientes`,
+          mimeType: "application/vnd.google-apps.folder",
+        },
+        fields: "id, webViewLink",
+      });
+      rootFolderId = rootFolder.data.id || null;
+
+      if (rootFolderId) {
+        await prisma.center.update({
+          where: { id: centerId },
+          data: { driveRootFolderId: rootFolderId },
+        });
+      }
+    }
+
+    if (!rootFolderId) {
+      return NextResponse.json({
+        success: false,
+        error: "No se pudo crear la carpeta raíz en Drive",
+      }, { status: 500 });
+    }
+
+    // Obtener casos que necesitan sincronización (sin carpeta de Drive)
     const casesToSync = await prisma.case.findMany({
       where: {
         centerId,
-        OR: [
-          { driveFolderId: null },
-          {
-            documents: {
-              some: {
-                driveFileId: "",
-              },
-            },
-          },
-        ],
+        driveFolderId: null,
       },
       include: {
         folders: true,
-        documents: {
-          where: {
-            status: "ACTIVE",
-          },
-        },
       },
+      take: 50, // Limitar a 50 casos por request para no exceder timeout
     });
 
-    // Estadísticas de sincronización
     const syncStats = {
       casesProcessed: 0,
       foldersCreated: 0,
@@ -98,42 +120,58 @@ export async function POST(request: NextRequest) {
       errors: [] as string[],
     };
 
-    // TODO: Integración real con Google Drive API
-    // Por ahora, simulamos la sincronización
     for (const caseData of casesToSync) {
       try {
-        // Simular creación de carpeta en Drive para el caso
-        if (!caseData.driveFolderId) {
-          // En producción: crear carpeta en Google Drive
-          // const driveFolder = await googleDrive.createFolder(caseData.code, center.driveRootFolderId);
+        // Crear carpeta del caso dentro de la raíz
+        const caseFolder = await drive.files.create({
+          requestBody: {
+            name: caseData.code.replace(/[^a-zA-Z0-9-]/g, "_"),
+            mimeType: "application/vnd.google-apps.folder",
+            parents: [rootFolderId],
+          },
+          fields: "id, webViewLink",
+        });
 
-          await prisma.case.update({
-            where: { id: caseData.id },
-            data: {
-              driveFolderId: `drive_folder_${caseData.id}`, // Simulated ID
-              driveFolderPath: `/${center.code}/${caseData.code}`,
-            },
-          });
-          syncStats.foldersCreated++;
-        }
+        const caseFolderId = caseFolder.data.id;
+        if (!caseFolderId) continue;
 
-        // Simular creación de subcarpetas
+        await prisma.case.update({
+          where: { id: caseData.id },
+          data: {
+            driveFolderId: caseFolderId,
+            driveFolderPath: `/${center.code}/${caseData.code}`,
+          },
+        });
+        syncStats.foldersCreated++;
+
+        // Crear subcarpetas
         for (const folder of caseData.folders) {
           if (!folder.driveFolderId) {
-            await prisma.caseFolder.update({
-              where: { id: folder.id },
-              data: {
-                driveFolderId: `drive_subfolder_${folder.id}`,
-                drivePath: `/${center.code}/${caseData.code}/${folder.key}`,
+            const subFolder = await drive.files.create({
+              requestBody: {
+                name: folder.name,
+                mimeType: "application/vnd.google-apps.folder",
+                parents: [caseFolderId],
               },
+              fields: "id",
             });
-            syncStats.foldersCreated++;
+
+            if (subFolder.data.id) {
+              await prisma.caseFolder.update({
+                where: { id: folder.id },
+                data: {
+                  driveFolderId: subFolder.data.id,
+                  drivePath: `/${center.code}/${caseData.code}/${folder.key}`,
+                },
+              });
+              syncStats.foldersCreated++;
+            }
           }
         }
 
         syncStats.casesProcessed++;
-      } catch (error) {
-        syncStats.errors.push(`Error en caso ${caseData.code}: ${error}`);
+      } catch (error: any) {
+        syncStats.errors.push(`Error en caso ${caseData.code}: ${error.message || error}`);
       }
     }
 
