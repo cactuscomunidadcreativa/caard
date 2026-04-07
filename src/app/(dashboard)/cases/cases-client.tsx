@@ -268,85 +268,75 @@ export function CasesClient() {
         </CardContent>
       </Card>
 
-      {/* Cases Table */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <TableSkeleton />
-          ) : cases.length > 0 ? (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t.cases.caseNumber}</TableHead>
-                    <TableHead>{t.cases.caseTitle}</TableHead>
-                    <TableHead>{t.cases.status}</TableHead>
-                    <TableHead className="hidden lg:table-cell">{t.cases.type}</TableHead>
-                    <TableHead className="hidden md:table-cell">{t.cases.claimant}</TableHead>
-                    <TableHead className="hidden lg:table-cell">{t.cases.respondent}</TableHead>
-                    <TableHead className="hidden xl:table-cell">{t.cases.createdAt}</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cases.map((caseItem) => (
-                    <TableRow key={caseItem.id}>
-                      <TableCell>
-                        <Link
-                          href={`/cases/${caseItem.id}`}
-                          className="font-medium text-primary hover:underline"
-                        >
-                          {caseItem.code}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <span className="line-clamp-1">{caseItem.title}</span>
-                      </TableCell>
-                      <TableCell>
-                        <CaseStatusBadge status={caseItem.status} />
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {caseItem.arbitrationType?.name}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <span className="line-clamp-1">{caseItem.claimantName}</span>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <span className="line-clamp-1">{caseItem.respondentName}</span>
-                      </TableCell>
-                      <TableCell className="hidden xl:table-cell text-muted-foreground">
-                        {formatDate(caseItem.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/cases/${caseItem.id}`}>
-                                {t.common.view} {t.cases.title.toLowerCase()}
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/cases/${caseItem.id}/documents`}>
-                                {t.common.view} {t.documents.title.toLowerCase()}
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/cases/${caseItem.id}/payments`}>
-                                {t.common.view} {t.payments.title.toLowerCase()}
-                              </Link>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+      {/* Cases Grid */}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-lg border p-4 space-y-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-4 w-24" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : cases.length > 0 ? (
+          <>
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+              {cases.map((caseItem) => (
+                <Link
+                  key={caseItem.id}
+                  href={`/cases/${caseItem.id}`}
+                  className="group relative rounded-xl border-2 border-slate-200 bg-white p-5 hover:border-[#D66829] hover:shadow-lg transition-all duration-200"
+                >
+                  {/* Header with code and status */}
+                  <div className="flex items-start justify-between mb-3 gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-[#0B2A5B]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#D66829]/10 transition-colors">
+                          <svg className="w-4 h-4 text-[#0B2A5B] group-hover:text-[#D66829]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <p className="font-bold text-sm text-[#0B2A5B] truncate">{caseItem.code}</p>
+                      </div>
+                    </div>
+                    <CaseStatusBadge status={caseItem.status} />
+                  </div>
+
+                  {/* Title */}
+                  <p className="text-sm text-slate-700 font-medium line-clamp-2 mb-3 min-h-[2.5rem]">
+                    {caseItem.title}
+                  </p>
+
+                  {/* Parts */}
+                  <div className="space-y-1.5 mb-3 text-xs">
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-slate-500 font-medium min-w-[80px]">Demandante:</span>
+                      <span className="text-slate-700 line-clamp-1">{caseItem.claimantName || "—"}</span>
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                      <span className="text-slate-500 font-medium min-w-[80px]">Demandado:</span>
+                      <span className="text-slate-700 line-clamp-1">{caseItem.respondentName || "—"}</span>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <span className="text-xs text-slate-500">
+                      {caseItem.arbitrationType?.name || "—"}
+                    </span>
+                    <span className="text-xs font-medium text-[#D66829] group-hover:underline">
+                      Ver detalle →
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
 
               {/* Pagination - sticky bottom for visibility */}
               {totalPages > 1 && (
@@ -417,9 +407,10 @@ export function CasesClient() {
                     </Button>
                   </div>
                 </div>
-              )}
-            </>
-          ) : (
+            )}
+          </>
+        ) : (
+          <div className="rounded-xl border-2 border-dashed border-slate-200 p-12">
             <EmptyState
               title={t.common.noResults}
               description={t.cases.title}
@@ -427,11 +418,10 @@ export function CasesClient() {
                 label: t.sidebar.newCase,
                 onClick: () => {},
               }}
-              className="m-6"
             />
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
