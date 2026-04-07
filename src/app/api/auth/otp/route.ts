@@ -34,22 +34,54 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Buscar usuario por email
-      const user = await prisma.user.findUnique({
-        where: { email },
+      // Normalizar email (lowercase + trim)
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Buscar usuario case-insensitive
+      let user = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
         select: {
           id: true,
+          email: true,
+          name: true,
           twoFactorEnabled: true,
           twoFactorChannel: true,
+          isActive: true,
         },
       });
 
       if (!user) {
-        // No revelar si el usuario existe
-        return NextResponse.json({
-          success: true,
-          message: "Si el email existe, recibirá un código de verificación",
+        user = await prisma.user.findFirst({
+          where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            twoFactorEnabled: true,
+            twoFactorChannel: true,
+            isActive: true,
+          },
         });
+      }
+
+      if (!user) {
+        return NextResponse.json(
+          {
+            error: "No encontramos una cuenta con ese correo. Contacta a CAARD en info@caardpe.com para solicitar acceso.",
+            code: "USER_NOT_FOUND",
+          },
+          { status: 404 }
+        );
+      }
+
+      if (!user.isActive) {
+        return NextResponse.json(
+          {
+            error: "Tu cuenta está desactivada. Contacta a CAARD en info@caardpe.com.",
+            code: "USER_INACTIVE",
+          },
+          { status: 403 }
+        );
       }
 
       // Generar OTP

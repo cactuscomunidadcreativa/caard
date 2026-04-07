@@ -1072,18 +1072,16 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                             {formatDate(doc.createdAt)}
                           </td>
                           <td className="py-3">
-                            {doc.driveWebViewLink && (
-                              <Link
-                                href={doc.driveWebViewLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Button variant="ghost" size="sm" className="gap-1">
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                  Ver
-                                </Button>
-                              </Link>
-                            )}
+                            <Link
+                              href={`/api/documents/${doc.id}/view`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button variant="ghost" size="sm" className="gap-1">
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                Ver
+                              </Button>
+                            </Link>
                           </td>
                         </tr>
                       ))}
