@@ -30,6 +30,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    // Permitir pegar URL completa de Drive y extraer el ID
+    if (body.rootFolderId && typeof body.rootFolderId === "string") {
+      const m = body.rootFolderId.match(/[-\w]{25,}/);
+      if (m) body.rootFolderId = m[0];
+    }
     const validatedData = configSchema.parse(body);
 
     // Actualizar configuración del centro

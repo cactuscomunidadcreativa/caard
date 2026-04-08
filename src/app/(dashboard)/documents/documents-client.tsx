@@ -246,18 +246,19 @@ export function DocumentsClient({
         });
       }, 500);
 
-      const response = await fetch("/api/documents/sync", {
+      const response = await fetch("/api/documents/import-from-drive", {
         method: "POST",
       });
 
       clearInterval(interval);
 
       if (response.ok) {
+        const result = await response.json();
         setSyncProgress(100);
         setSyncStatus("success");
         toast({
-          title: "Sincronización completada",
-          description: "Los documentos se han sincronizado con Google Drive",
+          title: "Importación completada",
+          description: `${result.stats?.casesMatched || 0} casos vinculados, ${result.stats?.filesIndexed || 0} archivos indexados`,
         });
 
         // Recargar documentos
