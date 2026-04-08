@@ -34,6 +34,35 @@ import type {
 } from "./types";
 
 import { addBusinessDays, isDeadlineOverdue } from "./business-days";
+import {
+  calculateCaardFees,
+  type Scope,
+  type TribunalMode,
+  type ProcedureType,
+} from "@/lib/fees/caard-tariffs";
+
+// =============================================================================
+// LIQUIDACIÓN OFICIAL — engine central CAARD (6 tablas oficiales)
+// =============================================================================
+
+/**
+ * Devuelve honorarios del tribunal/árbitro + gastos del centro según el
+ * reglamento oficial CAARD. Es la fuente de verdad para órdenes de pago,
+ * liquidaciones, calculadora pública y admin.
+ */
+export function liquidateCase(params: {
+  scope: Scope;
+  tribunalMode: TribunalMode;
+  procedureType?: ProcedureType;
+  disputeAmount: number;
+}) {
+  return calculateCaardFees({
+    scope: params.scope,
+    mode: params.tribunalMode,
+    procedureType: params.procedureType,
+    amount: params.disputeAmount,
+  });
+}
 
 // =============================================================================
 // CÁLCULO DE TASAS

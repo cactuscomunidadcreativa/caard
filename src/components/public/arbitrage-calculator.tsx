@@ -1,29 +1,21 @@
 "use client";
-
 /**
- * CAARD - Componente Calculadora de Gastos Arbitrales
- * Calcula gastos administrativos y honorarios de árbitros
- * CON TRADUCCIONES i18n
+ * CAARD - Calculadora de Gastos Arbitrales
+ * Usa el engine central src/lib/fees/caard-tariffs para mantener consistencia
+ * con liquidaciones, órdenes de pago y admin.
  */
-
-import { useState, useMemo } from "react";
-import {
-  Calculator,
-  Users,
-  DollarSign,
-  Scale,
-  FileText,
-  Info,
-  ChevronDown,
-  Download,
-  Printer,
-  RefreshCw,
-} from "lucide-react";
-
+import { useMemo, useState } from "react";
+import { Calculator, Info, RefreshCw, Scale, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -32,650 +24,207 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { useTranslation } from "@/lib/i18n";
-
-// Tabla de tarifas administrativas (porcentaje sobre cuantía)
-const ADMIN_FEE_TIERS = [
-  { min: 0, max: 50000, rate: 3.0, minFee: 1500 },
-  { min: 50000, max: 100000, rate: 2.5, minFee: 1500 },
-  { min: 100000, max: 250000, rate: 2.0, minFee: 2500 },
-  { min: 250000, max: 500000, rate: 1.5, minFee: 5000 },
-  { min: 500000, max: 1000000, rate: 1.0, minFee: 7500 },
-  { min: 1000000, max: 5000000, rate: 0.75, minFee: 10000 },
-  { min: 5000000, max: Infinity, rate: 0.5, minFee: 37500 },
-];
-
-// Tabla de honorarios de árbitros (porcentaje sobre cuantía)
-const ARBITRATOR_FEE_TIERS = [
-  { min: 0, max: 50000, rate: 8.0, minFee: 4000 },
-  { min: 50000, max: 100000, rate: 6.0, minFee: 4000 },
-  { min: 100000, max: 250000, rate: 5.0, minFee: 6000 },
-  { min: 250000, max: 500000, rate: 4.0, minFee: 12500 },
-  { min: 500000, max: 1000000, rate: 3.0, minFee: 20000 },
-  { min: 1000000, max: 5000000, rate: 2.0, minFee: 30000 },
-  { min: 5000000, max: Infinity, rate: 1.5, minFee: 100000 },
-];
-
-// Gastos adicionales (montos SIN IGV)
-const ADDITIONAL_FEES = {
-  notificationFee: 150, // Gastos de notificación por parte (sin IGV)
-  audiencePerHour: 200, // Gastos por hora de audiencia
-  emergencyFee: 1800, // Tasa fija de arbitraje de emergencia S/ 1,800 (sin IGV) - solo para tipos no-emergencia con toggle
-};
-
-// Tasa de presentación por tipo de arbitraje (en centimos, sin IGV)
-const REGISTRATION_FEES: Record<string, { amountCents: number; currency: string }> = {
-  solicitud_arbitraje: { amountCents: 50000, currency: "PEN" }, // S/ 500
-  solicitud_internacional: { amountCents: 40000, currency: "USD" }, // $400
-  emergencia: { amountCents: 180000, currency: "PEN" }, // S/ 1,800
-  emergencia_internacional: { amountCents: 150000, currency: "USD" }, // $1,500
-};
-
-// Factor para cuantía indeterminada: 3.5% del valor del contrato
-const INDETERMINATE_RATE = 0.035;
-
-interface CalculationResult {
-  registrationFee: number;
-  adminFee: number;
-  arbitratorFee: number;
-  notificationFee: number;
-  emergencyFee: number;
-  subtotal: number;
-  igv: number;
-  total: number;
-  perParty: number;
-  adminTierRate: number;
-  adminTierMinFee: number;
-  arbTierRate: number;
-  arbTierMinFee: number;
-}
-
-function calculateFees(
-  amount: number,
-  numberOfArbitrators: number,
-  arbitrationType: string,
-  isEmergency: boolean,
-  numberOfParties: number
-): CalculationResult {
-  const isInternational = arbitrationType === "solicitud_internacional" || arbitrationType === "emergencia_internacional";
-  const isEmergencyType = arbitrationType === "emergencia" || arbitrationType === "emergencia_internacional";
-
-  // Encontrar tarifa administrativa
-  const adminTier = ADMIN_FEE_TIERS.find(
-    (tier) => amount >= tier.min && amount < tier.max
-  ) || ADMIN_FEE_TIERS[ADMIN_FEE_TIERS.length - 1];
-
-  const adminFee = Math.max(amount * (adminTier.rate / 100), adminTier.minFee);
-
-  // Encontrar honorarios de árbitros
-  const arbTier = ARBITRATOR_FEE_TIERS.find(
-    (tier) => amount >= tier.min && amount < tier.max
-  ) || ARBITRATOR_FEE_TIERS[ARBITRATOR_FEE_TIERS.length - 1];
-
-  let arbitratorFee = Math.max(amount * (arbTier.rate / 100), arbTier.minFee);
-
-  // Multiplicar por número de árbitros
-  arbitratorFee = arbitratorFee * numberOfArbitrators;
-
-  // Tasa de emergencia: 0 para tipos de emergencia (ya está incluida en la tasa de presentación)
-  const emergencyFee = (isEmergency && !isEmergencyType) ? ADDITIONAL_FEES.emergencyFee : 0;
-
-  // Tasa de presentación según tipo de arbitraje (convertir de centimos a soles/dólares)
-  const regFeeConfig = REGISTRATION_FEES[arbitrationType] || REGISTRATION_FEES.solicitud_arbitraje;
-  const registrationFee = regFeeConfig.amountCents / 100;
-
-  const notificationFee = ADDITIONAL_FEES.notificationFee * numberOfParties;
-
-  // Calcular subtotal
-  const subtotal = registrationFee + adminFee + arbitratorFee + notificationFee + emergencyFee;
-
-  // IGV (18%) - Solo aplica a: tasa de presentación, gastos del centro (admin), gastos de notificación
-  // NO aplica a honorarios de árbitros
-  // Para tipos internacionales, IGV no aplica
-  const igvBase = registrationFee + adminFee + notificationFee + emergencyFee;
-  const igv = isInternational ? 0 : igvBase * 0.18;
-
-  // Total
-  const total = subtotal + igv;
-
-  // Por parte (dividido entre el número de partes)
-  const perParty = total / numberOfParties;
-
-  return {
-    registrationFee,
-    adminFee,
-    arbitratorFee,
-    notificationFee,
-    emergencyFee,
-    subtotal,
-    igv,
-    total,
-    perParty,
-    adminTierRate: adminTier.rate,
-    adminTierMinFee: adminTier.minFee,
-    arbTierRate: arbTier.rate,
-    arbTierMinFee: arbTier.minFee,
-  };
-}
+  calculateCaardFees,
+  formatCurrency,
+  type Scope,
+  type TribunalMode,
+  type ProcedureType,
+} from "@/lib/fees/caard-tariffs";
 
 export function ArbitrageCalculator() {
-  const { t } = useTranslation();
-
-  // Estado del formulario
   const [amount, setAmount] = useState<string>("");
-  const [currency, setCurrency] = useState<"PEN" | "USD">("PEN");
-  const [arbitrationType, setArbitrationType] = useState("solicitud_arbitraje");
-  const [numberOfArbitrators, setNumberOfArbitrators] = useState(1);
-  const [numberOfParties, setNumberOfParties] = useState(2);
-  const [isEmergency, setIsEmergency] = useState(false);
-  const [isIndeterminate, setIsIndeterminate] = useState(false);
-  const [contractValue, setContractValue] = useState<string>("");
+  const [scope, setScope] = useState<Scope>("NACIONAL");
+  const [mode, setMode] = useState<TribunalMode>("TRIBUNAL_3");
+  const [procedureType, setProcedureType] = useState<ProcedureType>("REGULAR");
 
-  // Tipos de arbitraje
-  const ARBITRATION_TYPES = [
-    { value: "solicitud_arbitraje", label: "Solicitud de Arbitraje" },
-    { value: "solicitud_internacional", label: "Solicitud de Arbitraje Internacional" },
-    { value: "emergencia", label: "Solicitud de Arbitraje de Emergencia" },
-    { value: "emergencia_internacional", label: "Solicitud de Arbitraje de Emergencia Internacional" },
-  ];
+  const parsed = Number((amount || "0").replace(/[^\d.]/g, ""));
 
-  // Calcular resultado
   const result = useMemo(() => {
-    const numAmount = parseFloat(amount.replace(/,/g, "")) || 0;
+    if (!parsed || parsed <= 0) return null;
+    return calculateCaardFees({
+      scope,
+      mode,
+      procedureType,
+      amount: parsed,
+    });
+  }, [parsed, scope, mode, procedureType]);
 
-    // Para cuantía indeterminada: 3.5% del valor total del contrato
-    let effectiveAmount: number;
-    if (isIndeterminate) {
-      const numContractValue = parseFloat(contractValue.replace(/,/g, "")) || 0;
-      if (numContractValue <= 0) return null;
-      effectiveAmount = numContractValue * INDETERMINATE_RATE;
-    } else {
-      effectiveAmount = numAmount;
-    }
+  const currency: "PEN" | "USD" = scope === "INTERNACIONAL" ? "USD" : "PEN";
+  const currencySymbol = currency === "USD" ? "$" : "S/.";
 
-    if (effectiveAmount <= 0) return null;
-
-    // Si es USD, convertir a PEN (tipo de cambio referencial)
-    const amountInPEN = currency === "USD" ? effectiveAmount * 3.7 : effectiveAmount;
-
-    return calculateFees(
-      amountInPEN,
-      numberOfArbitrators,
-      arbitrationType,
-      isEmergency,
-      numberOfParties
-    );
-  }, [amount, contractValue, currency, arbitrationType, numberOfArbitrators, numberOfParties, isEmergency, isIndeterminate]);
-
-  // Formatear número
-  const formatCurrency = (value: number, curr: string = "PEN") => {
-    const symbol = curr === "USD" ? "$" : "S/";
-    return `${symbol} ${value.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
-  // Auto-switch currency for international types
-  const handleArbitrationTypeChange = (value: string) => {
-    setArbitrationType(value);
-    if (value === "solicitud_internacional" || value === "emergencia_internacional") {
-      setCurrency("USD");
-    } else {
-      setCurrency("PEN");
-    }
-  };
-
-  // Limpiar formulario
-  const handleReset = () => {
+  const reset = () => {
     setAmount("");
-    setCurrency("PEN");
-    setArbitrationType("solicitud_arbitraje");
-    setNumberOfArbitrators(1);
-    setNumberOfParties(2);
-    setIsEmergency(false);
-    setIsIndeterminate(false);
-    setContractValue("");
+    setScope("NACIONAL");
+    setMode("TRIBUNAL_3");
+    setProcedureType("REGULAR");
   };
 
   return (
-    <TooltipProvider>
-      <div className="max-w-5xl mx-auto">
-        <div className="grid gap-8 lg:grid-cols-5">
-          {/* Formulario */}
-          <div className="lg:col-span-2">
-            <Card className="shadow-xl border-slate-200">
-              <CardHeader className="bg-gradient-to-br from-[#0B2A5B] to-[#0d3a7a] text-white rounded-t-xl">
-                <CardTitle className="flex items-center gap-2">
-                  <Calculator className="h-5 w-5" />
-                  {t.calculator.dataTitle}
-                </CardTitle>
-                <CardDescription className="text-white/80">
-                  {t.calculator.dataSubtitle}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                {/* Tipo de arbitraje */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Scale className="h-4 w-4 text-[#D66829]" />
-                    {t.calculator.arbitrationType}
-                  </Label>
-                  <Select value={arbitrationType} onValueChange={handleArbitrationTypeChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ARBITRATION_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+    <div className="max-w-5xl mx-auto">
+      <Card className="shadow-xl border-2 border-slate-200">
+        <CardHeader className="bg-gradient-to-r from-[#0B2A5B] to-[#1a4185] text-white rounded-t-lg">
+          <CardTitle className="flex items-center gap-3 text-2xl">
+            <Calculator className="h-6 w-6" />
+            Calculadora de Gastos Arbitrales
+          </CardTitle>
+          <CardDescription className="text-white/80">
+            Cálculo de honorarios del árbitro/tribunal y gastos del centro
+            según el reglamento oficial CAARD.
+          </CardDescription>
+        </CardHeader>
 
-                {/* Cuantía indeterminada */}
-                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50">
-                  <div className="flex items-center gap-2">
-                    <Info className="h-4 w-4 text-slate-500" />
-                    <Label htmlFor="indeterminate" className="text-sm">
-                      {t.calculator.indeterminateAmount}
-                    </Label>
-                  </div>
-                  <Switch
-                    id="indeterminate"
-                    checked={isIndeterminate}
-                    onCheckedChange={setIsIndeterminate}
-                  />
-                </div>
+        <CardContent className="p-6 md:p-8 space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Scale className="h-4 w-4 text-[#D66829]" />
+                Tipo de arbitraje
+              </Label>
+              <Select value={scope} onValueChange={(v) => setScope(v as Scope)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NACIONAL">Nacional (Soles)</SelectItem>
+                  <SelectItem value="INTERNACIONAL">
+                    Internacional (Dólares)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                {/* Cuantía determinada */}
-                {!isIndeterminate && (
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-[#D66829]" />
-                      {t.calculator.disputeAmount}
-                    </Label>
-                    <div className="flex gap-2">
-                      <Select value={currency} onValueChange={(v) => setCurrency(v as "PEN" | "USD")}>
-                        <SelectTrigger className="w-24">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PEN">S/</SelectItem>
-                          <SelectItem value="USD">$</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="text"
-                        placeholder="0.00"
-                        value={amount}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9.,]/g, "");
-                          setAmount(value);
-                        }}
-                        className="flex-1 text-right font-mono text-lg"
-                      />
-                    </div>
-                  </div>
-                )}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-[#D66829]" />
+                Procedimiento
+              </Label>
+              <Select
+                value={procedureType}
+                onValueChange={(v) => setProcedureType(v as ProcedureType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="REGULAR">Arbitraje regular</SelectItem>
+                  <SelectItem value="EMERGENCY">
+                    Arbitraje de emergencia
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                {/* Valor del contrato (para cuantía indeterminada) */}
-                {isIndeterminate && (
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-[#D66829]" />
-                      Valor total del contrato
-                    </Label>
-                    <p className="text-xs text-slate-500">
-                      Se aplicará el 3.5% del valor del contrato como cuantía de referencia
-                    </p>
-                    <div className="flex gap-2">
-                      <Select value={currency} onValueChange={(v) => setCurrency(v as "PEN" | "USD")}>
-                        <SelectTrigger className="w-24">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PEN">S/</SelectItem>
-                          <SelectItem value="USD">$</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="text"
-                        placeholder="Valor del contrato"
-                        value={contractValue}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9.,]/g, "");
-                          setContractValue(value);
-                        }}
-                        className="flex-1 text-right font-mono text-lg"
-                      />
-                    </div>
-                    {contractValue && (
-                      <p className="text-sm text-[#D66829] font-medium">
-                        Cuantía de referencia (3.5%): {formatCurrency(parseFloat(contractValue.replace(/,/g, "")) * INDETERMINATE_RATE || 0)}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                <Separator />
-
-                {/* Número de árbitros */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-[#D66829]" />
-                    {t.calculator.numberOfArbitrators}
-                  </Label>
-                  <div className="flex gap-2">
-                    {[1, 3].map((num) => (
-                      <Button
-                        key={num}
-                        type="button"
-                        variant={numberOfArbitrators === num ? "default" : "outline"}
-                        className={`flex-1 ${numberOfArbitrators === num ? "bg-[#D66829] hover:bg-[#c45a22]" : ""}`}
-                        onClick={() => setNumberOfArbitrators(num)}
-                      >
-                        {num === 1 ? t.calculator.oneArbitrator : t.calculator.threeArbitrators}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Número de partes */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-[#D66829]" />
-                    {t.calculator.numberOfParties}
-                  </Label>
-                  <Select
-                    value={String(numberOfParties)}
-                    onValueChange={(v) => setNumberOfParties(parseInt(v))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="2">{t.calculator.twoParties}</SelectItem>
-                      <SelectItem value="3">{t.calculator.threeParties}</SelectItem>
-                      <SelectItem value="4">{t.calculator.fourParties}</SelectItem>
-                      <SelectItem value="5">{t.calculator.fiveOrMoreParties}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Arbitraje de emergencia */}
-                <div className="flex items-center justify-between p-3 rounded-lg bg-orange-50 border border-orange-200">
-                  <div>
-                    <Label htmlFor="emergency" className="text-sm font-medium text-orange-900">
-                      {t.calculator.emergencyArbitration}
-                    </Label>
-                    <p className="text-xs text-orange-700">Tasa adicional de S/ 1,800 + IGV</p>
-                  </div>
-                  <Switch
-                    id="emergency"
-                    checked={isEmergency}
-                    onCheckedChange={setIsEmergency}
-                  />
-                </div>
-
-                {/* Botón reset */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleReset}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  {t.calculator.clearCalculation}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Resultados */}
-          <div className="lg:col-span-3">
-            <Card className="shadow-xl border-slate-200 h-full">
-              <CardHeader className="bg-gradient-to-br from-[#D66829] to-[#c45a22] text-white rounded-t-xl">
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  {t.calculator.resultsTitle}
-                </CardTitle>
-                <CardDescription className="text-white/80">
-                  {t.calculator.resultsSubtitle}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                {result ? (
-                  <div className="space-y-6">
-                    {/* Total destacado */}
-                    <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border">
-                      <p className="text-sm text-slate-600 mb-2">{t.calculator.totalEstimated}</p>
-                      <p className="text-4xl md:text-5xl font-bold text-[#D66829]">
-                        {formatCurrency(result.total)}
-                      </p>
-                      <p className="text-sm text-slate-500 mt-2">
-                        {formatCurrency(result.perParty)} {t.calculator.perParty} ({numberOfParties} {t.calculator.parties})
-                      </p>
-                    </div>
-
-                    {/* Desglose */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-slate-900">{t.calculator.breakdown}</h3>
-
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <div>
-                          <p className="font-medium text-slate-900">Tasa de presentación de solicitud de arbitraje</p>
-                          <p className="text-xs text-slate-500">Tasa fija aplicable al inicio del proceso</p>
-                        </div>
-                        <p className="font-mono font-semibold text-slate-900">
-                          {formatCurrency(result.registrationFee)}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <div>
-                          <p className="font-medium text-slate-900">{t.calculator.adminFees}</p>
-                          <p className="text-xs text-slate-500">
-                            Según tabla de gastos (mín. S/ {result.adminTierMinFee.toLocaleString()})
-                          </p>
-                        </div>
-                        <p className="font-mono font-semibold text-slate-900">
-                          {formatCurrency(result.adminFee)}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <div>
-                          <p className="font-medium text-slate-900">
-                            {numberOfArbitrators > 1 ? t.calculator.arbitratorFeesPlural : t.calculator.arbitratorFees} ({numberOfArbitrators})
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            Según tabla de honorarios × {numberOfArbitrators} {numberOfArbitrators > 1 ? t.calculator.arbitrators : t.calculator.arbitrator}
-                          </p>
-                        </div>
-                        <p className="font-mono font-semibold text-slate-900">
-                          {formatCurrency(result.arbitratorFee)}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <div>
-                          <p className="font-medium text-slate-900">{t.calculator.notificationFees}</p>
-                          <p className="text-xs text-slate-500">
-                            S/ {ADDITIONAL_FEES.notificationFee} x {numberOfParties} {t.calculator.notificationFeesDesc}
-                          </p>
-                        </div>
-                        <p className="font-mono font-semibold text-slate-900">
-                          {formatCurrency(result.notificationFee)}
-                        </p>
-                      </div>
-
-                      {/* Tasa de emergencia */}
-                      {result.emergencyFee > 0 && (
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-orange-50 border border-orange-200">
-                          <div>
-                            <p className="font-medium text-orange-900">Tasa de Árbitro de Emergencia</p>
-                            <p className="text-xs text-orange-700">Tasa fija por procedimiento de emergencia</p>
-                          </div>
-                          <p className="font-mono font-semibold text-orange-900">
-                            {formatCurrency(result.emergencyFee)}
-                          </p>
-                        </div>
-                      )}
-
-                      <Separator className="my-4" />
-
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100">
-                        <p className="font-medium text-slate-700">{t.calculator.subtotal}</p>
-                        <p className="font-mono font-semibold text-slate-900">
-                          {formatCurrency(result.subtotal)}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100">
-                        <div>
-                          <p className="font-medium text-slate-700">{t.calculator.igv}</p>
-                          <p className="text-xs text-slate-500">Aplica sobre tasa de presentación, gastos del centro y notificación</p>
-                        </div>
-                        <p className="font-mono font-semibold text-slate-900">
-                          {formatCurrency(result.igv)}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 rounded-xl bg-[#D66829]/10 border-2 border-[#D66829]/20">
-                        <p className="font-bold text-[#D66829]">{t.calculator.total}</p>
-                        <p className="font-mono text-xl font-bold text-[#D66829]">
-                          {formatCurrency(result.total)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Botones de acción */}
-                    <div className="flex gap-3 pt-4">
-                      <Button variant="outline" className="flex-1" onClick={() => window.print()}>
-                        <Printer className="h-4 w-4 mr-2" />
-                        {t.calculator.print}
-                      </Button>
-                      <Button className="flex-1 bg-[#0B2A5B] hover:bg-[#0d3a7a]">
-                        <FileText className="h-4 w-4 mr-2" />
-                        {t.calculator.requestArbitration}
-                      </Button>
-                    </div>
-
-                    {/* Aviso */}
-                    {isEmergency && (
-                      <div className="p-4 rounded-xl bg-orange-50 border border-orange-200">
-                        <p className="text-sm text-orange-800">
-                          <strong>Nota:</strong> {t.calculator.emergencyNote}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="w-20 h-20 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-4">
-                      <Calculator className="h-10 w-10 text-slate-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                      {t.calculator.enterDataTitle}
-                    </h3>
-                    <p className="text-slate-500 max-w-sm mx-auto">
-                      {t.calculator.enterDataDesc}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Información adicional */}
-        <div className="mt-8">
-          <Accordion type="single" collapsible className="bg-white rounded-xl shadow-lg border">
-            <AccordionItem value="tabla-administrativa" className="border-b">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <span className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-[#D66829]" />
-                  {t.calculator.adminFeesTable}
-                </span>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-4">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-slate-50">
-                        <th className="text-left p-3 font-semibold">{t.calculator.amountRange} (S/)</th>
-                        <th className="text-center p-3 font-semibold">{t.calculator.percentage}</th>
-                        <th className="text-right p-3 font-semibold">{t.calculator.minimum}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ADMIN_FEE_TIERS.map((tier, index) => (
-                        <tr key={index} className="border-b hover:bg-slate-50">
-                          <td className="p-3">
-                            {tier.max === Infinity
-                              ? `${t.calculator.moreThan} ${tier.min.toLocaleString()}`
-                              : `${tier.min.toLocaleString()} - ${tier.max.toLocaleString()}`}
-                          </td>
-                          <td className="text-center p-3">{tier.rate}%</td>
-                          <td className="text-right p-3 font-mono">S/ {tier.minFee.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="tabla-honorarios">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <span className="flex items-center gap-2">
+            {procedureType !== "EMERGENCY" && (
+              <div className="space-y-2 md:col-span-2">
+                <Label className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-[#D66829]" />
-                  {t.calculator.arbitratorFeesTable}
-                </span>
-              </AccordionTrigger>
-              <AccordionContent className="px-6 pb-4">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-slate-50">
-                        <th className="text-left p-3 font-semibold">{t.calculator.amountRange} (S/)</th>
-                        <th className="text-center p-3 font-semibold">{t.calculator.percentage}</th>
-                        <th className="text-right p-3 font-semibold">{t.calculator.minimumPerArbitrator}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ARBITRATOR_FEE_TIERS.map((tier, index) => (
-                        <tr key={index} className="border-b hover:bg-slate-50">
-                          <td className="p-3">
-                            {tier.max === Infinity
-                              ? `${t.calculator.moreThan} ${tier.min.toLocaleString()}`
-                              : `${tier.min.toLocaleString()} - ${tier.max.toLocaleString()}`}
-                          </td>
-                          <td className="text-center p-3">{tier.rate}%</td>
-                          <td className="text-right p-3 font-mono">S/ {tier.minFee.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  Composición del tribunal
+                </Label>
+                <Select
+                  value={mode}
+                  onValueChange={(v) => setMode(v as TribunalMode)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SOLE_ARBITRATOR">Árbitro único</SelectItem>
+                    <SelectItem value="TRIBUNAL_3">
+                      Tribunal arbitral (3 árbitros)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Cuantía de la controversia ({currencySymbol})</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                placeholder={`Ej: ${currencySymbol} 500,000.00`}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="text-lg h-12"
+              />
+              <p className="text-xs text-muted-foreground">
+                Ingrese el monto total de la controversia sin IGV.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={reset}>
+              <RefreshCw className="h-4 w-4 mr-2" /> Reiniciar
+            </Button>
+          </div>
+
+          <Separator />
+
+          {result ? (
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border-2 border-[#0B2A5B]/20 bg-[#0B2A5B]/5 p-5">
+                  <p className="text-xs text-[#0B2A5B]/70 uppercase tracking-wide font-semibold">
+                    {procedureType === "EMERGENCY"
+                      ? "Árbitro de emergencia"
+                      : mode === "TRIBUNAL_3"
+                      ? "Honorarios tribunal arbitral"
+                      : "Honorarios árbitro único"}
+                  </p>
+                  <p className="text-2xl font-bold text-[#0B2A5B] mt-2">
+                    {formatCurrency(result.arbitratorFee, currency)}
+                  </p>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
-      </div>
-    </TooltipProvider>
+                <div className="rounded-xl border-2 border-[#D66829]/20 bg-[#D66829]/5 p-5">
+                  <p className="text-xs text-[#D66829]/80 uppercase tracking-wide font-semibold">
+                    Gastos del centro
+                  </p>
+                  <p className="text-2xl font-bold text-[#D66829] mt-2">
+                    {formatCurrency(result.centerFee, currency)}
+                  </p>
+                </div>
+                <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50 p-5">
+                  <p className="text-xs text-emerald-800 uppercase tracking-wide font-semibold">
+                    Total estimado
+                  </p>
+                  <p className="text-2xl font-bold text-emerald-900 mt-2">
+                    {formatCurrency(result.total, currency)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 flex gap-3">
+                <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-blue-900">
+                  <p className="font-medium mb-1">
+                    {scope === "INTERNACIONAL"
+                      ? "Arbitraje Internacional"
+                      : procedureType === "EMERGENCY"
+                      ? "Arbitraje de Emergencia"
+                      : `Arbitraje Nacional — ${
+                          mode === "TRIBUNAL_3"
+                            ? "Tribunal (3 árbitros)"
+                            : "Árbitro Único"
+                        }`}
+                  </p>
+                  <p className="text-blue-800">{result.description}</p>
+                  <p className="text-xs text-blue-700 mt-2">
+                    Montos sin IGV. Referencial según reglamento vigente.
+                    Consulte el reglamento oficial de tarifas para condiciones
+                    aplicables.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Ingrese la cuantía para ver el cálculo.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
