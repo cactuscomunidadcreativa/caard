@@ -23,10 +23,15 @@ export async function GET(
       return NextResponse.redirect(new URL(media.url, _req.url));
     }
 
-    // Extraer Drive file ID
-    const m = media.url.match(/[-\w]{25,}/);
-    if (!m) return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
-    const fileId = m[0];
+    // Extraer Drive file ID (soporta "drive:ID", URL de drive.google.com o solo ID)
+    let fileId: string | null = null;
+    if (media.url.startsWith("drive:")) {
+      fileId = media.url.slice(6);
+    } else {
+      const m = media.url.match(/[-\w]{25,}/);
+      fileId = m ? m[0] : null;
+    }
+    if (!fileId) return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
 
     const center = await prisma.center.findFirst({ select: { notificationSettings: true } });
     const rt = (center?.notificationSettings as any)?.googleRefreshToken;
