@@ -93,6 +93,14 @@ export async function GET(
         },
         folders: {
           orderBy: { key: "asc" },
+          include: {
+            documents: {
+              orderBy: { createdAt: "desc" },
+              include: {
+                uploadedBy: { select: { id: true, name: true } },
+              },
+            },
+          },
         },
         _count: {
           select: {
@@ -113,6 +121,26 @@ export async function GET(
       );
     }
 
+    // Filtrar carpetas + documentos por rol
+    const { filterFoldersByRole, filterDocumentsByRole } = await import(
+      "@/lib/document-visibility"
+    );
+    const visibleFolders = filterFoldersByRole(
+      (caseData as any).folders || [],
+      userRole
+    );
+    // Flatten documents with folder reference for UI
+    const allDocs: any[] = [];
+    for (const f of visibleFolders as any[]) {
+      for (const d of f.documents || []) {
+        allDocs.push({
+          ...d,
+          folder: { id: f.id, key: f.key, name: f.name, visibility: f.visibility },
+        });
+      }
+    }
+    const visibleDocs = filterDocumentsByRole(allDocs, userRole);
+
     // Serialize BigInt fields
     const serialized: any = {
       ...caseData,
@@ -120,13 +148,19 @@ export async function GET(
       centerFeeCents: (caseData as any).centerFeeCents?.toString() ?? null,
       taxCents: (caseData as any).taxCents?.toString() ?? null,
       totalAdminFeeCents: (caseData as any).totalAdminFeeCents?.toString() ?? null,
-    };
-    if ((caseData as any).documents) {
-      serialized.documents = (caseData as any).documents.map((d: any) => ({
+      folders: visibleFolders.map((f: any) => ({
+        id: f.id,
+        key: f.key,
+        name: f.name,
+        visibility: f.visibility,
+        driveFolderId: f.driveFolderId,
+      })),
+      documents: visibleDocs.map((d: any) => ({
         ...d,
         sizeBytes: d.sizeBytes != null ? d.sizeBytes.toString() : null,
-      }));
-    }
+        documentDate: d.documentDate ? d.documentDate.toISOString() : null,
+      })),
+    };
 
     if (accessResult.accessLevel === "own") {
       const filteredCase = {

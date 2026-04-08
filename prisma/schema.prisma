@@ -715,6 +715,12 @@ enum LawyerRepresentationType {
 // FOLDERS + DOCUMENTS (Google Drive-backed)
 //
 
+enum CaseFolderVisibility {
+  ALL                  // partes, abogados, árbitros y staff
+  STAFF_AND_ARBITRATORS // staff del centro + árbitros (no partes ni abogados)
+  STAFF_ONLY           // solo personal del centro (gastos, liquidación, etc.)
+}
+
 model CaseFolder {
   id        String @id @default(cuid())
   caseId    String
@@ -730,6 +736,9 @@ model CaseFolder {
   driveFolderId String?
   drivePath     String?
 
+  // Control de acceso: quién puede ver esta carpeta y sus documentos
+  visibility CaseFolderVisibility @default(ALL)
+
   documents CaseDocument[]
 
   createdAt DateTime @default(now())
@@ -737,6 +746,13 @@ model CaseFolder {
   @@unique([caseId, key])
   @@index([caseId])
   @@index([parentId])
+  @@index([visibility])
+}
+
+enum DocumentAccessLevel {
+  ALL
+  STAFF_AND_ARBITRATORS
+  STAFF_ONLY
 }
 
 model CaseDocument {
@@ -761,6 +777,15 @@ model CaseDocument {
   sizeBytes        BigInt
   checksumSha256   String?
 
+  // Fechas:
+  //   - documentDate: fecha visible del documento (ej. fecha del escrito) — la que se muestra a las partes
+  //   - createdAt: cuándo se subió al sistema (interno)
+  //   - updatedAt: última modificación (interno)
+  documentDate DateTime?
+
+  // Control de acceso adicional a nivel documento (además de la carpeta)
+  accessLevel DocumentAccessLevel @default(ALL)
+
   // Drive pointers (source of truth)
   driveFileId      String
   driveWebViewLink String?
@@ -773,16 +798,49 @@ model CaseDocument {
   replacedBy   CaseDocument? @relation("DocReplace", fields: [replacedById], references: [id], onDelete: SetNull)
   replaces     CaseDocument[] @relation("DocReplace")
 
+  // Historial completo de acciones sobre este documento (solo SUPER_ADMIN)
+  auditLogs CaseDocumentAudit[]
+
   // Payment voucher relation
   paymentVouchers Payment[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([caseId])
   @@index([folderId])
   @@index([uploadedById])
   @@index([driveFileId])
   @@index([caseId, documentType])
+  @@index([documentDate])
+}
+
+//
+// AUDITORÍA DE DOCUMENTOS (solo SUPER_ADMIN la consulta)
+//
+model CaseDocumentAudit {
+  id         String @id @default(cuid())
+  documentId String
+  document   CaseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  action     String   // CREATED | UPDATED | VIEWED | DOWNLOADED | MOVED | REPLACED | DELETED | RESTORED
+  actorId    String?  // User que ejecutó la acción (null = sistema)
+  actorName  String?  // Snapshot del nombre para preservar histórico
+  actorRole  String?  // Snapshot del rol
+
+  // Snapshot "antes/después" en JSON para diff
+  changes    Json?
+
+  // Contexto
+  ipAddress  String?
+  userAgent  String?
+
+  createdAt  DateTime @default(now())
+
+  @@index([documentId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([action])
 }
 
 //

@@ -143,6 +143,7 @@ interface SerializedFolder {
   id: string;
   key: string;
   name: string;
+  visibility?: "ALL" | "STAFF_AND_ARBITRATORS" | "STAFF_ONLY";
 }
 
 interface SerializedDocument {
@@ -155,8 +156,16 @@ interface SerializedDocument {
   status: string;
   driveWebViewLink: string | null;
   createdAt: string;
+  updatedAt?: string;
+  documentDate?: string | null;
+  accessLevel?: "ALL" | "STAFF_AND_ARBITRATORS" | "STAFF_ONLY";
   uploadedBy: { id: string; name: string | null } | null;
-  folder: { id: string; key: string; name: string } | null;
+  folder: {
+    id: string;
+    key: string;
+    name: string;
+    visibility?: "ALL" | "STAFF_AND_ARBITRATORS" | "STAFF_ONLY";
+  } | null;
 }
 
 interface SerializedPayment {
