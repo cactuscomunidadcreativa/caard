@@ -829,10 +829,10 @@ export function DocumentsClient({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Cloud className="h-5 w-5" />
-              Sincronizar con Google Drive
+              Importar desde Google Drive
             </DialogTitle>
             <DialogDescription>
-              Se sincronizarán todos los documentos con Google Drive
+              Lee la carpeta raíz configurada y vincula los expedientes y documentos a la BD.
             </DialogDescription>
           </DialogHeader>
 
@@ -841,7 +841,7 @@ export function DocumentsClient({
               <div className="text-center space-y-2">
                 <FolderSync className="h-12 w-12 mx-auto text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  Esta acción sincronizará {stats.total} documentos con Google Drive
+                  Recorrerá las subcarpetas de tu carpeta raíz, las matchea con cada expediente por código y registra cada PDF como documento del caso. <strong>No descarga ni copia archivos</strong> — los PDFs siguen viviendo en Drive.
                 </p>
               </div>
             )}
