@@ -11,6 +11,51 @@ import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import { google } from "googleapis";
+
+async function uploadToDrive(buffer: Buffer, filename: string, mimeType: string): Promise<{ id: string; url: string } | null> {
+  try {
+    const center = await prisma.center.findFirst({ select: { id: true, notificationSettings: true } });
+    const rt = (center?.notificationSettings as any)?.googleRefreshToken;
+    if (!rt) return null;
+    const oauth = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      `${process.env.NEXTAUTH_URL || "https://caardpe.com"}/api/integrations/google/callback`
+    );
+    oauth.setCredentials({ refresh_token: rt });
+    const drive = google.drive({ version: "v3", auth: oauth });
+    // Find or create CMS_MEDIA folder
+    const q = `name='CAARD_CMS_MEDIA' and mimeType='application/vnd.google-apps.folder' and trashed=false and 'root' in parents`;
+    const fr = await drive.files.list({ q, fields: "files(id)" });
+    let folderId = fr.data.files?.[0]?.id;
+    if (!folderId) {
+      const cf = await drive.files.create({
+        requestBody: { name: "CAARD_CMS_MEDIA", mimeType: "application/vnd.google-apps.folder" },
+        fields: "id",
+      });
+      folderId = cf.data.id!;
+    }
+    const { Readable } = await import("stream");
+    const up = await drive.files.create({
+      requestBody: { name: filename, parents: [folderId] },
+      media: { mimeType, body: Readable.from(buffer) },
+      fields: "id",
+    });
+    // Make public
+    await drive.permissions.create({
+      fileId: up.data.id!,
+      requestBody: { role: "reader", type: "anyone" },
+    });
+    return {
+      id: up.data.id!,
+      url: `https://drive.google.com/uc?export=view&id=${up.data.id}`,
+    };
+  } catch (e: any) {
+    console.error("upload to drive failed:", e.message);
+    return null;
+  }
+}
 
 // Configuración
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -64,32 +109,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Crear directorio de uploads si no existe
-    const year = new Date().getFullYear();
-    const month = String(new Date().getMonth() + 1).padStart(2, "0");
-    const uploadPath = path.join(UPLOAD_DIR, String(year), month);
-
-    if (!existsSync(uploadPath)) {
-      await mkdir(uploadPath, { recursive: true });
-    }
-
     // Generar nombre único
-    const ext = path.extname(file.name) || `.${file.type.split("/")[1]}`;
     const uniqueId = uuidv4().split("-")[0];
     const safeFilename = file.name
       .replace(/[^a-zA-Z0-9.-]/g, "-")
       .replace(/-+/g, "-")
       .toLowerCase();
     const filename = `${uniqueId}-${safeFilename}`;
-    const filepath = path.join(uploadPath, filename);
 
-    // Guardar archivo
+    // Leer archivo
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(filepath, buffer);
 
-    // URL pública
-    const url = `/uploads/${year}/${month}/${filename}`;
+    // En producción (Vercel) el FS es read-only → subir a Google Drive
+    // En dev intenta guardar localmente como antes y si falla, usa Drive
+    let url: string;
+    const isProd = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+    if (!isProd) {
+      try {
+        const year = new Date().getFullYear();
+        const month = String(new Date().getMonth() + 1).padStart(2, "0");
+        const uploadPath = path.join(UPLOAD_DIR, String(year), month);
+        if (!existsSync(uploadPath)) await mkdir(uploadPath, { recursive: true });
+        const filepath = path.join(uploadPath, filename);
+        await writeFile(filepath, buffer);
+        url = `/uploads/${year}/${month}/${filename}`;
+      } catch {
+        const drv = await uploadToDrive(buffer, filename, file.type);
+        if (!drv) {
+          return NextResponse.json({ error: "No se pudo guardar el archivo" }, { status: 500 });
+        }
+        url = drv.url;
+      }
+    } else {
+      const drv = await uploadToDrive(buffer, filename, file.type);
+      if (!drv) {
+        return NextResponse.json({ error: "No se pudo subir a Drive (verifica conexión Google)" }, { status: 500 });
+      }
+      url = drv.url;
+    }
 
     // Obtener dimensiones si es imagen
     let width: number | undefined;
@@ -138,7 +196,7 @@ export async function POST(request: NextRequest) {
         url,
         width,
         height,
-        folder: `${year}/${month}`,
+        folder: `${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, "0")}`,
         uploadedById: session.user.id,
       },
     });
