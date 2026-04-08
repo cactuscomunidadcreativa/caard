@@ -31,18 +31,22 @@ export async function GET(req: NextRequest) {
 
     const search = req.nextUrl.searchParams.get("search") || "";
     const parent = req.nextUrl.searchParams.get("parent");
+    const scope = req.nextUrl.searchParams.get("scope") || "all"; // all | mine | shared
 
     let q = "mimeType='application/vnd.google-apps.folder' and trashed=false";
     if (search) q += ` and name contains '${search.replace(/'/g, "\\'")}'`;
     if (parent) q += ` and '${parent}' in parents`;
+    if (scope === "shared") q += " and sharedWithMe=true";
+    if (scope === "mine") q += " and 'me' in owners";
 
     const r = await drive.files.list({
       q,
-      fields: "files(id,name,parents,owners(emailAddress,displayName))",
-      pageSize: 50,
+      fields: "files(id,name,parents,shared,owners(emailAddress,displayName))",
+      pageSize: 100,
       orderBy: "modifiedTime desc",
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
+      corpora: "allDrives",
     });
 
     // Get current root info

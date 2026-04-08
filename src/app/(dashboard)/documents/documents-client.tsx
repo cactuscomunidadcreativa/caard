@@ -170,9 +170,11 @@ export function DocumentsClient({
   const [driveCurrent, setDriveCurrent] = useState<{ id: string; name: string; webViewLink?: string } | null>(null);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [folderSearch, setFolderSearch] = useState("");
-  const [folderResults, setFolderResults] = useState<Array<{ id: string; name: string; owners?: any[] }>>([]);
+  const [folderResults, setFolderResults] = useState<Array<{ id: string; name: string; owners?: any[]; shared?: boolean }>>([]);
   const [folderLoading, setFolderLoading] = useState(false);
   const [savingFolder, setSavingFolder] = useState(false);
+  const [folderScope, setFolderScope] = useState<"all" | "mine" | "shared">("shared");
+  const [manualFolderId, setManualFolderId] = useState("");
 
   // Load current folder on mount
   useEffect(() => {
@@ -184,10 +186,10 @@ export function DocumentsClient({
       .catch(() => {});
   }, []);
 
-  const searchDriveFolders = async (q: string) => {
+  const searchDriveFolders = async (q: string, scope: "all" | "mine" | "shared" = folderScope) => {
     setFolderLoading(true);
     try {
-      const r = await fetch(`/api/integrations/google/drive/folders?search=${encodeURIComponent(q)}`);
+      const r = await fetch(`/api/integrations/google/drive/folders?scope=${scope}&search=${encodeURIComponent(q)}`);
       const d = await r.json();
       setFolderResults(d.folders || []);
     } finally {
@@ -970,14 +972,46 @@ export function DocumentsClient({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            <div className="flex gap-1 border rounded-md p-1 bg-muted">
+              {(["shared", "mine", "all"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => { setFolderScope(s); searchDriveFolders(folderSearch, s); }}
+                  className={`flex-1 px-3 py-1.5 text-xs rounded transition-colors ${
+                    folderScope === s ? "bg-[#0B2A5B] text-white" : "text-slate-600 hover:bg-white"
+                  }`}
+                >
+                  {s === "shared" ? "Compartidas conmigo" : s === "mine" ? "Mis carpetas" : "Todas"}
+                </button>
+              ))}
+            </div>
             <Input
               placeholder="Buscar carpeta por nombre..."
               value={folderSearch}
               onChange={(e) => {
                 setFolderSearch(e.target.value);
-                searchDriveFolders(e.target.value);
+                searchDriveFolders(e.target.value, folderScope);
               }}
             />
+            <div className="border-t pt-3">
+              <p className="text-xs text-muted-foreground mb-1">¿Sabes el ID de la carpeta? Pégalo aquí:</p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Folder ID de Google Drive"
+                  value={manualFolderId}
+                  onChange={(e) => setManualFolderId(e.target.value)}
+                  className="font-mono text-xs"
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!manualFolderId.trim() || savingFolder}
+                  onClick={() => saveDriveFolder({ id: manualFolderId.trim(), name: manualFolderId.trim() })}
+                >
+                  Usar
+                </Button>
+              </div>
+            </div>
             <div className="max-h-80 overflow-y-auto border rounded-md divide-y">
               {folderLoading && (
                 <div className="p-4 text-center text-sm text-muted-foreground">Cargando...</div>
