@@ -1035,28 +1035,34 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
               </CardContent>
             </Card>
           ) : (() => {
-            const escritos = caseData.documents.filter(
-              (d) => d.folder?.key === "escritos" || /escrito/i.test(d.folder?.name || "")
-            );
-            const resoluciones = caseData.documents.filter(
-              (d) => d.folder?.key === "resoluciones" || /resoluci/i.test(d.folder?.name || "")
-            );
-            const otros = caseData.documents.filter(
-              (d) => !escritos.includes(d) && !resoluciones.includes(d)
-            );
+            // Agrupar documentos por carpeta (folderId → array)
+            const byFolder = new Map<string | null, typeof caseData.documents>();
+            for (const d of caseData.documents) {
+              const key = d.folder?.id ?? null;
+              if (!byFolder.has(key)) byFolder.set(key, []);
+              byFolder.get(key)!.push(d);
+            }
+
+            // Listar carpetas en orden: primero las que tienen docs, ordenadas por nombre
+            const foldersWithDocs = caseData.folders
+              .filter((f) => byFolder.has(f.id))
+              .sort((a, b) => a.name.localeCompare(b.name));
+            const sinCarpeta = byFolder.get(null) || [];
 
             const DocList = ({ items }: { items: typeof caseData.documents }) => (
               <ul className="divide-y">
                 {items.length === 0 ? (
-                  <li className="py-4 text-sm text-muted-foreground italic">Sin registros</li>
+                  <li className="py-4 text-sm text-muted-foreground italic px-2">
+                    Sin documentos en esta carpeta
+                  </li>
                 ) : (
                   items.map((doc) => (
-                    <li key={doc.id} className="py-2">
+                    <li key={doc.id}>
                       <Link
                         href={`/api/documents/${doc.id}/view`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group flex items-start gap-2 rounded-md px-2 py-2 hover:bg-[#D66829]/10 transition-colors"
+                        className="group flex items-start gap-2 rounded-md px-3 py-2.5 hover:bg-[#D66829]/10 transition-colors"
                       >
                         <FileText className="h-4 w-4 mt-0.5 flex-shrink-0 text-[#D66829]" />
                         <div className="flex-1 min-w-0">
@@ -1068,7 +1074,7 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                             {doc.sizeBytes ? ` · ${formatFileSize(doc.sizeBytes)}` : ""}
                           </p>
                         </div>
-                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground" />
+                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground mt-1" />
                       </Link>
                     </li>
                   ))
@@ -1076,37 +1082,73 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
               </ul>
             );
 
+            const FolderSection = ({
+              name,
+              icon,
+              items,
+              defaultOpen = true,
+            }: {
+              name: string;
+              icon?: React.ReactNode;
+              items: typeof caseData.documents;
+              defaultOpen?: boolean;
+            }) => (
+              <details
+                open={defaultOpen}
+                className="group/folder rounded-lg border border-slate-200 bg-white overflow-hidden"
+              >
+                <summary className="cursor-pointer list-none flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-[#0B2A5B] to-[#1a4185] text-white hover:from-[#0a2654] hover:to-[#163875] transition-colors">
+                  <svg
+                    className="h-4 w-4 transition-transform group-open/folder:rotate-90"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                  {icon}
+                  <span className="font-semibold tracking-wide uppercase text-sm flex-1">
+                    {name}
+                  </span>
+                  <span className="text-xs opacity-80 bg-white/10 px-2 py-0.5 rounded-full">
+                    {items.length}
+                  </span>
+                </summary>
+                <div className="p-2">
+                  <DocList items={items} />
+                </div>
+              </details>
+            );
+
             return (
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader className="border-b bg-[#0B2A5B] text-white rounded-t-lg">
-                    <CardTitle className="text-base font-bold tracking-wide">
-                      ESCRITOS <span className="text-xs font-normal opacity-80">({escritos.length})</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3">
-                    <DocList items={escritos} />
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="border-b bg-[#0B2A5B] text-white rounded-t-lg">
-                    <CardTitle className="text-base font-bold tracking-wide">
-                      RESOLUCIONES <span className="text-xs font-normal opacity-80">({resoluciones.length})</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3">
-                    <DocList items={resoluciones} />
-                  </CardContent>
-                </Card>
-                {otros.length > 0 && (
-                  <Card className="md:col-span-2">
-                    <CardHeader className="border-b">
-                      <CardTitle className="text-base">Otros documentos ({otros.length})</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3">
-                      <DocList items={otros} />
-                    </CardContent>
-                  </Card>
+              <div className="space-y-3">
+                {foldersWithDocs.map((folder) => (
+                  <FolderSection
+                    key={folder.id}
+                    name={folder.name}
+                    icon={
+                      <svg
+                        className="h-4 w-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                      </svg>
+                    }
+                    items={byFolder.get(folder.id)!}
+                  />
+                ))}
+                {sinCarpeta.length > 0 && (
+                  <FolderSection
+                    name="Sin carpeta asignada"
+                    items={sinCarpeta}
+                    defaultOpen={false}
+                  />
                 )}
               </div>
             );
