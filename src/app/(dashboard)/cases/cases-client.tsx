@@ -310,41 +310,53 @@ export function CasesClient() {
         ) : cases.length > 0 ? (
           <>
             {viewMode === "list" ? (
-              <div className="overflow-x-auto rounded-lg border bg-white">
-                <table className="w-full text-sm">
-                  <thead className="bg-[#0B2A5B] text-white">
-                    <tr>
-                      <th className="text-left px-4 py-3 font-semibold">Código</th>
-                      <th className="text-left px-4 py-3 font-semibold">Partes</th>
-                      <th className="text-left px-4 py-3 font-semibold">Tipo</th>
-                      <th className="text-left px-4 py-3 font-semibold">Estado</th>
-                      <th className="text-center px-4 py-3 font-semibold">Docs</th>
-                      <th className="text-right px-4 py-3 font-semibold">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cases.map((caseItem) => (
-                      <tr key={caseItem.id} className="border-t hover:bg-orange-50 transition-colors">
-                        <td className="px-4 py-3 font-semibold text-[#0B2A5B] whitespace-nowrap">{caseItem.code}</td>
-                        <td className="px-4 py-3">
-                          <div className="text-slate-700 line-clamp-1">
-                            <span className="font-medium">{caseItem.claimantName || "—"}</span>
-                            <span className="mx-1.5 text-slate-400">vs</span>
-                            <span>{caseItem.respondentName || "—"}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{caseItem.arbitrationType?.code || "—"}</td>
-                        <td className="px-4 py-3"><CaseStatusBadge status={caseItem.status} /></td>
-                        <td className="px-4 py-3 text-center text-slate-600">{caseItem._count.documents}</td>
-                        <td className="px-4 py-3 text-right">
-                          <Link href={`/cases/${caseItem.id}`} className="text-[#D66829] hover:underline font-medium">
-                            Ver →
-                          </Link>
-                        </td>
+              <div className="w-full max-w-full overflow-hidden rounded-lg border bg-white">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm table-fixed">
+                    <colgroup>
+                      <col className="w-[180px]" />
+                      <col />
+                      <col className="w-[80px]" />
+                      <col className="w-[110px]" />
+                      <col className="w-[60px]" />
+                      <col className="w-[70px]" />
+                    </colgroup>
+                    <thead className="bg-[#0B2A5B] text-white">
+                      <tr>
+                        <th className="text-left px-3 py-3 font-semibold">Código</th>
+                        <th className="text-left px-3 py-3 font-semibold">Partes</th>
+                        <th className="text-left px-3 py-3 font-semibold">Tipo</th>
+                        <th className="text-left px-3 py-3 font-semibold">Estado</th>
+                        <th className="text-center px-2 py-3 font-semibold">Docs</th>
+                        <th className="text-right px-3 py-3 font-semibold">Acción</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {cases.map((caseItem) => (
+                        <tr key={caseItem.id} className="border-t hover:bg-orange-50 transition-colors">
+                          <td className="px-3 py-3 font-semibold text-[#0B2A5B] truncate" title={caseItem.code}>
+                            {caseItem.code}
+                          </td>
+                          <td className="px-3 py-3 min-w-0">
+                            <div className="text-slate-700 truncate" title={`${caseItem.claimantName || "—"} vs ${caseItem.respondentName || "—"}`}>
+                              <span className="font-medium">{caseItem.claimantName || "—"}</span>
+                              <span className="mx-1.5 text-slate-400">vs</span>
+                              <span>{caseItem.respondentName || "—"}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-slate-600 truncate">{caseItem.arbitrationType?.code || "—"}</td>
+                          <td className="px-3 py-3"><CaseStatusBadge status={caseItem.status} /></td>
+                          <td className="px-2 py-3 text-center text-slate-600">{caseItem._count.documents}</td>
+                          <td className="px-3 py-3 text-right">
+                            <Link href={`/cases/${caseItem.id}`} className="text-[#D66829] hover:underline font-medium whitespace-nowrap">
+                              Ver →
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
