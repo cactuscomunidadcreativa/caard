@@ -129,7 +129,7 @@ export async function POST(
     }
 
     // Solo las partes del caso, admins o secretaría pueden agregar abogados
-    const canAddLawyer = ["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(userRole) ||
+    const canAddLawyer = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(userRole) ||
       (await prisma.caseMember.findFirst({
         where: {
           caseId,

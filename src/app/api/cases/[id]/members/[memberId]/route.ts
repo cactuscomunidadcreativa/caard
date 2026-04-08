@@ -71,7 +71,7 @@ export async function DELETE(
       }
     } else {
       // Para otros miembros, solo SUPER_ADMIN, ADMIN, SECRETARIA pueden remover
-      if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(userRole)) {
+      if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(userRole)) {
         return NextResponse.json(
           { error: "Sin permisos para remover miembros" },
           { status: 403 }
@@ -141,7 +141,7 @@ export async function PATCH(
     const userRole = session.user.role as Role;
 
     // Solo roles administrativos pueden actualizar
-    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(userRole)) {
+    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(userRole)) {
       return NextResponse.json(
         { error: "Sin permisos para actualizar" },
         { status: 403 }

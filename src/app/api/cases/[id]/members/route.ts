@@ -134,7 +134,7 @@ export async function POST(
     const userRole = session.user.role as Role;
 
     // Solo roles administrativos pueden agregar miembros
-    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(userRole)) {
+    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(userRole)) {
       return NextResponse.json(
         { error: "Sin permisos para agregar miembros" },
         { status: 403 }

@@ -118,7 +118,7 @@ export async function PATCH(
     const userId = session.user.id;
 
     // Solo admins y secretaría pueden actualizar
-    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(userRole)) {
+    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(userRole)) {
       return NextResponse.json(
         { error: "Sin permisos para actualizar" },
         { status: 403 }
