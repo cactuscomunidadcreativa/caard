@@ -1026,71 +1026,89 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
 
         {/* ---- Tab: Documentos ---- */}
         <TabsContent value="documentos">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Documentos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {caseData.documents.length === 0 ? (
+          {caseData.documents.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
                 <EmptyState text="No hay documentos cargados." />
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-muted-foreground">
-                        <th className="pb-3 pr-4 font-medium">Archivo</th>
-                        <th className="pb-3 pr-4 font-medium">Tipo</th>
-                        <th className="pb-3 pr-4 font-medium">Carpeta</th>
-                        <th className="pb-3 pr-4 font-medium">Tamano</th>
-                        <th className="pb-3 pr-4 font-medium">Subido por</th>
-                        <th className="pb-3 pr-4 font-medium">Fecha</th>
-                        <th className="pb-3 font-medium">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {caseData.documents.map((doc) => (
-                        <tr
-                          key={doc.id}
-                          className="border-b last:border-0"
-                        >
-                          <td className="py-3 pr-4 font-medium max-w-[200px] truncate">
-                            {doc.originalFileName}
-                          </td>
-                          <td className="py-3 pr-4">
-                            <Badge variant="outline">{doc.documentType}</Badge>
-                          </td>
-                          <td className="py-3 pr-4 text-muted-foreground">
-                            {doc.folder?.name || "-"}
-                          </td>
-                          <td className="py-3 pr-4 text-muted-foreground">
-                            {formatFileSize(doc.sizeBytes)}
-                          </td>
-                          <td className="py-3 pr-4 text-muted-foreground">
-                            {doc.uploadedBy?.name || "-"}
-                          </td>
-                          <td className="py-3 pr-4 text-muted-foreground">
+              </CardContent>
+            </Card>
+          ) : (() => {
+            const escritos = caseData.documents.filter(
+              (d) => d.folder?.key === "escritos" || /escrito/i.test(d.folder?.name || "")
+            );
+            const resoluciones = caseData.documents.filter(
+              (d) => d.folder?.key === "resoluciones" || /resoluci/i.test(d.folder?.name || "")
+            );
+            const otros = caseData.documents.filter(
+              (d) => !escritos.includes(d) && !resoluciones.includes(d)
+            );
+
+            const DocList = ({ items }: { items: typeof caseData.documents }) => (
+              <ul className="divide-y">
+                {items.length === 0 ? (
+                  <li className="py-4 text-sm text-muted-foreground italic">Sin registros</li>
+                ) : (
+                  items.map((doc) => (
+                    <li key={doc.id} className="py-2">
+                      <Link
+                        href={`/api/documents/${doc.id}/view`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-start gap-2 rounded-md px-2 py-2 hover:bg-[#D66829]/10 transition-colors"
+                      >
+                        <FileText className="h-4 w-4 mt-0.5 flex-shrink-0 text-[#D66829]" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#0B2A5B] group-hover:underline line-clamp-2">
+                            {doc.title || doc.originalFileName}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {formatDate(doc.createdAt)}
-                          </td>
-                          <td className="py-3">
-                            <Link
-                              href={`/api/documents/${doc.id}/view`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <Button variant="ghost" size="sm" className="gap-1">
-                                <ExternalLink className="h-3.5 w-3.5" />
-                                Ver
-                              </Button>
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                            {doc.sizeBytes ? ` · ${formatFileSize(doc.sizeBytes)}` : ""}
+                          </p>
+                        </div>
+                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground" />
+                      </Link>
+                    </li>
+                  ))
+                )}
+              </ul>
+            );
+
+            return (
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader className="border-b bg-[#0B2A5B] text-white rounded-t-lg">
+                    <CardTitle className="text-base font-bold tracking-wide">
+                      ESCRITOS <span className="text-xs font-normal opacity-80">({escritos.length})</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3">
+                    <DocList items={escritos} />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="border-b bg-[#0B2A5B] text-white rounded-t-lg">
+                    <CardTitle className="text-base font-bold tracking-wide">
+                      RESOLUCIONES <span className="text-xs font-normal opacity-80">({resoluciones.length})</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3">
+                    <DocList items={resoluciones} />
+                  </CardContent>
+                </Card>
+                {otros.length > 0 && (
+                  <Card className="md:col-span-2">
+                    <CardHeader className="border-b">
+                      <CardTitle className="text-base">Otros documentos ({otros.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3">
+                      <DocList items={otros} />
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            );
+          })()}
         </TabsContent>
 
         {/* ---- Tab: Pagos ---- */}

@@ -12,6 +12,7 @@ function sanitize(s: string) {
 }
 
 async function main() {
+  console.log("Starting reorg-drive...");
   const center = await prisma.center.findFirst({ select: { notificationSettings: true } });
   const rt = (center?.notificationSettings as any)?.googleRefreshToken;
   if (!rt) throw new Error("No refresh token");
