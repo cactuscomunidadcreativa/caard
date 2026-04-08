@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -165,6 +165,52 @@ export function DocumentsClient({
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "success" | "error">("idle");
   const [backupStatus, setBackupStatus] = useState<"idle" | "backing" | "success" | "error">("idle");
+
+  // Drive folder picker state
+  const [driveCurrent, setDriveCurrent] = useState<{ id: string; name: string; webViewLink?: string } | null>(null);
+  const [showFolderPicker, setShowFolderPicker] = useState(false);
+  const [folderSearch, setFolderSearch] = useState("");
+  const [folderResults, setFolderResults] = useState<Array<{ id: string; name: string; owners?: any[] }>>([]);
+  const [folderLoading, setFolderLoading] = useState(false);
+  const [savingFolder, setSavingFolder] = useState(false);
+
+  // Load current folder on mount
+  useEffect(() => {
+    fetch("/api/integrations/google/drive/folders?search=")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.current) setDriveCurrent({ id: d.current.id, name: d.current.name, webViewLink: d.current.webViewLink });
+      })
+      .catch(() => {});
+  }, []);
+
+  const searchDriveFolders = async (q: string) => {
+    setFolderLoading(true);
+    try {
+      const r = await fetch(`/api/integrations/google/drive/folders?search=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      setFolderResults(d.folders || []);
+    } finally {
+      setFolderLoading(false);
+    }
+  };
+
+  const saveDriveFolder = async (folder: { id: string; name: string }) => {
+    setSavingFolder(true);
+    try {
+      const r = await fetch("/api/integrations/google/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rootFolderId: folder.id }),
+      });
+      if (r.ok) {
+        setDriveCurrent({ id: folder.id, name: folder.name });
+        setShowFolderPicker(false);
+      }
+    } finally {
+      setSavingFolder(false);
+    }
+  };
 
   const { toast } = useToast();
   const isAdmin = ADMIN_ROLES.includes(userRole);
@@ -682,7 +728,20 @@ export function DocumentsClient({
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Carpeta raíz</label>
-                    <Input value="CAARD_Expedientes" disabled />
+                    <div className="flex gap-2">
+                      <div className="flex-1 px-3 py-2 border rounded-md bg-muted/30 text-sm flex items-center gap-2">
+                        <FolderOpen className="h-4 w-4 text-[#D66829]" />
+                        <span className="truncate">{driveCurrent?.name || "Sin configurar"}</span>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => { setShowFolderPicker(true); searchDriveFolders(""); }}>
+                        Cambiar
+                      </Button>
+                    </div>
+                    {driveCurrent?.webViewLink && (
+                      <a href={driveCurrent.webViewLink} target="_blank" rel="noopener noreferrer" className="text-xs text-[#D66829] hover:underline">
+                        Abrir en Drive →
+                      </a>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -897,6 +956,60 @@ export function DocumentsClient({
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Drive Folder Picker */}
+      <Dialog open={showFolderPicker} onOpenChange={setShowFolderPicker}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Seleccionar carpeta de Google Drive</DialogTitle>
+            <DialogDescription>
+              Esta será la carpeta raíz donde se organizarán los expedientes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="Buscar carpeta por nombre..."
+              value={folderSearch}
+              onChange={(e) => {
+                setFolderSearch(e.target.value);
+                searchDriveFolders(e.target.value);
+              }}
+            />
+            <div className="max-h-80 overflow-y-auto border rounded-md divide-y">
+              {folderLoading && (
+                <div className="p-4 text-center text-sm text-muted-foreground">Cargando...</div>
+              )}
+              {!folderLoading && folderResults.length === 0 && (
+                <div className="p-4 text-center text-sm text-muted-foreground">Sin resultados</div>
+              )}
+              {folderResults.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => saveDriveFolder({ id: f.id, name: f.name })}
+                  disabled={savingFolder}
+                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-muted transition-colors disabled:opacity-50"
+                >
+                  <FolderOpen className="h-5 w-5 text-[#D66829] flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{f.name}</p>
+                    {f.owners && f.owners[0] && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        Owner: {f.owners[0].emailAddress}
+                      </p>
+                    )}
+                  </div>
+                  {driveCurrent?.id === f.id && (
+                    <Badge variant="secondary" className="text-xs">Actual</Badge>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFolderPicker(false)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
