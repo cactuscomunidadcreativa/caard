@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
       centerId = defaultCenter.id;
     }
 
-    // Guardar en base de datos
+    // Guardar en base de datos (guardamos la URL "raw" —local o Drive ID— en url)
     const media = await prisma.cmsMedia.create({
       data: {
         centerId,
@@ -201,9 +201,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Para archivos en Drive, el frontend debe consumir vía proxy
+    const publicUrl = media.url.startsWith("/uploads/") ? media.url : `/api/cms/media/${media.id}/file`;
+
     return NextResponse.json({
       id: media.id,
-      url: media.url,
+      url: publicUrl,
       filename: media.filename,
       mimeType: media.mimeType,
       size: media.size,

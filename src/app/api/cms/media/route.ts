@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       media.map((m) => ({
         id: m.id,
-        url: m.url,
+        url: m.url.startsWith("/uploads/") ? m.url : `/api/cms/media/${m.id}/file`,
         filename: m.filename,
         mimeType: m.mimeType,
         size: m.size,
