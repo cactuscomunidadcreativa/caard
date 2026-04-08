@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { Plus, Search, Filter, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Filter, MoreHorizontal, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,6 +118,13 @@ export function CasesClient() {
   const [status, setStatus] = useState("all");
   const [arbitrationTypeId, setArbitrationTypeId] = useState("all");
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    if (typeof window === "undefined") return "grid";
+    return (localStorage.getItem("cases-view") as "grid" | "list") || "grid";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem("cases-view", viewMode);
+  }, [viewMode]);
 
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -264,6 +271,22 @@ export function CasesClient() {
             <Button variant="outline" size="icon">
               <Filter className="h-4 w-4" />
             </Button>
+            <div className="flex items-center border rounded-md overflow-hidden">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`px-3 py-2 text-sm transition-colors ${viewMode === "grid" ? "bg-[#0B2A5B] text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+                title="Tarjetas"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`px-3 py-2 text-sm transition-colors ${viewMode === "list" ? "bg-[#0B2A5B] text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+                title="Lista"
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -286,6 +309,44 @@ export function CasesClient() {
           </div>
         ) : cases.length > 0 ? (
           <>
+            {viewMode === "list" ? (
+              <div className="overflow-x-auto rounded-lg border bg-white">
+                <table className="w-full text-sm">
+                  <thead className="bg-[#0B2A5B] text-white">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-semibold">Código</th>
+                      <th className="text-left px-4 py-3 font-semibold">Partes</th>
+                      <th className="text-left px-4 py-3 font-semibold">Tipo</th>
+                      <th className="text-left px-4 py-3 font-semibold">Estado</th>
+                      <th className="text-center px-4 py-3 font-semibold">Docs</th>
+                      <th className="text-right px-4 py-3 font-semibold">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cases.map((caseItem) => (
+                      <tr key={caseItem.id} className="border-t hover:bg-orange-50 transition-colors">
+                        <td className="px-4 py-3 font-semibold text-[#0B2A5B] whitespace-nowrap">{caseItem.code}</td>
+                        <td className="px-4 py-3">
+                          <div className="text-slate-700 line-clamp-1">
+                            <span className="font-medium">{caseItem.claimantName || "—"}</span>
+                            <span className="mx-1.5 text-slate-400">vs</span>
+                            <span>{caseItem.respondentName || "—"}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{caseItem.arbitrationType?.code || "—"}</td>
+                        <td className="px-4 py-3"><CaseStatusBadge status={caseItem.status} /></td>
+                        <td className="px-4 py-3 text-center text-slate-600">{caseItem._count.documents}</td>
+                        <td className="px-4 py-3 text-right">
+                          <Link href={`/cases/${caseItem.id}`} className="text-[#D66829] hover:underline font-medium">
+                            Ver →
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {cases.map((caseItem) => (
                 <Link
@@ -337,6 +398,7 @@ export function CasesClient() {
                 </Link>
               ))}
             </div>
+            )}
 
               {/* Pagination - sticky bottom for visibility */}
               {totalPages > 1 && (
