@@ -19,7 +19,7 @@ import Link from "next/link";
 
 interface Case {
   id: string;
-  caseNumber: string;
+  code: string;
   title: string;
 }
 
@@ -62,10 +62,10 @@ export default function ProgramarAudienciaPage() {
 
   const fetchCases = async () => {
     try {
-      const res = await fetch("/api/cases?status=active");
+      const res = await fetch("/api/cases?pageSize=200");
       if (res.ok) {
         const data = await res.json();
-        setCases(data.cases || []);
+        setCases(data.items || data.cases || []);
       }
     } catch (error) {
       console.error("Error fetching cases:", error);
@@ -200,7 +200,7 @@ export default function ProgramarAudienciaPage() {
                   <SelectContent>
                     {cases.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.caseNumber} - {c.title}
+                        {c.code} - {c.title}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -207,6 +207,7 @@ export async function PATCH(
       "currency",
       "isBlocked",
       "blockReason",
+      "driveFolderId",
     ];
     const updateData: any = {};
 
@@ -214,6 +215,12 @@ export async function PATCH(
       if (body[field] !== undefined) {
         updateData[field] = body[field];
       }
+    }
+
+    // Si llega una URL de Drive en driveFolderId, extraer el ID
+    if (typeof updateData.driveFolderId === "string") {
+      const m = updateData.driveFolderId.match(/[-\w]{25,}/);
+      if (m) updateData.driveFolderId = m[0];
     }
 
     // disputeAmount comes as decimal number; store as cents BigInt

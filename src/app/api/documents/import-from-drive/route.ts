@@ -10,11 +10,24 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { google } from "googleapis";
 
-const norm = (s: string) =>
-  s
-    .replace(/^Exp\.?\s*/i, "")
+export const maxDuration = 300; // 5 min en Vercel Pro
+export const dynamic = "force-dynamic";
+
+/**
+ * Extrae una clave canónica del nombre de una carpeta o caso.
+ * Acepta variantes como: "Exp. 006-2026-ARBEME/CAARD", "EXP. N° 006-2026-ARBEME-CAARD",
+ * "006-2026-ARB", "Exp. ADHOC", etc.
+ * Usa el primer patrón \d{1,4}-\d{4}-[A-Z]+ que encuentre, sino normaliza alfanuméricamente.
+ */
+function norm(s: string): string {
+  if (!s) return "";
+  const m = s.match(/(\d{1,4})-(\d{4})-([A-Za-z]+)/);
+  if (m) return `${parseInt(m[1], 10)}-${m[2]}-${m[3].toUpperCase()}`;
+  return s
+    .replace(/^Exp\.?\s*N[°º]?\s*/i, "")
     .replace(/[^a-zA-Z0-9]/g, "")
     .toLowerCase();
+}
 
 export async function POST(_req: NextRequest) {
   try {
@@ -69,7 +82,7 @@ export async function POST(_req: NextRequest) {
       do {
         const r = await drive.files.list({
           q: `'${job.id}' in parents and trashed=false`,
-          fields: "nextPageToken, files(id,name,mimeType,size,webViewLink,modifiedTime)",
+          fields: "nextPageToken, files(id,name,mimeType,size,webViewLink,modifiedTime,createdTime)",
           pageSize: 1000,
           pageToken,
           supportsAllDrives: true,
@@ -105,8 +118,8 @@ export async function POST(_req: NextRequest) {
       },
     });
   } catch (e: any) {
-    console.error("import-from-drive error:", e);
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error("import-from-drive error:", e?.message, e?.stack);
+    return NextResponse.json({ error: e?.message || "Error desconocido", details: String(e) }, { status: 500 });
   }
 }
 
@@ -125,7 +138,7 @@ async function indexCaseFolder(
     do {
       const r = await drive.files.list({
         q: `'${j.id}' in parents and trashed=false`,
-        fields: "nextPageToken, files(id,name,mimeType,size,webViewLink)",
+        fields: "nextPageToken, files(id,name,mimeType,size,webViewLink,modifiedTime,createdTime)",
         pageSize: 1000,
         pageToken,
         supportsAllDrives: true,
@@ -157,6 +170,7 @@ async function indexCaseFolder(
                 ? "Resolución"
                 : j.subName
               : "Documento";
+            const driveDate = (f as any).modifiedTime || (f as any).createdTime;
             if (existing) {
               await prisma.caseDocument.update({
                 where: { id: existing.id },
@@ -167,6 +181,7 @@ async function indexCaseFolder(
                   originalFileName: f.name || "",
                   mimeType: f.mimeType || "application/octet-stream",
                   sizeBytes: f.size ? BigInt(f.size) : BigInt(0),
+                  ...(driveDate ? { createdAt: new Date(driveDate) } : {}),
                 },
               });
             } else {
@@ -180,6 +195,7 @@ async function indexCaseFolder(
                   sizeBytes: f.size ? BigInt(f.size) : BigInt(0),
                   driveFileId: f.id!,
                   driveWebViewLink: f.webViewLink || null,
+                  ...(driveDate ? { createdAt: new Date(driveDate) } : {}),
                 },
               });
             }

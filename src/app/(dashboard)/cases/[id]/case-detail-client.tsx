@@ -340,6 +340,7 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
     currency: caseData.currency,
     isBlocked: caseData.isBlocked,
     blockReason: caseData.blockReason || "",
+    driveFolderId: (caseData as any).driveFolderId || "",
   });
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -354,6 +355,7 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
         currency: editForm.currency,
         isBlocked: editForm.isBlocked,
         blockReason: editForm.isBlocked ? editForm.blockReason || null : null,
+        driveFolderId: editForm.driveFolderId || null,
       };
       if (editForm.disputeAmount !== "") {
         payload.disputeAmount = Number(editForm.disputeAmount);
@@ -1462,6 +1464,20 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                 />
               </div>
             )}
+            <div className="md:col-span-2">
+              <Label>Carpeta de Google Drive</Label>
+              <Input
+                placeholder="ID o URL de la carpeta de Drive"
+                value={editForm.driveFolderId}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, driveFolderId: e.target.value })
+                }
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Pega el ID o la URL completa. Ej:{" "}
+                <code className="text-[10px]">https://drive.google.com/drive/folders/XXXX</code>
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>
