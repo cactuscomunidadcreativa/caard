@@ -166,7 +166,7 @@ export async function PATCH(
     const userCenterId = session.user.centerId;
 
     // Solo roles administrativos pueden actualizar casos
-    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(userRole)) {
+    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(userRole)) {
       return NextResponse.json(
         { error: "Sin permisos para actualizar expedientes" },
         { status: 403 }
