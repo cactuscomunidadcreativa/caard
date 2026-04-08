@@ -581,6 +581,15 @@ model Case {
   disputeAmountCents BigInt?
   currency           String @default("PEN")
 
+  // Datos administrativos (LISTA DE EXPEDIENTES ARBITRALES)
+  durationDays       Int?
+  durationText       String?
+  hasCouncil         Boolean?
+  centerFeeCents     BigInt?   // GASTOS DEL CENTRO
+  taxCents           BigInt?   // TASA
+  totalAdminFeeCents BigInt?   // TOTAL DE TASA ADMINISTRATIVA
+  relatedMainCaseCode String?  // Para ARBEMEs: proceso principal asociado
+
   // Parties summary (canonical; detailed in CaseMember)
   claimantName   String?
   respondentName String?
