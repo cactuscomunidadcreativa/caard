@@ -113,21 +113,30 @@ export async function GET(
       );
     }
 
-    // Si el usuario tiene acceso limitado, filtrar información sensible
+    // Serialize BigInt fields
+    const serialized: any = {
+      ...caseData,
+      disputeAmountCents: (caseData as any).disputeAmountCents?.toString() ?? null,
+      centerFeeCents: (caseData as any).centerFeeCents?.toString() ?? null,
+      taxCents: (caseData as any).taxCents?.toString() ?? null,
+      totalAdminFeeCents: (caseData as any).totalAdminFeeCents?.toString() ?? null,
+    };
+    if ((caseData as any).documents) {
+      serialized.documents = (caseData as any).documents.map((d: any) => ({
+        ...d,
+        sizeBytes: d.sizeBytes != null ? d.sizeBytes.toString() : null,
+      }));
+    }
+
     if (accessResult.accessLevel === "own") {
-      // Remover notas privadas si no es staff/admin
       const filteredCase = {
-        ...caseData,
-        // Las notas privadas solo las ve el staff
-        _count: {
-          ...caseData._count,
-          // No mostrar conteo de notas privadas a partes
-        },
+        ...serialized,
+        _count: { ...caseData._count },
       };
       return NextResponse.json({ case: filteredCase });
     }
 
-    return NextResponse.json({ case: caseData });
+    return NextResponse.json({ case: serialized });
   } catch (error) {
     console.error("Error fetching case:", error);
     return NextResponse.json(
@@ -261,6 +270,9 @@ export async function PATCH(
       case: {
         ...updatedCase,
         disputeAmountCents: updatedCase.disputeAmountCents?.toString() ?? null,
+        centerFeeCents: (updatedCase as any).centerFeeCents?.toString() ?? null,
+        taxCents: (updatedCase as any).taxCents?.toString() ?? null,
+        totalAdminFeeCents: (updatedCase as any).totalAdminFeeCents?.toString() ?? null,
       },
     });
   } catch (error) {

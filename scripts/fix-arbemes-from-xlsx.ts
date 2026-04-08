@@ -32,7 +32,10 @@ async function main() {
 
   const center = await prisma.center.findFirst({ select: { id: true } });
   const types = await prisma.arbitrationType.findMany({ select: { id: true, code: true } });
-  const arbemeId = types.find((t) => t.code.toUpperCase() === "ARBEME")?.id || types[0].id;
+  const arbemeId =
+    types.find((t) => t.code === "EMERGENCIA")?.id ||
+    types.find((t) => t.code.toUpperCase() === "ARBEME")?.id ||
+    types[0].id;
 
   const existing = await prisma.case.findMany({ select: { id: true, code: true } });
   const existingMap = new Map(existing.map((c) => [norm(c.code), c.id]));

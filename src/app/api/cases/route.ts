@@ -125,6 +125,9 @@ export async function GET(request: NextRequest) {
     const serializedCases = cases.map((c: any) => ({
       ...c,
       disputeAmountCents: c.disputeAmountCents != null ? c.disputeAmountCents.toString() : null,
+      centerFeeCents: c.centerFeeCents != null ? c.centerFeeCents.toString() : null,
+      taxCents: c.taxCents != null ? c.taxCents.toString() : null,
+      totalAdminFeeCents: c.totalAdminFeeCents != null ? c.totalAdminFeeCents.toString() : null,
     }));
 
     return NextResponse.json({
