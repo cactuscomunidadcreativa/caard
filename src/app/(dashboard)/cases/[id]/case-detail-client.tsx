@@ -1059,7 +1059,7 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                         <FileText className="h-4 w-4 mt-0.5 flex-shrink-0 text-[#D66829]" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-[#0B2A5B] group-hover:underline line-clamp-2">
-                            {doc.title || doc.originalFileName}
+                            {doc.originalFileName}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {formatDate(doc.createdAt)}
