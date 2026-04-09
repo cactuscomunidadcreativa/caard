@@ -268,9 +268,6 @@ export function CasesClient() {
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon">
-              <Filter className="h-4 w-4" />
-            </Button>
             <div className="flex items-center border rounded-md overflow-hidden">
               <button
                 onClick={() => setViewMode("grid")}
