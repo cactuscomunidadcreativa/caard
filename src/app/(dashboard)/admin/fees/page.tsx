@@ -1,445 +1,174 @@
-/**
- * Página: Configuración de Tarifas
- * =================================
- * Gestión de tarifas y honorarios del centro
- */
-
 "use client";
 
-import { useState, useEffect } from "react";
+/**
+ * CAARD - Configuración de Tarifas
+ * Muestra las 6 tablas de tarifas oficiales + calculadora inline
+ */
+
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import {
-  DollarSign,
-  Plus,
-  Edit,
-  Trash2,
-  Calculator,
-  Settings,
-  Loader2,
-} from "lucide-react";
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Calculator, DollarSign } from "lucide-react";
+import {
+  calculateCaardFees,
+  formatCurrency,
+  TRIBUNAL_NACIONAL,
+  ARBITRO_UNICO_NACIONAL,
+  GASTOS_CENTRO_NACIONAL,
+  EMERGENCIA_NACIONAL,
+  TRIBUNAL_INTERNACIONAL,
+  INTERNACIONAL_PERCENT,
+} from "@/lib/fees/caard-tariffs";
 
-interface FeeConfig {
-  id: string;
-  name: string;
-  type: string;
-  minAmount: number;
-  maxAmount: number | null;
-  calculationType: string;
-  value: number;
-  minimumFee: number | null;
-  isActive: boolean;
-}
+export default function FeesPage() {
+  const [amount, setAmount] = useState("");
+  const parsed = Number((amount || "0").replace(/[^\d.]/g, ""));
 
-const refundRates = [
-  { stage: "ANTES_INSTALACION", percentage: 80, description: "Antes de la instalación del tribunal" },
-  { stage: "INSTALADO", percentage: 50, description: "Tribunal instalado, antes de audiencias" },
-  { stage: "AUDIENCIAS", percentage: 25, description: "Durante el período de audiencias" },
-  { stage: "ALEGATOS", percentage: 0, description: "Después de alegatos" },
-];
+  const tables = [
+    { name: "Tribunal Arbitral Nacional (S/.)", data: TRIBUNAL_NACIONAL, currency: "S/." },
+    { name: "Árbitro Único Nacional (S/.)", data: ARBITRO_UNICO_NACIONAL, currency: "S/." },
+    { name: "Gastos del Centro Nacional (S/.)", data: GASTOS_CENTRO_NACIONAL, currency: "S/." },
+    { name: "Emergencia Nacional (S/.)", data: EMERGENCIA_NACIONAL, currency: "S/." },
+    { name: "Tribunal Arbitral Internacional ($)", data: TRIBUNAL_INTERNACIONAL, currency: "$" },
+  ];
 
-const typeLabels: Record<string, string> = {
-  TASA_ARBITRAL: "Tasa Arbitral",
-  HONORARIOS_ARBITRO: "Honorarios de Árbitro",
-  HONORARIOS_SECRETARIA: "Honorarios de Secretaría",
-  GASTOS_ADMINISTRATIVOS: "Gastos Administrativos",
-  GASTOS_PERITAJE: "Gastos de Peritaje",
-};
-
-export default function FeesConfigPage() {
-  const [configurations, setConfigurations] = useState<FeeConfig[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedConfig, setSelectedConfig] = useState<FeeConfig | null>(null);
-
-  useEffect(() => {
-    async function fetchFees() {
-      try {
-        const res = await fetch("/api/admin/taxes");
-        if (res.ok) {
-          const data = await res.json();
-          const items = (data.items || data.taxes || []).map((f: any) => ({
-            id: f.id,
-            name: f.name || "",
-            type: f.type || "TASA_ARBITRAL",
-            minAmount: f.minAmount || 0,
-            maxAmount: f.maxAmount || null,
-            calculationType: f.calculationType || "PERCENTAGE",
-            value: f.value || 0,
-            minimumFee: f.minimumFee || null,
-            isActive: f.isActive ?? true,
-          }));
-          setConfigurations(items);
-        }
-      } catch (error) {
-        console.error("Error fetching fee configurations:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchFees();
-  }, []);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showCalculator, setShowCalculator] = useState(false);
-  const [calculatorAmount, setCalculatorAmount] = useState("");
-
-  const handleToggleActive = (id: string) => {
-    setConfigurations(configurations.map(c =>
-      c.id === id ? { ...c, isActive: !c.isActive } : c
-    ));
-  };
-
-  // Usar el engine oficial de tarifas CAARD
-  const calculateFees = (amount: number) => {
-    // Import dinámico del engine (client-side)
-    const { calculateCaardFees } = require("@/lib/fees/caard-tariffs");
-    const results: { type: string; name: string; amount: number }[] = [];
-
-    // Nacional - Tribunal
-    const nacTribunal = calculateCaardFees({ scope: "NACIONAL", mode: "TRIBUNAL_3", amount });
-    results.push({ type: "HONORARIOS_TRIBUNAL", name: "Honorarios Tribunal Arbitral (Nacional)", amount: nacTribunal.arbitratorFee });
-
-    // Nacional - Árbitro Único
-    const nacUnico = calculateCaardFees({ scope: "NACIONAL", mode: "SOLE_ARBITRATOR", amount });
-    results.push({ type: "HONORARIOS_ARBITRO_UNICO", name: "Honorarios Árbitro Único (Nacional)", amount: nacUnico.arbitratorFee });
-
-    // Gastos del Centro
-    results.push({ type: "GASTOS_ADMINISTRATIVOS", name: "Gastos del Centro (Nacional)", amount: nacTribunal.centerFee });
-
-    // Total Nacional Tribunal
-    results.push({ type: "TOTAL_TRIBUNAL", name: "Total Nacional (Tribunal)", amount: nacTribunal.total });
-
-    // Total Nacional Árbitro Único
-    results.push({ type: "TOTAL_UNICO", name: "Total Nacional (Árbitro Único)", amount: nacUnico.total });
-
-    return results;
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  const calcResults = parsed > 0 ? [
+    { label: "Tribunal Nacional", ...calculateCaardFees({ scope: "NACIONAL", mode: "TRIBUNAL_3", amount: parsed }) },
+    { label: "Árbitro Único Nacional", ...calculateCaardFees({ scope: "NACIONAL", mode: "SOLE_ARBITRATOR", amount: parsed }) },
+    { label: "Emergencia Nacional", ...calculateCaardFees({ scope: "NACIONAL", mode: "SOLE_ARBITRATOR", procedureType: "EMERGENCY", amount: parsed }) },
+    { label: "Internacional", ...calculateCaardFees({ scope: "INTERNACIONAL", mode: "TRIBUNAL_3", amount: parsed }) },
+  ] : [];
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Configuración de Tarifas</h1>
-          <p className="text-muted-foreground">
-            Gestione las tarifas y honorarios del centro de arbitraje
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowCalculator(true)}>
-            <Calculator className="h-4 w-4 mr-2" />
-            Calculadora
-          </Button>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Tarifa
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">Configuración de Tarifas</h1>
+        <p className="text-muted-foreground">
+          Tarifas oficiales del centro según reglamento vigente
+        </p>
       </div>
 
-      <Tabs defaultValue="fees" className="space-y-6">
+      <Tabs defaultValue="calculator" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="fees">Tarifas</TabsTrigger>
-          <TabsTrigger value="refunds">Tasas de Devolución</TabsTrigger>
+          <TabsTrigger value="calculator">
+            <Calculator className="h-4 w-4 mr-2" />
+            Calculadora
+          </TabsTrigger>
+          <TabsTrigger value="tables">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Tablas de Tarifas
+          </TabsTrigger>
         </TabsList>
 
-        {/* Tarifas */}
-        <TabsContent value="fees">
+        {/* Calculadora */}
+        <TabsContent value="calculator">
           <Card>
             <CardHeader>
-              <CardTitle>Tabla de Tarifas</CardTitle>
+              <CardTitle>Calculadora de Gastos Arbitrales</CardTitle>
               <CardDescription>
-                Configuración de tarifas según cuantía del caso
+                Ingrese la cuantía para ver el desglose completo por modalidad.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Rango de Cuantía</TableHead>
-                    <TableHead>Cálculo</TableHead>
-                    <TableHead>Mínimo</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {configurations.map((config) => (
-                    <TableRow key={config.id} className={!config.isActive ? "opacity-50" : ""}>
-                      <TableCell className="font-medium">
-                        {config.name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {typeLabels[config.type] || config.type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        S/ {config.minAmount.toLocaleString()}
-                        {config.maxAmount ? ` - S/ ${config.maxAmount.toLocaleString()}` : "+"}
-                      </TableCell>
-                      <TableCell>
-                        {config.calculationType === "PERCENTAGE"
-                          ? `${config.value}%`
-                          : `S/ ${config.value.toLocaleString()}`
-                        }
-                      </TableCell>
-                      <TableCell>
-                        {config.minimumFee
-                          ? `S/ ${config.minimumFee.toLocaleString()}`
-                          : "-"
-                        }
-                      </TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={config.isActive}
-                          onCheckedChange={() => handleToggleActive(config.id)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedConfig(config);
-                              setShowEditDialog(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Devoluciones */}
-        <TabsContent value="refunds">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tasas de Devolución</CardTitle>
-              <CardDescription>
-                Porcentaje de devolución según la etapa procesal al momento del desistimiento
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Etapa Procesal</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead>Porcentaje de Devolución</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {refundRates.map((rate) => (
-                    <TableRow key={rate.stage}>
-                      <TableCell className="font-medium">
-                        {rate.stage.replace(/_/g, " ")}
-                      </TableCell>
-                      <TableCell>{rate.description}</TableCell>
-                      <TableCell>
-                        <span className={rate.percentage > 0 ? "text-green-600" : "text-red-600"}>
-                          {rate.percentage}%
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Dialog Calculadora */}
-      <Dialog open={showCalculator} onOpenChange={setShowCalculator}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Calculator className="h-5 w-5" />
-              Calculadora de Costos Arbitrales
-            </DialogTitle>
-            <DialogDescription>
-              Calcule los costos estimados según la cuantía del caso
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label>Cuantía del Caso (S/)</Label>
-              <Input
-                type="number"
-                placeholder="Ingrese la cuantía"
-                value={calculatorAmount}
-                onChange={(e) => setCalculatorAmount(e.target.value)}
-              />
-            </div>
-
-            {calculatorAmount && parseFloat(calculatorAmount) > 0 && (
-              <div className="space-y-4">
-                <h4 className="font-medium">Desglose de Costos</h4>
-                <div className="space-y-2">
-                  {calculateFees(parseFloat(calculatorAmount)).map((fee, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                      <span>{fee.name}</span>
-                      <span className="font-bold">S/ {fee.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                  <hr />
-                  <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg">
-                    <span className="font-bold">TOTAL ESTIMADO</span>
-                    <span className="text-xl font-bold">
-                      S/ {calculateFees(parseFloat(calculatorAmount))
-                        .reduce((sum, f) => sum + f.amount, 0)
-                        .toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  * Los costos reales pueden variar según las circunstancias específicas del caso.
-                  Este cálculo es solo referencial.
-                </p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCalculator(false)}>
-              Cerrar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Edición */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Tarifa</DialogTitle>
-          </DialogHeader>
-          {selectedConfig && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Nombre</Label>
-                <Input defaultValue={selectedConfig.name} />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <Select defaultValue={selectedConfig.type}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="TASA_ARBITRAL">Tasa Arbitral</SelectItem>
-                    <SelectItem value="HONORARIOS_ARBITRO">Honorarios de Árbitro</SelectItem>
-                    <SelectItem value="HONORARIOS_SECRETARIA">Honorarios de Secretaría</SelectItem>
-                    <SelectItem value="GASTOS_ADMINISTRATIVOS">Gastos Administrativos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Cuantía Mínima (S/)</Label>
-                  <Input type="number" defaultValue={selectedConfig.minAmount} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Cuantía Máxima (S/)</Label>
-                  <Input
-                    type="number"
-                    defaultValue={selectedConfig.maxAmount || ""}
-                    placeholder="Sin límite"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tipo de Cálculo</Label>
-                  <Select defaultValue={selectedConfig.calculationType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PERCENTAGE">Porcentaje</SelectItem>
-                      <SelectItem value="FIXED">Monto Fijo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Valor</Label>
-                  <Input type="number" defaultValue={selectedConfig.value} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Monto Mínimo (S/)</Label>
+            <CardContent className="space-y-6">
+              <div className="max-w-sm">
+                <Label>Cuantía de la controversia</Label>
                 <Input
-                  type="number"
-                  defaultValue={selectedConfig.minimumFee || ""}
-                  placeholder="Sin mínimo"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Ej: 500000"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="text-lg h-12 mt-1"
                 />
               </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Cancelar
-            </Button>
-            <Button>Guardar Cambios</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+              {calcResults.length > 0 && (
+                <div className="space-y-4">
+                  {calcResults.map((r, i) => (
+                    <div key={i} className="rounded-lg border overflow-hidden">
+                      <div className="bg-[#0B2A5B] text-white px-4 py-2 font-semibold text-sm">
+                        {r.label}
+                      </div>
+                      <div className="grid grid-cols-3 divide-x p-4">
+                        <div className="px-3">
+                          <p className="text-xs text-muted-foreground uppercase">Honorarios</p>
+                          <p className="text-lg font-bold text-[#0B2A5B]">
+                            {formatCurrency(r.arbitratorFee, r.currency)}
+                          </p>
+                        </div>
+                        <div className="px-3">
+                          <p className="text-xs text-muted-foreground uppercase">Gastos Centro</p>
+                          <p className="text-lg font-bold text-[#D66829]">
+                            {formatCurrency(r.centerFee, r.currency)}
+                          </p>
+                        </div>
+                        <div className="px-3">
+                          <p className="text-xs text-muted-foreground uppercase">Total</p>
+                          <p className="text-lg font-bold text-emerald-700">
+                            {formatCurrency(r.total, r.currency)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tablas */}
+        <TabsContent value="tables">
+          <div className="space-y-4">
+            {tables.map((t) => (
+              <Card key={t.name}>
+                <CardHeader className="bg-[#0B2A5B] text-white rounded-t-lg py-3">
+                  <CardTitle className="text-base">{t.name}</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Desde</TableHead>
+                        <TableHead>Hasta</TableHead>
+                        <TableHead>Base</TableHead>
+                        <TableHead>%</TableHead>
+                        <TableHead>Sobre excedente de</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {t.data.map((b: any, i: number) => (
+                        <TableRow key={i}>
+                          <TableCell>{t.currency} {b.minAmount.toLocaleString()}</TableCell>
+                          <TableCell>{b.maxAmount ? `${t.currency} ${b.maxAmount.toLocaleString()}` : "∞"}</TableCell>
+                          <TableCell className="font-medium">{t.currency} {b.baseFee.toLocaleString()}</TableCell>
+                          <TableCell>{b.percent ? `${(b.percent * 100).toFixed(2)}%` : b.flat ? "Fijo" : "-"}</TableCell>
+                          <TableCell>{b.over ? `${t.currency} ${b.over.toLocaleString()}` : "-"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            ))}
+            <Card className="border-amber-200 bg-amber-50">
+              <CardContent className="pt-6">
+                <p className="text-sm text-amber-900">
+                  <strong>Internacional (porcentaje plano):</strong> Honorarios{" "}
+                  <Badge variant="secondary">{(INTERNACIONAL_PERCENT.tribunal * 100).toFixed(1)}%</Badge> + Gastos del Centro{" "}
+                  <Badge variant="secondary">{(INTERNACIONAL_PERCENT.gastosCentro * 100).toFixed(1)}%</Badge> sobre el monto del contrato.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
