@@ -32,6 +32,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Clock,
   AlertTriangle,
   CheckCircle,
@@ -69,6 +76,54 @@ export default function PlazosPage() {
   const [showExtensionDialog, setShowExtensionDialog] = useState(false);
   const [extensionDays, setExtensionDays] = useState("");
   const [extensionReason, setExtensionReason] = useState("");
+
+  // Crear plazo
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [cases, setCases] = useState<{ id: string; code: string }[]>([]);
+  const [newDeadline, setNewDeadline] = useState({
+    caseId: "",
+    type: "CUSTOM" as string,
+    title: "",
+    description: "",
+    businessDays: "10",
+  });
+
+  useEffect(() => {
+    fetch("/api/cases?pageSize=500")
+      .then((r) => r.json())
+      .then((d) => setCases((d.items || []).map((c: any) => ({ id: c.id, code: c.code }))))
+      .catch(() => {});
+  }, []);
+
+  async function handleCreateDeadline() {
+    if (!newDeadline.caseId || !newDeadline.title || !newDeadline.businessDays) return;
+    setCreating(true);
+    try {
+      const res = await fetch("/api/deadlines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          caseId: newDeadline.caseId,
+          type: newDeadline.type,
+          title: newDeadline.title,
+          description: newDeadline.description || undefined,
+          businessDays: parseInt(newDeadline.businessDays, 10),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Error al crear plazo");
+      }
+      setShowCreateDialog(false);
+      setNewDeadline({ caseId: "", type: "CUSTOM", title: "", description: "", businessDays: "10" });
+      window.location.reload();
+    } catch (e: any) {
+      alert(e.message || "Error al crear plazo");
+    } finally {
+      setCreating(false);
+    }
+  }
 
   useEffect(() => {
     async function fetchDeadlines() {
@@ -133,7 +188,7 @@ export default function PlazosPage() {
             Control y seguimiento de plazos procesales
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setShowCreateDialog(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Nuevo Plazo
         </Button>
@@ -231,6 +286,102 @@ export default function PlazosPage() {
           />
         </TabsContent>
       </Tabs>
+
+      {/* Dialog de Crear Plazo */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo Plazo Procesal</DialogTitle>
+            <DialogDescription>
+              Crear un nuevo plazo para un expediente. Se calculará automáticamente
+              la fecha de vencimiento en días hábiles (excluyendo feriados y fines de semana).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Expediente *</Label>
+              <Select
+                value={newDeadline.caseId}
+                onValueChange={(v) => setNewDeadline({ ...newDeadline, caseId: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione un expediente" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {cases.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de plazo</Label>
+              <Select
+                value={newDeadline.type}
+                onValueChange={(v) => setNewDeadline({ ...newDeadline, type: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CONTESTACION">Contestación</SelectItem>
+                  <SelectItem value="RECONVENCION">Reconvención</SelectItem>
+                  <SelectItem value="CONTESTACION_RECONVENCION">Contestación de reconvención</SelectItem>
+                  <SelectItem value="ALEGATOS">Alegatos</SelectItem>
+                  <SelectItem value="PAYMENT">Pago</SelectItem>
+                  <SelectItem value="DESIGNACION_ARBITRO">Designación de árbitro</SelectItem>
+                  <SelectItem value="SUBSANACION">Subsanación</SelectItem>
+                  <SelectItem value="RECUSACION_ABSOLUCION">Recusación / Absolución</SelectItem>
+                  <SelectItem value="CUSTOM">Personalizado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Título *</Label>
+              <Input
+                value={newDeadline.title}
+                onChange={(e) => setNewDeadline({ ...newDeadline, title: e.target.value })}
+                placeholder="Ej: Plazo para contestar demanda"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Descripción</Label>
+              <Textarea
+                value={newDeadline.description}
+                onChange={(e) => setNewDeadline({ ...newDeadline, description: e.target.value })}
+                placeholder="Detalle adicional..."
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Días hábiles *</Label>
+              <Input
+                type="number"
+                min="1"
+                max="365"
+                value={newDeadline.businessDays}
+                onChange={(e) => setNewDeadline({ ...newDeadline, businessDays: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Se excluyen sábados, domingos y feriados nacionales del Perú.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCreateDeadline}
+              disabled={creating || !newDeadline.caseId || !newDeadline.title}
+            >
+              {creating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creando...</> : "Crear Plazo"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de Prórroga */}
       <Dialog open={showExtensionDialog} onOpenChange={setShowExtensionDialog}>
