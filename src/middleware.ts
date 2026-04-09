@@ -12,7 +12,19 @@ const publicRoutes = [
   "/register",
   "/api/auth",
   "/api/public",
-  "/api/cms", // todas las rutas CMS (cada handler verifica auth internamente)
+  "/api/cms/media", // proxy público de archivos CMS (/api/cms/media/[id]/file)
+  "/api/cms/announcements", // banners públicos
+  "/api/cms/sections", // secciones de páginas públicas
+  "/api/cms/config", // config del sitio (logo, colores)
+  "/api/cms/menu", // menú público
+  "/api/cms/hero-images", // hero images (GET público, PUT validado internamente)
+  "/api/cms/articles", // artículos públicos
+  "/api/cms/events", // eventos públicos
+  "/api/cms/courses", // cursos públicos
+  "/api/cms/pages", // páginas CMS públicas
+  "/api/cms/arbitrators", // árbitros públicos
+  "/api/cms/categories", // categorías públicas
+  "/api/cms/documents", // documentos/reglamentos públicos
   "/pago", // Páginas de pago público
   // Páginas públicas del website (CMS)
   "/presentacion",
