@@ -171,13 +171,22 @@ export function WebsiteHeader({
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3 group">
               {displayLogo ? (
+                displayLogo.endsWith(".svg") ? (
+                  <img
+                    src={displayLogo}
+                    alt={displayName}
+                    className="h-10 lg:h-12 w-auto object-contain"
+                  />
+                ) : (
                 <Image
                   src={displayLogo}
                   alt={displayName}
                   width={180}
                   height={48}
                   className="h-10 lg:h-12 w-auto object-contain"
+                  unoptimized={displayLogo.startsWith("/api/")}
                 />
+                )
               ) : (
                 <div className="flex items-center gap-3">
                   <span className="font-bold text-xl lg:text-2xl text-[#D66829]">

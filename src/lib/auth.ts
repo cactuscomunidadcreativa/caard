@@ -168,12 +168,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (account?.provider !== "credentials" && user.email) {
           const dbUser = await prisma.user.findUnique({
             where: { email: user.email },
-            select: { id: true, role: true, centerId: true },
+            select: { id: true, role: true, centerId: true, name: true, image: true },
           });
           if (dbUser) {
             token.id = dbUser.id;
             token.role = dbUser.role;
             token.centerId = dbUser.centerId || null;
+            // Usar nombre/imagen de nuestra BD, no de Google
+            if (dbUser.name) token.name = dbUser.name;
+            if (dbUser.image) token.picture = dbUser.image;
           } else {
             token.id = user.id;
             token.role = "DEMANDANTE";
