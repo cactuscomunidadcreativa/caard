@@ -174,9 +174,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.id = dbUser.id;
             token.role = dbUser.role;
             token.centerId = dbUser.centerId || null;
-            // Usar nombre/imagen de nuestra BD, no de Google
-            if (dbUser.name) token.name = dbUser.name;
-            if (dbUser.image) token.picture = dbUser.image;
           } else {
             token.id = user.id;
             token.role = "DEMANDANTE";
@@ -213,10 +210,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (!existingUser.isActive) {
             return false;
           }
-          // Actualizar nombre e imagen si están vacíos
+          // Actualizar nombre e imagen desde Google (siempre, es la fuente de verdad para @caardpe.com)
           const updates: any = {};
-          if (!existingUser.name && user.name) updates.name = user.name;
-          if (!existingUser.image && user.image) updates.image = user.image;
+          if (user.name && user.name !== existingUser.name) updates.name = user.name;
+          if (user.image && user.image !== existingUser.image) updates.image = user.image;
           if (Object.keys(updates).length > 0) {
             await prisma.user.update({ where: { id: existingUser.id }, data: updates });
           }
