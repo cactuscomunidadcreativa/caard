@@ -31,9 +31,16 @@ export default function HeroImagesPage() {
   async function fetchPages() {
     try {
       const res = await fetch("/api/cms/hero-images");
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("hero-images API error:", res.status, text.slice(0, 200));
+        toast.error(`Error ${res.status} al cargar imágenes`);
+        return;
+      }
       const data = await res.json();
       setPages(data.pages || []);
-    } catch {
+    } catch (err: any) {
+      console.error("hero-images fetch error:", err);
       toast.error("Error al cargar imágenes");
     } finally {
       setLoading(false);

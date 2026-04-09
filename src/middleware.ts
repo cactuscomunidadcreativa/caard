@@ -12,7 +12,7 @@ const publicRoutes = [
   "/register",
   "/api/auth",
   "/api/public",
-  "/api/cms/media", // proxy público de archivos CMS (/api/cms/media/[id]/file)
+  "/api/cms", // todas las rutas CMS (cada handler verifica auth internamente)
   "/pago", // Páginas de pago público
   // Páginas públicas del website (CMS)
   "/presentacion",
