@@ -1,146 +1,279 @@
+"use client";
+
 /**
- * Página: Dashboard Analítico
- * ============================
- * Panel de reportes y análisis para administradores
+ * CAARD - Dashboard Analítico con datos reales
  */
 
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import {
   BarChart3,
-  PieChart,
-  TrendingUp,
   FileText,
   DollarSign,
   Users,
   Clock,
-  Download,
-  Calendar,
-  ArrowUpRight,
-  ArrowDownRight,
+  TrendingUp,
+  AlertTriangle,
+  Scale,
+  FolderOpen,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
-// Datos de ejemplo
-const kpis = [
-  {
-    title: "Casos Activos",
-    value: "156",
-    change: "+12%",
-    trend: "up",
-    description: "vs mes anterior",
-  },
-  {
-    title: "Recaudación Mensual",
-    value: "S/ 245,000",
-    change: "+8%",
-    trend: "up",
-    description: "vs mes anterior",
-  },
-  {
-    title: "Tiempo Promedio",
-    value: "95 días",
-    change: "-5%",
-    trend: "down",
-    description: "tiempo de resolución",
-  },
-  {
-    title: "Satisfacción",
-    value: "4.6/5",
-    change: "+0.2",
-    trend: "up",
-    description: "rating promedio",
-  },
-];
+interface Stats {
+  summary: {
+    totalCases: number;
+    inProcess: number;
+    closed: number;
+    archived: number;
+    suspended: number;
+    totalDocs: number;
+    totalMembers: number;
+    totalUsers: number;
+    totalArbitrators: number;
+    totalPayments: number;
+    totalDeadlines: number;
+    activeDeadlines: number;
+    overdueDeadlines: number;
+  };
+  casesByYear: { year: number; count: number }[];
+  casesByType: { type: string; count: number }[];
+  casesByScope: { scope: string; count: number }[];
+  casesByTribunal: { mode: string; count: number }[];
+  recentCases: { id: string; code: string; title: string; status: string; createdAt: string }[];
+  upcomingDeadlines: { id: string; title: string; caseCode: string; dueAt: string; daysRemaining: number }[];
+}
 
-const quickReports = [
-  { name: "Reporte de Casos", href: "/admin/reports/cases", icon: FileText },
-  { name: "Reporte de Pagos", href: "/admin/reports/payments", icon: DollarSign },
-  { name: "Reporte de Usuarios", href: "/admin/reports/users", icon: Users },
-  { name: "Auditoría", href: "/admin/reports/audit", icon: Clock },
-  { name: "Site Health", href: "/admin/reports/site-health", icon: TrendingUp },
-];
+export default function ReportsPage() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export default async function ReportsPage() {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/login");
+  useEffect(() => {
+    fetch("/api/admin/stats")
+      .then((r) => r.json())
+      .then((d) => setStats(d))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
-  const allowedRoles = ["SUPER_ADMIN", "ADMIN"];
-  if (!allowedRoles.includes(session.user.role || "")) {
-    redirect("/");
+  if (!stats?.summary) {
+    return (
+      <div className="container mx-auto py-6">
+        <p className="text-muted-foreground">Error cargando estadísticas.</p>
+      </div>
+    );
   }
+
+  const s = stats.summary;
+
+  const kpis = [
+    { title: "Casos totales", value: s.totalCases, icon: FileText, color: "text-blue-600 bg-blue-50" },
+    { title: "En proceso", value: s.inProcess, icon: Scale, color: "text-[#D66829] bg-orange-50" },
+    { title: "Cerrados / Laudados", value: s.closed, icon: BarChart3, color: "text-green-600 bg-green-50" },
+    { title: "Archivados", value: s.archived, icon: FolderOpen, color: "text-gray-600 bg-gray-50" },
+    { title: "Documentos", value: s.totalDocs.toLocaleString(), icon: FileText, color: "text-purple-600 bg-purple-50" },
+    { title: "Usuarios", value: s.totalUsers, icon: Users, color: "text-indigo-600 bg-indigo-50" },
+    { title: "Árbitros activos", value: s.totalArbitrators, icon: Scale, color: "text-teal-600 bg-teal-50" },
+    { title: "Pagos registrados", value: s.totalPayments, icon: DollarSign, color: "text-emerald-600 bg-emerald-50" },
+  ];
+
+  const quickReports = [
+    { name: "Reporte de Casos", href: "/admin/reports/cases", icon: FileText },
+    { name: "Reporte de Pagos", href: "/admin/reports/payments", icon: DollarSign },
+    { name: "Auditoría", href: "/admin/reports/audit", icon: Clock },
+    { name: "Site Health", href: "/admin/reports/site-health", icon: TrendingUp },
+  ];
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard Analítico</h1>
-          <p className="text-muted-foreground">
-            Métricas y análisis del centro de arbitraje
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline">
-            <Calendar className="h-4 w-4 mr-2" />
-            Enero 2025
-          </Button>
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">Dashboard Analítico</h1>
+        <p className="text-muted-foreground">
+          Métricas en tiempo real del centro de arbitraje
+        </p>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {kpis.map((kpi) => (
           <Card key={kpi.title}>
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">{kpi.title}</p>
-                <div className="flex items-baseline justify-between">
-                  <p className="text-2xl font-bold">{kpi.value}</p>
-                  <div className={`flex items-center text-sm ${
-                    kpi.trend === "up" ? "text-green-600" : "text-red-600"
-                  }`}>
-                    {kpi.trend === "up" ? (
-                      <ArrowUpRight className="h-4 w-4" />
-                    ) : (
-                      <ArrowDownRight className="h-4 w-4" />
-                    )}
-                    {kpi.change}
-                  </div>
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${kpi.color}`}>
+                  <kpi.icon className="h-5 w-5" />
                 </div>
-                <p className="text-xs text-muted-foreground">{kpi.description}</p>
+                <div>
+                  <p className="text-2xl font-bold">{kpi.value}</p>
+                  <p className="text-xs text-muted-foreground">{kpi.title}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Reportes Rápidos */}
+      {/* Plazos + Deadline alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-[#D66829]" />
+              Plazos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="rounded-lg bg-blue-50 p-4">
+                <p className="text-2xl font-bold text-blue-700">{s.totalDeadlines}</p>
+                <p className="text-xs text-blue-600">Total</p>
+              </div>
+              <div className="rounded-lg bg-amber-50 p-4">
+                <p className="text-2xl font-bold text-amber-700">{s.activeDeadlines}</p>
+                <p className="text-xs text-amber-600">Activos</p>
+              </div>
+              <div className="rounded-lg bg-red-50 p-4">
+                <p className="text-2xl font-bold text-red-700">{s.overdueDeadlines}</p>
+                <p className="text-xs text-red-600">Vencidos</p>
+              </div>
+            </div>
+            {stats.upcomingDeadlines.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Próximos a vencer:</p>
+                {stats.upcomingDeadlines.slice(0, 5).map((d) => (
+                  <div
+                    key={d.id}
+                    className={`flex items-center justify-between text-sm p-2 rounded ${
+                      d.daysRemaining <= 0
+                        ? "bg-red-50 text-red-800"
+                        : d.daysRemaining <= 3
+                        ? "bg-amber-50 text-amber-800"
+                        : "bg-slate-50"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="font-mono text-xs">{d.caseCode}</span>
+                      <span className="mx-2">·</span>
+                      <span className="truncate">{d.title}</span>
+                    </div>
+                    <Badge
+                      variant={d.daysRemaining <= 0 ? "destructive" : "secondary"}
+                      className="text-xs ml-2"
+                    >
+                      {d.daysRemaining <= 0
+                        ? `${Math.abs(d.daysRemaining)}d vencido`
+                        : `${d.daysRemaining}d`}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Casos por año */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-[#0B2A5B]" />
+              Casos por Año
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {stats.casesByYear.map((y) => {
+                const pct = Math.round((y.count / s.totalCases) * 100);
+                return (
+                  <div key={y.year} className="flex items-center gap-3">
+                    <span className="text-sm font-mono w-12">{y.year}</span>
+                    <div className="flex-1 bg-slate-100 rounded-full h-6 overflow-hidden">
+                      <div
+                        className="bg-[#0B2A5B] h-full rounded-full flex items-center pl-2"
+                        style={{ width: `${Math.max(pct, 8)}%` }}
+                      >
+                        <span className="text-xs text-white font-medium">{y.count}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Distribución */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Por tipo de procedimiento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {stats.casesByType.map((t) => (
+                <div key={t.type} className="flex justify-between items-center">
+                  <span className="text-sm">{t.type === "REGULAR" ? "Regular" : t.type === "EMERGENCY" ? "Emergencia" : t.type}</span>
+                  <Badge variant="secondary">{t.count}</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Por ámbito</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {stats.casesByScope.map((s) => (
+                <div key={s.scope} className="flex justify-between items-center">
+                  <span className="text-sm">{s.scope === "NACIONAL" ? "Nacional" : "Internacional"}</span>
+                  <Badge variant="secondary">{s.count}</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Por composición</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {stats.casesByTribunal.map((t) => (
+                <div key={t.mode} className="flex justify-between items-center">
+                  <span className="text-sm">{t.mode === "TRIBUNAL_3" ? "Tribunal (3)" : t.mode === "SOLE_ARBITRATOR" ? "Árbitro único" : t.mode || "N/A"}</span>
+                  <Badge variant="secondary">{t.count}</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Reportes rápidos */}
       <Card>
         <CardHeader>
-          <CardTitle>Reportes Disponibles</CardTitle>
-          <CardDescription>
-            Acceda a los reportes detallados del sistema
-          </CardDescription>
+          <CardTitle>Reportes detallados</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {quickReports.map((report) => (
-              <Link key={report.name} href={report.href}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {quickReports.map((r) => (
+              <Link key={r.name} href={r.href}>
                 <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
                   <CardContent className="pt-6 flex flex-col items-center text-center">
-                    <div className="p-3 bg-primary/10 rounded-lg mb-3">
-                      <report.icon className="h-6 w-6 text-primary" />
+                    <div className="p-3 bg-[#0B2A5B]/10 rounded-lg mb-3">
+                      <r.icon className="h-6 w-6 text-[#0B2A5B]" />
                     </div>
-                    <p className="font-medium">{report.name}</p>
+                    <p className="font-medium text-sm">{r.name}</p>
                   </CardContent>
                 </Card>
               </Link>
@@ -149,87 +282,33 @@ export default async function ReportsPage() {
         </CardContent>
       </Card>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Casos por Mes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] flex items-center justify-center bg-muted/50 rounded-lg">
-              <div className="text-center">
-                <BarChart3 className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-muted-foreground">
-                  Gráfico de barras: Casos nuevos vs cerrados
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5" />
-              Distribución por Estado
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] flex items-center justify-center bg-muted/50 rounded-lg">
-              <div className="text-center">
-                <PieChart className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-muted-foreground">
-                  Gráfico circular: Estados de expedientes
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tendencias */}
+      {/* Últimos casos */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Tendencias Anuales
-          </CardTitle>
-          <CardDescription>
-            Evolución de los principales indicadores durante el año
-          </CardDescription>
+          <CardTitle>Últimos expedientes</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="cases">
-            <TabsList>
-              <TabsTrigger value="cases">Casos</TabsTrigger>
-              <TabsTrigger value="revenue">Ingresos</TabsTrigger>
-              <TabsTrigger value="duration">Duración</TabsTrigger>
-            </TabsList>
-            <TabsContent value="cases">
-              <div className="h-[300px] flex items-center justify-center bg-muted/50 rounded-lg mt-4">
-                <p className="text-muted-foreground">
-                  Gráfico de líneas: Tendencia de casos
-                </p>
-              </div>
-            </TabsContent>
-            <TabsContent value="revenue">
-              <div className="h-[300px] flex items-center justify-center bg-muted/50 rounded-lg mt-4">
-                <p className="text-muted-foreground">
-                  Gráfico de líneas: Tendencia de ingresos
-                </p>
-              </div>
-            </TabsContent>
-            <TabsContent value="duration">
-              <div className="h-[300px] flex items-center justify-center bg-muted/50 rounded-lg mt-4">
-                <p className="text-muted-foreground">
-                  Gráfico de líneas: Tendencia de duración
-                </p>
-              </div>
-            </TabsContent>
-          </Tabs>
+        <CardContent className="p-0">
+          <div className="divide-y">
+            {stats.recentCases.map((c) => (
+              <Link
+                key={c.id}
+                href={`/cases/${c.id}`}
+                className="flex items-center justify-between px-6 py-3 hover:bg-muted/50 transition-colors"
+              >
+                <div>
+                  <span className="font-mono text-sm font-medium text-[#0B2A5B]">{c.code}</span>
+                  <span className="text-sm text-muted-foreground ml-3 truncate">{c.title?.slice(0, 50)}</span>
+                </div>
+                <Badge
+                  variant={
+                    c.status === "IN_PROCESS" ? "default" : c.status === "CLOSED" ? "secondary" : "outline"
+                  }
+                >
+                  {c.status === "IN_PROCESS" ? "En proceso" : c.status === "CLOSED" ? "Cerrado" : c.status}
+                </Badge>
+              </Link>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>
