@@ -246,7 +246,7 @@ export function WebsiteHeader({
               <Button
                 asChild
                 variant="outline"
-                className="ml-3 h-10 border-2 border-white/40 text-white hover:bg-white hover:text-[#0B2A5B] transition-all rounded-lg px-5 font-semibold"
+                className="ml-3 h-10 border-2 border-white bg-white text-[#D66829] hover:bg-[#D66829] hover:text-white hover:border-[#D66829] transition-all rounded-lg px-5 font-semibold shadow-md"
               >
                 <Link href="/login">
                   <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

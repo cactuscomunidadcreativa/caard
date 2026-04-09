@@ -69,8 +69,11 @@ export default function HolidaysConfigPage() {
   useEffect(() => {
     async function fetchHolidays() {
       try {
-        // No dedicated holidays API yet; show empty state
-        setHolidays([]);
+        const res = await fetch("/api/holidays");
+        if (res.ok) {
+          const data = await res.json();
+          setHolidays(Array.isArray(data) ? data : []);
+        }
       } catch (error) {
         console.error("Error fetching holidays:", error);
       } finally {

@@ -102,6 +102,18 @@ export async function GET(
             },
           },
         },
+        deadlines: {
+          orderBy: { dueAt: "asc" },
+        },
+        processDeadlines: {
+          orderBy: { dueAt: "asc" },
+        },
+        hearings: {
+          orderBy: { hearingAt: "asc" },
+        },
+        notes: {
+          orderBy: { createdAt: "desc" },
+        },
         _count: {
           select: {
             documents: true,
@@ -160,6 +172,33 @@ export async function GET(
         sizeBytes: d.sizeBytes != null ? d.sizeBytes.toString() : null,
         documentDate: d.documentDate ? d.documentDate.toISOString() : null,
       })),
+      // Merge CaseDeadline + ProcessDeadline into unified deadlines array
+      deadlines: [
+        ...((caseData as any).deadlines || []).map((d: any) => ({
+          id: d.id,
+          title: d.title,
+          description: d.description,
+          dueAt: d.dueAt?.toISOString() ?? null,
+          isCompleted: d.isCompleted,
+          completedAt: d.completedAt?.toISOString() ?? null,
+          type: "simple",
+          createdAt: d.createdAt?.toISOString() ?? null,
+        })),
+        ...((caseData as any).processDeadlines || []).map((d: any) => ({
+          id: d.id,
+          title: d.title,
+          description: d.description,
+          dueAt: d.dueAt?.toISOString() ?? null,
+          isCompleted: d.status === "COMPLETED",
+          completedAt: d.completedAt?.toISOString() ?? null,
+          type: d.type,
+          status: d.status,
+          businessDays: d.businessDays,
+          startsAt: d.startsAt?.toISOString() ?? null,
+          onOverdueAction: d.onOverdueAction,
+          createdAt: d.createdAt?.toISOString() ?? null,
+        })),
+      ],
     };
 
     if (accessResult.accessLevel === "own") {
