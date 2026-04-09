@@ -337,6 +337,26 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
   );
 
   // -------- Edit Case dialog --------
+  const [infoDocId, setInfoDocId] = useState<string | null>(null);
+  const [infoData, setInfoData] = useState<any>(null);
+  const [loadingInfo, setLoadingInfo] = useState(false);
+
+  useEffect(() => {
+    if (!infoDocId) { setInfoData(null); return; }
+    setLoadingInfo(true);
+    fetch(`/api/documents/${infoDocId}/audit`)
+      .then((r) => r.ok ? r.json() : r.json().then((d) => Promise.reject(d)))
+      .then((d) => setInfoData(d))
+      .catch(() => {
+        // Si no es super admin, cargar solo info básica
+        fetch(`/api/documents/${infoDocId}`)
+          .then((r) => r.json())
+          .then((d) => setInfoData({ document: d, audit: null }))
+          .catch(() => setInfoData({ error: true }));
+      })
+      .finally(() => setLoadingInfo(false));
+  }, [infoDocId]);
+
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     title: caseData.title || "",
@@ -1066,12 +1086,12 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                   </li>
                 ) : (
                   items.map((doc) => (
-                    <li key={doc.id}>
+                    <li key={doc.id} className="flex items-center gap-1">
                       <Link
                         href={`/api/documents/${doc.id}/view`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group flex items-start gap-2 rounded-md px-3 py-2.5 hover:bg-[#D66829]/10 transition-colors"
+                        className="group flex items-start gap-2 rounded-md px-3 py-2.5 hover:bg-[#D66829]/10 transition-colors flex-1 min-w-0"
                       >
                         <FileText className="h-4 w-4 mt-0.5 flex-shrink-0 text-[#D66829]" />
                         <div className="flex-1 min-w-0">
@@ -1079,12 +1099,26 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                             {doc.originalFileName}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {formatDate(doc.createdAt)}
+                            {formatDate(doc.documentDate || doc.createdAt)}
                             {doc.sizeBytes ? ` · ${formatFileSize(doc.sizeBytes)}` : ""}
+                            {doc.accessLevel && doc.accessLevel !== "ALL" && (
+                              <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-medium">
+                                {doc.accessLevel === "STAFF_ONLY" ? "🔒 Solo centro" : "👥 Staff + árbitros"}
+                              </span>
+                            )}
                           </p>
                         </div>
                         <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground mt-1" />
                       </Link>
+                      <button
+                        onClick={() => setInfoDocId(doc.id)}
+                        className="flex-shrink-0 p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
+                        title="Información del documento"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </button>
                     </li>
                   ))
                 )}
@@ -1739,6 +1773,139 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
               style={{ backgroundColor: "#0B2A5B", color: "white" }}
             >
               {savingNote ? "Guardando..." : "Agregar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Document Info Dialog (Get Info style) ---- */}
+      <Dialog open={!!infoDocId} onOpenChange={(open) => !open && setInfoDocId(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-[#D66829]" />
+              Información del documento
+            </DialogTitle>
+          </DialogHeader>
+          {loadingInfo && <p className="text-sm text-muted-foreground">Cargando...</p>}
+          {!loadingInfo && infoData?.document && (
+            <div className="space-y-5">
+              {/* Datos básicos */}
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div className="col-span-3">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Nombre</p>
+                  <p className="font-medium break-words">{infoData.document.originalFileName}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Tipo</p>
+                  <p>{infoData.document.documentType || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Tamaño</p>
+                  <p>{infoData.document.sizeBytes ? formatFileSize(infoData.document.sizeBytes) : "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">MIME</p>
+                  <p className="font-mono text-xs">{infoData.document.mimeType || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Fecha del documento</p>
+                  <p>{infoData.document.documentDate ? formatDate(infoData.document.documentDate) : "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Subido el</p>
+                  <p>{formatDate(infoData.document.createdAt)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Modificado</p>
+                  <p>{infoData.document.updatedAt ? formatDate(infoData.document.updatedAt) : "-"}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Subido por</p>
+                  <p>{infoData.document.uploadedBy?.name || "Sistema"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Visibilidad</p>
+                  <Badge variant="outline" className="text-xs">
+                    {infoData.document.accessLevel === "STAFF_ONLY"
+                      ? "Solo centro"
+                      : infoData.document.accessLevel === "STAFF_AND_ARBITRATORS"
+                      ? "Staff + árbitros"
+                      : "Todos"}
+                  </Badge>
+                </div>
+                {infoData.document.folder && (
+                  <div className="col-span-3">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Carpeta</p>
+                    <p>{infoData.document.folder.name}</p>
+                  </div>
+                )}
+                {infoData.document.driveFileId && (
+                  <div className="col-span-3">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Drive ID</p>
+                    <p className="font-mono text-xs break-all">{infoData.document.driveFileId}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Audit log (solo super admin lo recibe poblado) */}
+              {infoData.audit && (
+                <div>
+                  <h4 className="font-semibold text-sm mb-2 pb-1 border-b">
+                    Historial ({infoData.audit.length})
+                  </h4>
+                  {infoData.audit.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">
+                      Sin registros de auditoría para este documento aún.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2 text-xs max-h-64 overflow-y-auto">
+                      {infoData.audit.map((log: any) => (
+                        <li
+                          key={log.id}
+                          className="p-2 rounded border bg-slate-50 space-y-1"
+                        >
+                          <div className="flex items-center justify-between">
+                            <Badge variant="secondary" className="text-[10px]">
+                              {log.action}
+                            </Badge>
+                            <span className="text-muted-foreground">
+                              {formatDate(log.createdAt)}
+                            </span>
+                          </div>
+                          <p>
+                            <span className="font-medium">
+                              {log.actorName || "Sistema"}
+                            </span>
+                            {log.actorRole && (
+                              <span className="text-muted-foreground ml-1">
+                                ({log.actorRole})
+                              </span>
+                            )}
+                          </p>
+                          {log.ipAddress && (
+                            <p className="text-muted-foreground font-mono text-[10px]">
+                              IP: {log.ipAddress}
+                            </p>
+                          )}
+                          {log.changes && (
+                            <pre className="text-[10px] bg-white p-2 rounded overflow-x-auto">
+                              {typeof log.changes === "string"
+                                ? log.changes
+                                : JSON.stringify(log.changes, null, 2)}
+                            </pre>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInfoDocId(null)}>
+              Cerrar
             </Button>
           </DialogFooter>
         </DialogContent>
