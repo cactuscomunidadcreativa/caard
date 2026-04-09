@@ -96,6 +96,21 @@ export default function PlazosPage() {
       .catch(() => {});
   }, []);
 
+  async function handleMarkComplete(deadline: Deadline) {
+    if (!confirm(`¿Marcar "${deadline.description}" como cumplido?`)) return;
+    try {
+      const res = await fetch(`/api/deadlines/${deadline.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED" }),
+      });
+      if (!res.ok) throw new Error("Error al actualizar");
+      window.location.reload();
+    } catch (e: any) {
+      alert(e.message);
+    }
+  }
+
   async function handleCreateDeadline() {
     if (!newDeadline.caseId || !newDeadline.title || !newDeadline.businessDays) return;
     setCreating(true);
@@ -268,21 +283,21 @@ export default function PlazosPage() {
         <TabsContent value="all">
           <DeadlineTable
             deadlines={deadlines}
-            onExtend={(d) => { setSelectedDeadline(d); setShowExtensionDialog(true); }}
+            onExtend={(d) => { setSelectedDeadline(d); setShowExtensionDialog(true); }} onMarkComplete={handleMarkComplete}
           />
         </TabsContent>
 
         <TabsContent value="urgent">
           <DeadlineTable
             deadlines={urgentDeadlines}
-            onExtend={(d) => { setSelectedDeadline(d); setShowExtensionDialog(true); }}
+            onExtend={(d) => { setSelectedDeadline(d); setShowExtensionDialog(true); }} onMarkComplete={handleMarkComplete}
           />
         </TabsContent>
 
         <TabsContent value="expired">
           <DeadlineTable
             deadlines={expiredDeadlines}
-            onExtend={(d) => { setSelectedDeadline(d); setShowExtensionDialog(true); }}
+            onExtend={(d) => { setSelectedDeadline(d); setShowExtensionDialog(true); }} onMarkComplete={handleMarkComplete}
           />
         </TabsContent>
       </Tabs>
@@ -430,10 +445,12 @@ export default function PlazosPage() {
 
 function DeadlineTable({
   deadlines,
-  onExtend
+  onExtend,
+  onMarkComplete,
 }: {
   deadlines: Deadline[];
   onExtend: (d: Deadline) => void;
+  onMarkComplete: (d: Deadline) => void;
 }) {
   return (
     <Card>
@@ -495,9 +512,17 @@ function DeadlineTable({
                         <RefreshCw className="h-3 w-3 mr-1" />
                         Prorrogar
                       </Button>
-                      <Button variant="ghost" size="sm">
-                        <FileText className="h-3 w-3" />
-                      </Button>
+                      {deadline.status !== "COMPLETED" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-green-600 border-green-300 hover:bg-green-50"
+                          onClick={() => onMarkComplete(deadline)}
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Cumplido
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
