@@ -249,7 +249,7 @@ export async function PATCH(
     // Verificar que el caso pertenece al centro del usuario
     const existingCase = await prisma.case.findUnique({
       where: { id },
-      select: { centerId: true },
+      select: { centerId: true, status: true, currentStage: true, procedureType: true },
     });
 
     if (!existingCase) {
@@ -329,6 +329,22 @@ export async function PATCH(
       where: { id },
       data: updateData,
     });
+
+    // Ejecutar triggers automáticos por cambio de etapa/status
+    try {
+      const { executeStageTriggers } = await import("@/lib/case-stage-triggers");
+      await executeStageTriggers({
+        caseId: id,
+        previousStage: existingCase.currentStage as string | null,
+        newStage: updateData.currentStage || (existingCase.currentStage as string | null),
+        previousStatus: existingCase.status as string | null,
+        newStatus: updateData.status || (existingCase.status as string | null),
+        procedureType: (existingCase as any).procedureType || "REGULAR",
+        userId: session.user.id,
+      });
+    } catch (triggerErr: any) {
+      console.warn("stage trigger error:", triggerErr.message);
+    }
 
     // Registrar en audit log
     await prisma.auditLog.create({

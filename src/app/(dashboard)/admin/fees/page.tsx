@@ -116,40 +116,28 @@ export default function FeesConfigPage() {
     ));
   };
 
+  // Usar el engine oficial de tarifas CAARD
   const calculateFees = (amount: number) => {
+    // Import dinámico del engine (client-side)
+    const { calculateCaardFees } = require("@/lib/fees/caard-tariffs");
     const results: { type: string; name: string; amount: number }[] = [];
 
-    // Agrupar por tipo y encontrar la configuración aplicable
-    const types = [...new Set(configurations.filter(c => c.isActive).map(c => c.type))];
+    // Nacional - Tribunal
+    const nacTribunal = calculateCaardFees({ scope: "NACIONAL", mode: "TRIBUNAL_3", amount });
+    results.push({ type: "HONORARIOS_TRIBUNAL", name: "Honorarios Tribunal Arbitral (Nacional)", amount: nacTribunal.arbitratorFee });
 
-    types.forEach(type => {
-      const configsOfType = configurations.filter(c =>
-        c.type === type &&
-        c.isActive &&
-        amount >= c.minAmount &&
-        (c.maxAmount === null || amount <= c.maxAmount)
-      );
+    // Nacional - Árbitro Único
+    const nacUnico = calculateCaardFees({ scope: "NACIONAL", mode: "SOLE_ARBITRATOR", amount });
+    results.push({ type: "HONORARIOS_ARBITRO_UNICO", name: "Honorarios Árbitro Único (Nacional)", amount: nacUnico.arbitratorFee });
 
-      if (configsOfType.length > 0) {
-        const config = configsOfType[0];
-        let calculatedAmount = 0;
+    // Gastos del Centro
+    results.push({ type: "GASTOS_ADMINISTRATIVOS", name: "Gastos del Centro (Nacional)", amount: nacTribunal.centerFee });
 
-        if (config.calculationType === "PERCENTAGE") {
-          calculatedAmount = (amount * config.value) / 100;
-          if (config.minimumFee && calculatedAmount < config.minimumFee) {
-            calculatedAmount = config.minimumFee;
-          }
-        } else {
-          calculatedAmount = config.value;
-        }
+    // Total Nacional Tribunal
+    results.push({ type: "TOTAL_TRIBUNAL", name: "Total Nacional (Tribunal)", amount: nacTribunal.total });
 
-        results.push({
-          type: config.type,
-          name: typeLabels[config.type] || config.type,
-          amount: calculatedAmount,
-        });
-      }
-    });
+    // Total Nacional Árbitro Único
+    results.push({ type: "TOTAL_UNICO", name: "Total Nacional (Árbitro Único)", amount: nacUnico.total });
 
     return results;
   };

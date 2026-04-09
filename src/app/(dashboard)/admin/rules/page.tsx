@@ -135,13 +135,57 @@ export default function RulesConfigPage() {
     );
   }
 
+  // Plazos reglamentarios (hardcoded del engine)
+  const plazosReglamentarios = [
+    { etapa: "Admisión", plazos: [
+      { titulo: "Pago de tasa de presentación", dias: 5, accion: "SUSPEND", fuente: "Reg. Aranceles" },
+      { titulo: "Contestación de la solicitud", dias: 20, accion: "NOTIFY", fuente: "Reg. Arbitraje" },
+      { titulo: "Designación de árbitro por las partes", dias: 10, accion: "ESCALATE", fuente: "Reg. Arbitraje" },
+    ]},
+    { etapa: "Contestación", plazos: [
+      { titulo: "Reconvención", dias: 20, accion: "NOTIFY", fuente: "Reg. Arbitraje" },
+      { titulo: "Contestación de la reconvención", dias: 15, accion: "NOTIFY", fuente: "Reg. Arbitraje" },
+    ]},
+    { etapa: "Designación", plazos: [
+      { titulo: "Aceptación de árbitro designado", dias: 5, accion: "ESCALATE", fuente: "Reg. Arbitraje" },
+    ]},
+    { etapa: "Alegatos", plazos: [
+      { titulo: "Alegatos / Informes finales", dias: 15, accion: "NOTIFY", fuente: "Reg. Arbitraje" },
+    ]},
+    { etapa: "Laudo", plazos: [
+      { titulo: "Emisión del laudo", dias: 30, accion: "NOTIFY", fuente: "DL 1071 Art. 53" },
+      { titulo: "Corrección/interpretación del laudo", dias: 15, accion: "NOTIFY", fuente: "DL 1071 Art. 58" },
+    ]},
+    { etapa: "Emergencia", plazos: [
+      { titulo: "Verificación de solicitud", dias: 1, accion: "NOTIFY", fuente: "Reg. Emergencia Art. 3" },
+      { titulo: "Pago de tasa de emergencia", dias: 1, accion: "ARCHIVE", fuente: "Reg. Emergencia Art. 3" },
+      { titulo: "Designación árbitro de emergencia", dias: 3, accion: "ESCALATE", fuente: "Reg. Emergencia Art. 4" },
+      { titulo: "Traslado a contraparte", dias: 2, accion: "NOTIFY", fuente: "Reg. Emergencia Art. 4" },
+      { titulo: "Resolución del árbitro", dias: 2, accion: "NOTIFY", fuente: "Reg. Emergencia Art. 4" },
+      { titulo: "Solicitud de arbitraje principal", dias: 15, accion: "EXPIRE_EMERGENCY", fuente: "Reg. Emergencia Art. 5" },
+    ]},
+    { etapa: "Recusación", plazos: [
+      { titulo: "Absolución recusación (regular)", dias: 5, accion: "ESCALATE", fuente: "Reg. Interno Art. 24" },
+      { titulo: "Absolución recusación (emergencia)", dias: 1, accion: "ESCALATE", fuente: "Reg. Emergencia Art. 7" },
+    ]},
+  ];
+
+  const accionLabels: Record<string, { label: string; color: string }> = {
+    SUSPEND: { label: "Suspende caso", color: "bg-red-100 text-red-800" },
+    ARCHIVE: { label: "Archiva", color: "bg-gray-100 text-gray-800" },
+    NOTIFY: { label: "Notifica", color: "bg-blue-100 text-blue-800" },
+    ESCALATE: { label: "Escala a Consejo", color: "bg-amber-100 text-amber-800" },
+    EXPIRE_EMERGENCY: { label: "Caduca medida", color: "bg-red-100 text-red-800" },
+    AUTO_REJECT: { label: "Rechaza auto", color: "bg-red-100 text-red-800" },
+  };
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Reglas del Sistema</h1>
           <p className="text-muted-foreground">
-            Configure los parámetros y reglas de negocio del centro
+            Plazos procesales, triggers automáticos y reglas de negocio
           </p>
         </div>
         <Button onClick={() => setShowNewDialog(true)}>
@@ -150,7 +194,69 @@ export default function RulesConfigPage() {
         </Button>
       </div>
 
-      {/* Filtros */}
+      {/* Plazos Reglamentarios */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-[#D66829]" />
+            Plazos Procesales Reglamentarios
+          </CardTitle>
+          <CardDescription>
+            Plazos en días hábiles según el Reglamento de Arbitraje, Reglamento de Emergencia y Reglamento Interno CAARD.
+            Se aplican automáticamente cuando un caso cambia de etapa o status.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {plazosReglamentarios.map((group) => (
+              <div key={group.etapa} className="border rounded-lg overflow-hidden">
+                <div className="bg-[#0B2A5B] text-white px-4 py-2 font-semibold text-sm">
+                  {group.etapa}
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Plazo</TableHead>
+                      <TableHead className="w-[100px] text-center">Días hábiles</TableHead>
+                      <TableHead className="w-[140px]">Al vencer</TableHead>
+                      <TableHead className="w-[180px]">Fuente</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {group.plazos.map((p, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium">{p.titulo}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary" className="font-bold">{p.dias}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={accionLabels[p.accion]?.color || "bg-gray-100"}>
+                            {accionLabels[p.accion]?.label || p.accion}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{p.fuente}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-900">
+            <p className="font-semibold mb-1">Triggers automáticos</p>
+            <ul className="space-y-1 text-blue-800">
+              <li>• <strong>Al admitir</strong> un caso → se crean plazos de pago, contestación y designación</li>
+              <li>• <strong>Al pasar a contestación</strong> → se crean plazos de reconvención</li>
+              <li>• <strong>Al designar árbitro</strong> → plazo de aceptación (5 días)</li>
+              <li>• <strong>Al pasar a alegatos</strong> → plazo de informes finales (15 días)</li>
+              <li>• <strong>En emergencia</strong> → plazos automáticos de 1-3 días por etapa</li>
+              <li>• Todos los plazos excluyen <strong>sábados, domingos y feriados nacionales</strong></li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reglas de Notificación */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex gap-4 flex-wrap">
