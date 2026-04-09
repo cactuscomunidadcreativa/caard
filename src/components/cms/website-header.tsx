@@ -150,8 +150,11 @@ export function WebsiteHeader({
               <LanguageSelector />
               <Link
                 href="/login"
-                className="text-white/80 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#D66829] text-white text-sm font-semibold hover:bg-[#c45a22] transition-all shadow-md hover:shadow-lg"
               >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
                 {t.website.clientAccess}
               </Link>
             </div>
@@ -242,7 +245,19 @@ export function WebsiteHeader({
 
               <Button
                 asChild
-                className="ml-4 h-10 bg-gradient-to-r from-[#D66829] to-[#c45a22] hover:from-[#c45a22] hover:to-[#b34f1d] text-white shadow-lg hover:shadow-xl transition-all rounded-lg px-6"
+                variant="outline"
+                className="ml-3 h-10 border-2 border-white/40 text-white hover:bg-white hover:text-[#0B2A5B] transition-all rounded-lg px-5 font-semibold"
+              >
+                <Link href="/login">
+                  <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Consulta de Expedientes
+                </Link>
+              </Button>
+              <Button
+                asChild
+                className="ml-2 h-10 bg-gradient-to-r from-[#D66829] to-[#c45a22] hover:from-[#c45a22] hover:to-[#b34f1d] text-white shadow-lg hover:shadow-xl transition-all rounded-lg px-6"
               >
                 <Link href="/solicitud-arbitral">
                   {t.website.startArbitration}
@@ -328,10 +343,13 @@ export function WebsiteHeader({
                 <Button
                   asChild
                   variant="outline"
-                  className="w-full h-12 border-white/30 text-white hover:bg-white/10 rounded-xl"
+                  className="w-full h-12 border-2 border-white/50 text-white hover:bg-white hover:text-[#0B2A5B] rounded-xl font-semibold"
                 >
                   <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                    {t.website.clientAccess}
+                    <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Consulta de Expedientes
                   </Link>
                 </Button>
               </div>
