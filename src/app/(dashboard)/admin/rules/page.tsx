@@ -135,7 +135,34 @@ export default function RulesConfigPage() {
     );
   }
 
-  // Plazos reglamentarios (hardcoded del engine)
+  // Edición inline de plazos
+  const [editingPlazo, setEditingPlazo] = useState<string | null>(null);
+  const [editDias, setEditDias] = useState("");
+  const [editAccion, setEditAccion] = useState("");
+  const [savingPlazo, setSavingPlazo] = useState(false);
+
+  async function handleSavePlazo(key: string, dias: number, accion: string) {
+    setSavingPlazo(true);
+    try {
+      const res = await fetch("/api/admin/plazos-config");
+      const current = await res.json();
+      const overrides = current.overrides || {};
+      overrides[key] = { dias, accion };
+      await fetch("/api/admin/plazos-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ overrides }),
+      });
+      setEditingPlazo(null);
+      alert("Plazo actualizado. Los nuevos valores se aplicarán a los próximos casos.");
+    } catch {
+      alert("Error al guardar");
+    } finally {
+      setSavingPlazo(false);
+    }
+  }
+
+  // Plazos reglamentarios (del engine)
   const plazosReglamentarios = [
     { etapa: "Admisión", plazos: [
       { titulo: "Pago de tasa de presentación", dias: 5, accion: "SUSPEND", fuente: "Reg. Aranceles" },
@@ -223,20 +250,83 @@ export default function RulesConfigPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {group.plazos.map((p, i) => (
+                    {group.plazos.map((p, i) => {
+                      const key = `${group.etapa}_${p.titulo}`.replace(/\s+/g, "_");
+                      const isEditing = editingPlazo === key;
+                      return (
                       <TableRow key={i}>
                         <TableCell className="font-medium">{p.titulo}</TableCell>
                         <TableCell className="text-center">
-                          <Badge variant="secondary" className="font-bold">{p.dias}</Badge>
+                          {isEditing ? (
+                            <Input
+                              type="number"
+                              className="w-16 h-8 text-center"
+                              defaultValue={p.dias}
+                              onChange={(e) => setEditDias(e.target.value)}
+                            />
+                          ) : (
+                            <Badge variant="secondary" className="font-bold">{p.dias}</Badge>
+                          )}
                         </TableCell>
                         <TableCell>
-                          <Badge className={accionLabels[p.accion]?.color || "bg-gray-100"}>
-                            {accionLabels[p.accion]?.label || p.accion}
-                          </Badge>
+                          {isEditing ? (
+                            <select
+                              className="text-xs border rounded px-2 py-1"
+                              defaultValue={p.accion}
+                              onChange={(e) => setEditAccion(e.target.value)}
+                            >
+                              <option value="NOTIFY">Notifica</option>
+                              <option value="SUSPEND">Suspende caso</option>
+                              <option value="ARCHIVE">Archiva</option>
+                              <option value="ESCALATE">Escala a Consejo</option>
+                              <option value="EXPIRE_EMERGENCY">Caduca medida</option>
+                            </select>
+                          ) : (
+                            <Badge className={accionLabels[p.accion]?.color || "bg-gray-100"}>
+                              {accionLabels[p.accion]?.label || p.accion}
+                            </Badge>
+                          )}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{p.fuente}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {isEditing ? (
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                disabled={savingPlazo}
+                                onClick={() => handleSavePlazo(
+                                  key,
+                                  parseInt(editDias || String(p.dias), 10),
+                                  editAccion || p.accion
+                                )}
+                              >
+                                Guardar
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setEditingPlazo(null)}>
+                                Cancelar
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span>{p.fuente}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-xs"
+                                onClick={() => {
+                                  setEditingPlazo(key);
+                                  setEditDias(String(p.dias));
+                                  setEditAccion(p.accion);
+                                }}
+                              >
+                                Editar
+                              </Button>
+                            </div>
+                          )}
+                        </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
