@@ -270,17 +270,18 @@ export default function RulesConfigPage() {
                         </TableCell>
                         <TableCell>
                           {isEditing ? (
-                            <select
-                              className="text-xs border rounded px-2 py-1"
-                              defaultValue={p.accion}
-                              onChange={(e) => setEditAccion(e.target.value)}
-                            >
-                              <option value="NOTIFY">Notifica</option>
-                              <option value="SUSPEND">Suspende caso</option>
-                              <option value="ARCHIVE">Archiva</option>
-                              <option value="ESCALATE">Escala a Consejo</option>
-                              <option value="EXPIRE_EMERGENCY">Caduca medida</option>
-                            </select>
+                            <Select defaultValue={p.accion} onValueChange={(v) => setEditAccion(v)}>
+                              <SelectTrigger className="h-8 text-xs w-40">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="NOTIFY">Notifica</SelectItem>
+                                <SelectItem value="SUSPEND">Suspende caso</SelectItem>
+                                <SelectItem value="ARCHIVE">Archiva</SelectItem>
+                                <SelectItem value="ESCALATE">Escala a Consejo</SelectItem>
+                                <SelectItem value="EXPIRE_EMERGENCY">Caduca medida</SelectItem>
+                              </SelectContent>
+                            </Select>
                           ) : (
                             <Badge className={accionLabels[p.accion]?.color || "bg-gray-100"}>
                               {accionLabels[p.accion]?.label || p.accion}
