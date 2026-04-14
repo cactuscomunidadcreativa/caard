@@ -325,16 +325,27 @@ export async function PATCH(
       "respondentName",
       "currentStage",
       "tribunalMode",
+      "scope",
+      "procedureType",
       "currency",
       "isBlocked",
       "blockReason",
       "driveFolderId",
     ];
+    // Date fields (string → Date)
+    const dateFields = ["submittedAt", "admittedAt", "closedAt"];
     const updateData: any = {};
 
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
         updateData[field] = body[field];
+      }
+    }
+
+    // Date fields
+    for (const df of dateFields) {
+      if (body[df] !== undefined) {
+        updateData[df] = body[df] ? new Date(body[df]) : null;
       }
     }
 

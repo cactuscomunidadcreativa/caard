@@ -396,10 +396,17 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
     status: caseData.status,
     currentStage: caseData.currentStage || ("" as ProcessStage | ""),
     tribunalMode: caseData.tribunalMode,
+    scope: caseData.scope || "NACIONAL",
+    procedureType: caseData.procedureType || "REGULAR",
     disputeAmount: caseData.disputeAmountCents
       ? (Number(caseData.disputeAmountCents) / 100).toString()
       : "",
     currency: caseData.currency,
+    claimantName: caseData.claimantName || "",
+    respondentName: caseData.respondentName || "",
+    submittedAt: caseData.submittedAt ? caseData.submittedAt.split("T")[0] : "",
+    admittedAt: caseData.admittedAt ? caseData.admittedAt.split("T")[0] : "",
+    closedAt: caseData.closedAt ? caseData.closedAt.split("T")[0] : "",
     isBlocked: caseData.isBlocked,
     blockReason: caseData.blockReason || "",
     driveFolderId: (caseData as any).driveFolderId || "",
@@ -414,7 +421,14 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
         status: editForm.status,
         currentStage: editForm.currentStage || null,
         tribunalMode: editForm.tribunalMode,
+        scope: editForm.scope,
+        procedureType: editForm.procedureType,
         currency: editForm.currency,
+        claimantName: editForm.claimantName || null,
+        respondentName: editForm.respondentName || null,
+        submittedAt: editForm.submittedAt ? new Date(editForm.submittedAt).toISOString() : null,
+        admittedAt: editForm.admittedAt ? new Date(editForm.admittedAt).toISOString() : null,
+        closedAt: editForm.closedAt ? new Date(editForm.closedAt).toISOString() : null,
         isBlocked: editForm.isBlocked,
         blockReason: editForm.isBlocked ? editForm.blockReason || null : null,
         driveFolderId: editForm.driveFolderId || null,
@@ -1481,6 +1495,22 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
               />
             </div>
             <div>
+              <Label>Demandante</Label>
+              <Input
+                value={editForm.claimantName}
+                onChange={(e) => setEditForm({ ...editForm, claimantName: e.target.value })}
+                placeholder="Nombre del demandante"
+              />
+            </div>
+            <div>
+              <Label>Demandado</Label>
+              <Input
+                value={editForm.respondentName}
+                onChange={(e) => setEditForm({ ...editForm, respondentName: e.target.value })}
+                placeholder="Nombre del demandado"
+              />
+            </div>
+            <div>
               <Label>Estado</Label>
               <Select
                 value={editForm.status}
@@ -1568,6 +1598,38 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                   <SelectItem value="USD">USD</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Ámbito</Label>
+              <Select value={editForm.scope} onValueChange={(v) => setEditForm({ ...editForm, scope: v as any })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NACIONAL">Nacional</SelectItem>
+                  <SelectItem value="INTERNACIONAL">Internacional</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Tipo de procedimiento</Label>
+              <Select value={editForm.procedureType} onValueChange={(v) => setEditForm({ ...editForm, procedureType: v as any })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="REGULAR">Regular</SelectItem>
+                  <SelectItem value="EMERGENCY">Emergencia</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Fecha de presentación</Label>
+              <Input type="date" value={editForm.submittedAt} onChange={(e) => setEditForm({ ...editForm, submittedAt: e.target.value })} />
+            </div>
+            <div>
+              <Label>Fecha de admisión</Label>
+              <Input type="date" value={editForm.admittedAt} onChange={(e) => setEditForm({ ...editForm, admittedAt: e.target.value })} />
+            </div>
+            <div>
+              <Label>Fecha de cierre / laudo</Label>
+              <Input type="date" value={editForm.closedAt} onChange={(e) => setEditForm({ ...editForm, closedAt: e.target.value })} />
             </div>
             <div className="md:col-span-2 flex items-center gap-3">
               <Switch
