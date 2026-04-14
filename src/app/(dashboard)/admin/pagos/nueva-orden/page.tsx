@@ -73,7 +73,15 @@ export default function NewPaymentOrderPage() {
     amount: "",
     currency: "PEN",
     dueDate: "",
+    voucherType: "NONE" as "NONE" | "RHE" | "FACTURA",
   });
+
+  // Cálculos automáticos según tipo de comprobante
+  const baseAmount = parseFloat(formData.amount || "0");
+  const retention = formData.voucherType === "RHE" ? baseAmount * 0.08 : 0;
+  const igv = formData.voucherType === "FACTURA" ? baseAmount * 0.18 : 0;
+  const netAmount = formData.voucherType === "RHE" ? baseAmount - retention : baseAmount;
+  const totalWithIgv = baseAmount + igv;
 
   // Cargar casos
   useEffect(() => {
@@ -123,10 +131,16 @@ export default function NewPaymentOrderPage() {
         body: JSON.stringify({
           caseId: formData.caseId,
           concept: formData.concept,
-          description: formData.description || undefined,
-          totalCents: Math.round(parseFloat(formData.amount) * 100),
+          description: formData.description
+            + (formData.voucherType === "RHE" ? " (RHE - Retención 8%)" : "")
+            + (formData.voucherType === "FACTURA" ? " (Factura + IGV 18%)" : ""),
+          amountCents: Math.round(baseAmount * 100),
+          igvCents: Math.round(igv * 100),
+          retentionCents: Math.round(retention * 100),
+          totalCents: Math.round(totalWithIgv * 100),
           currency: formData.currency,
           dueDate: formData.dueDate || undefined,
+          voucherType: formData.voucherType !== "NONE" ? formData.voucherType : undefined,
         }),
       });
 
@@ -216,6 +230,7 @@ export default function NewPaymentOrderPage() {
                     amount: "",
                     currency: "PEN",
                     dueDate: "",
+                    voucherType: "NONE",
                   });
                 }}>
                   Crear otra orden
@@ -374,6 +389,59 @@ export default function NewPaymentOrderPage() {
                 </Select>
               </div>
             </div>
+
+            {/* Tipo de comprobante */}
+            <div className="space-y-2">
+              <Label>Tipo de comprobante</Label>
+              <Select
+                value={formData.voucherType}
+                onValueChange={(v) => setFormData((f) => ({ ...f, voucherType: v as any }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">Sin comprobante especial</SelectItem>
+                  <SelectItem value="RHE">RHE (Recibo por Honorarios - Retención 8%)</SelectItem>
+                  <SelectItem value="FACTURA">Factura (+ IGV 18%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Desglose automático */}
+            {baseAmount > 0 && formData.voucherType !== "NONE" && (
+              <div className="rounded-lg border bg-slate-50 p-4 space-y-2 text-sm">
+                <p className="font-semibold">Desglose:</p>
+                <div className="flex justify-between">
+                  <span>Monto base</span>
+                  <span>{formData.currency === "USD" ? "$" : "S/."} {baseAmount.toFixed(2)}</span>
+                </div>
+                {formData.voucherType === "RHE" && (
+                  <>
+                    <div className="flex justify-between text-red-600">
+                      <span>Retención IR (8%)</span>
+                      <span>- {formData.currency === "USD" ? "$" : "S/."} {retention.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold border-t pt-2">
+                      <span>Neto a pagar</span>
+                      <span>{formData.currency === "USD" ? "$" : "S/."} {netAmount.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+                {formData.voucherType === "FACTURA" && (
+                  <>
+                    <div className="flex justify-between text-blue-600">
+                      <span>IGV (18%)</span>
+                      <span>+ {formData.currency === "USD" ? "$" : "S/."} {igv.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold border-t pt-2">
+                      <span>Total con IGV</span>
+                      <span>{formData.currency === "USD" ? "$" : "S/."} {totalWithIgv.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Fecha de vencimiento */}
             <div className="space-y-2">
