@@ -307,6 +307,18 @@ function useNavigationItems() {
   // FINANZAS - Módulo completo de gestión financiera
   const financeItems: NavItem[] = [
     {
+      title: "Dashboard Financiero",
+      href: "/admin/finanzas",
+      icon: DollarSign,
+      roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA"],
+    },
+    {
+      title: "Registrar Gasto",
+      href: "/admin/finanzas/gastos/nuevo",
+      icon: Receipt,
+      roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"],
+    },
+    {
       title: t.sidebar.liquidations,
       href: "/admin/finanzas/liquidaciones",
       icon: Calculator,

@@ -300,6 +300,7 @@ model Center {
   carts            Cart[]
   commerceTaxConfigs CommerceTaxConfig[]
   freePayments     FreePayment[]
+  expenses         Expense[]
   laudos           Laudo[]
   laudoCategories  LaudoCategory[]
   laudoPackages    LaudoPackage[]
@@ -371,6 +372,8 @@ model User {
   storeOrders          StoreOrder[]
   cart                 Cart?
   freePayments         FreePayment[]
+  expensesRegistered   Expense[] @relation("ExpenseRegistered")
+  expensesApproved     Expense[] @relation("ExpenseApproved")
   laudoSubscriptions   LaudoSubscription[]
   laudoAccesses        LaudoAccess[]
 
@@ -627,6 +630,9 @@ model Case {
 
   // Reuniones programadas
   scheduledMeetings ScheduledMeeting[]
+
+  // Gastos vinculados al expediente
+  expenses Expense[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -3928,4 +3934,78 @@ model FreePayment {
   @@index([centerId])
   @@index([userId])
   @@index([caseId])
+}
+
+//
+// GASTOS / EGRESOS
+//
+
+enum ExpenseCategory {
+  PROVEEDOR
+  PLANILLA
+  SERVICIOS
+  ALQUILER
+  COURIER
+  PERICIA
+  HONORARIOS_EXTERNOS
+  IMPUESTOS
+  OTROS
+}
+
+enum ExpenseStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+model Expense {
+  id        String @id @default(cuid())
+  centerId  String
+  center    Center @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  caseId    String?  // opcional: gasto vinculado a un expediente
+  case      Case?    @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  category    ExpenseCategory
+  concept     String
+  description String?
+
+  // Proveedor
+  vendorName  String?
+  vendorRuc   String?
+
+  // Montos
+  amountCents Int       // base sin IGV
+  igvCents    Int @default(0)
+  totalCents  Int       // base + IGV
+  currency    String @default("PEN")
+
+  // Comprobante
+  voucherType   String?  // FACTURA, BOLETA, RECIBO, NOTA_CREDITO
+  voucherNumber String?
+  voucherDate   DateTime?
+  voucherUrl    String?  // link al comprobante (Drive o upload)
+
+  // Estado y flujo
+  status        ExpenseStatus @default(DRAFT)
+  paymentMethod String?  // TRANSFERENCIA, CHEQUE, EFECTIVO
+  paymentRef    String?  // N° operación o referencia
+
+  // Auditoría
+  registeredById String?
+  registeredBy   User?  @relation("ExpenseRegistered", fields: [registeredById], references: [id], onDelete: SetNull)
+  approvedById   String?
+  approvedBy     User?  @relation("ExpenseApproved", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt     DateTime?
+  paidAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([caseId])
+  @@index([category])
+  @@index([status])
+  @@index([vendorRuc])
+  @@index([createdAt])
 }
