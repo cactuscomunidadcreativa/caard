@@ -331,6 +331,39 @@ interface UserSearchItem {
 export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
   const router = useRouter();
 
+  // Merge processDeadlines into deadlines
+  const mergedDeadlines = [
+    ...caseData.deadlines,
+    ...((caseData as any).processDeadlines || []).map((d: any) => ({
+      id: d.id,
+      title: d.title,
+      description: d.description,
+      dueAt: d.dueAt,
+      isCompleted: d.status === "COMPLETED",
+      completedAt: d.completedAt,
+      type: d.type,
+      status: d.status,
+      businessDays: d.businessDays,
+      createdAt: d.createdAt,
+    })),
+  ];
+
+  // Merge paymentOrders into payments for display
+  const mergedPayments = [
+    ...((caseData as any).paymentOrders || []).map((po: any) => ({
+      id: po.id,
+      concept: po.concept,
+      description: po.description,
+      amountCents: po.totalCents || po.amountCents,
+      currency: po.currency,
+      status: po.status,
+      dueAt: po.dueAt,
+      paidAt: po.paidAt,
+      orderNumber: po.orderNumber,
+    })),
+    ...caseData.payments,
+  ];
+
   const arbitrators = caseData.members.filter((m) => m.role === "ARBITRO");
   const parties = caseData.members.filter(
     (m) => m.role === "DEMANDANTE" || m.role === "DEMANDADO"
@@ -771,14 +804,14 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
             <CreditCard className="h-4 w-4" />
             Pagos
             <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-              {caseData.payments.length + ((caseData as any).paymentOrders?.length || 0)}
+              {mergedPayments.length}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="plazos" className="gap-1.5">
             <Clock className="h-4 w-4" />
             Plazos
             <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-              {caseData.deadlines.length}
+              {mergedDeadlines.length}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="notas" className="gap-1.5">
@@ -1201,33 +1234,7 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
         {/* ---- Tab: Pagos ---- */}
         <TabsContent value="pagos">
           {(() => {
-            const allPayments = [
-              ...((caseData as any).paymentOrders || []).map((po: any) => ({
-                id: po.id,
-                concept: po.concept,
-                description: po.description,
-                amountCents: po.totalCents || po.amountCents,
-                currency: po.currency,
-                status: po.status,
-                dueAt: po.dueAt,
-                paidAt: po.paidAt,
-                type: "order",
-                orderNumber: po.orderNumber,
-              })),
-              ...caseData.payments.map((p) => ({
-                ...p,
-                type: "payment",
-                orderNumber: null,
-              })),
-            ];
-            // Dedup by concept — prefer paymentOrders
-            const seen = new Set<string>();
-            const unique = allPayments.filter((p) => {
-              const key = p.type + "_" + p.concept + "_" + p.amountCents;
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
-            });
+            const unique = mergedPayments;
             return (
               <Card>
                 <CardHeader>
@@ -1306,11 +1313,11 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
               </Button>
             </CardHeader>
             <CardContent>
-              {caseData.deadlines.length === 0 ? (
+              {mergedDeadlines.length === 0 ? (
                 <EmptyState text="No hay plazos registrados." />
               ) : (
                 <div className="space-y-3">
-                  {caseData.deadlines.map((deadline) => {
+                  {mergedDeadlines.map((deadline) => {
                     const overdue =
                       !deadline.isCompleted && isOverdue(deadline.dueAt);
                     return (

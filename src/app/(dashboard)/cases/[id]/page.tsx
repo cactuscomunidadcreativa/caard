@@ -103,8 +103,17 @@ export default async function CaseDetailPage({
       payments: {
         orderBy: { createdAt: "desc" },
       },
+      paymentOrders: {
+        orderBy: { issuedAt: "desc" },
+      },
       deadlines: {
         orderBy: { dueAt: "asc" },
+      },
+      processDeadlines: {
+        orderBy: { dueAt: "asc" },
+      },
+      hearings: {
+        orderBy: { hearingAt: "asc" },
       },
       notes: {
         orderBy: { createdAt: "desc" },
