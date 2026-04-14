@@ -102,6 +102,9 @@ export async function GET(
             },
           },
         },
+        payments: {
+          orderBy: { createdAt: "desc" },
+        },
         deadlines: {
           orderBy: { dueAt: "asc" },
         },
@@ -171,6 +174,24 @@ export async function GET(
         ...d,
         sizeBytes: d.sizeBytes != null ? d.sizeBytes.toString() : null,
         documentDate: d.documentDate ? d.documentDate.toISOString() : null,
+      })),
+      // Serialize payments
+      payments: ((caseData as any).payments || []).map((p: any) => ({
+        ...p,
+        dueAt: p.dueAt?.toISOString() ?? null,
+        paidAt: p.paidAt?.toISOString() ?? null,
+        createdAt: p.createdAt?.toISOString() ?? null,
+      })),
+      // Serialize hearings
+      hearings: ((caseData as any).hearings || []).map((h: any) => ({
+        ...h,
+        hearingAt: h.hearingAt?.toISOString() ?? null,
+        createdAt: h.createdAt?.toISOString() ?? null,
+      })),
+      // Serialize notes
+      notes: ((caseData as any).notes || []).map((n: any) => ({
+        ...n,
+        createdAt: n.createdAt?.toISOString() ?? null,
       })),
       // Merge CaseDeadline + ProcessDeadline into unified deadlines array
       deadlines: [
