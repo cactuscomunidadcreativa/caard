@@ -124,6 +124,7 @@ export async function GET(
           select: {
             documents: true,
             payments: true,
+            paymentOrders: true,
             deadlines: true,
             hearings: true,
             notes: true,
