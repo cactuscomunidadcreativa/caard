@@ -105,6 +105,9 @@ export async function GET(
         payments: {
           orderBy: { createdAt: "desc" },
         },
+        paymentOrders: {
+          orderBy: { issuedAt: "desc" },
+        },
         deadlines: {
           orderBy: { dueAt: "asc" },
         },
@@ -181,6 +184,14 @@ export async function GET(
         dueAt: p.dueAt?.toISOString() ?? null,
         paidAt: p.paidAt?.toISOString() ?? null,
         createdAt: p.createdAt?.toISOString() ?? null,
+      })),
+      // Serialize paymentOrders
+      paymentOrders: ((caseData as any).paymentOrders || []).map((po: any) => ({
+        ...po,
+        issuedAt: po.issuedAt?.toISOString() ?? null,
+        dueAt: po.dueAt?.toISOString() ?? null,
+        paidAt: po.paidAt?.toISOString() ?? null,
+        createdAt: po.createdAt?.toISOString() ?? null,
       })),
       // Serialize hearings
       hearings: ((caseData as any).hearings || []).map((h: any) => ({

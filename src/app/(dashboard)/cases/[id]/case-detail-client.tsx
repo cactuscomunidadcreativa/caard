@@ -771,7 +771,7 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
             <CreditCard className="h-4 w-4" />
             Pagos
             <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-              {caseData.payments.length}
+              {caseData.payments.length + ((caseData as any).paymentOrders?.length || 0)}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="plazos" className="gap-1.5">
@@ -1200,62 +1200,95 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
 
         {/* ---- Tab: Pagos ---- */}
         <TabsContent value="pagos">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pagos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {caseData.payments.length === 0 ? (
-                <EmptyState text="No hay pagos registrados." />
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-muted-foreground">
-                        <th className="pb-3 pr-4 font-medium">Concepto</th>
-                        <th className="pb-3 pr-4 font-medium">Monto</th>
-                        <th className="pb-3 pr-4 font-medium">Estado</th>
-                        <th className="pb-3 pr-4 font-medium">Vencimiento</th>
-                        <th className="pb-3 font-medium">Pagado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {caseData.payments.map((payment) => (
-                        <tr
-                          key={payment.id}
-                          className="border-b last:border-0"
-                        >
-                          <td className="py-3 pr-4 font-medium">
-                            {payment.concept}
-                            {payment.description && (
-                              <span className="block text-xs text-muted-foreground">
-                                {payment.description}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 pr-4">
-                            {new Intl.NumberFormat("es-PE", {
-                              style: "currency",
-                              currency: payment.currency,
-                            }).format(payment.amountCents / 100)}
-                          </td>
-                          <td className="py-3 pr-4">
-                            <PaymentStatusBadge status={payment.status} />
-                          </td>
-                          <td className="py-3 pr-4 text-muted-foreground">
-                            {formatDate(payment.dueAt)}
-                          </td>
-                          <td className="py-3 text-muted-foreground">
-                            {formatDate(payment.paidAt)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {(() => {
+            const allPayments = [
+              ...((caseData as any).paymentOrders || []).map((po: any) => ({
+                id: po.id,
+                concept: po.concept,
+                description: po.description,
+                amountCents: po.totalCents || po.amountCents,
+                currency: po.currency,
+                status: po.status,
+                dueAt: po.dueAt,
+                paidAt: po.paidAt,
+                type: "order",
+                orderNumber: po.orderNumber,
+              })),
+              ...caseData.payments.map((p) => ({
+                ...p,
+                type: "payment",
+                orderNumber: null,
+              })),
+            ];
+            // Dedup by concept — prefer paymentOrders
+            const seen = new Set<string>();
+            const unique = allPayments.filter((p) => {
+              const key = p.type + "_" + p.concept + "_" + p.amountCents;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pagos y Órdenes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {unique.length === 0 ? (
+                    <EmptyState text="No hay pagos ni órdenes registradas." />
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-left text-muted-foreground">
+                            <th className="pb-3 pr-4 font-medium">Concepto</th>
+                            <th className="pb-3 pr-4 font-medium">Monto</th>
+                            <th className="pb-3 pr-4 font-medium">Estado</th>
+                            <th className="pb-3 pr-4 font-medium">Vencimiento</th>
+                            <th className="pb-3 font-medium">Pagado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {unique.map((payment) => (
+                            <tr key={payment.id} className="border-b last:border-0">
+                              <td className="py-3 pr-4 font-medium">
+                                {payment.concept}
+                                {payment.description && (
+                                  <span className="block text-xs text-muted-foreground">
+                                    {payment.description}
+                                  </span>
+                                )}
+                                {payment.orderNumber && (
+                                  <span className="block text-xs font-mono text-muted-foreground">
+                                    {payment.orderNumber}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 pr-4">
+                                {new Intl.NumberFormat("es-PE", {
+                                  style: "currency",
+                                  currency: payment.currency || "PEN",
+                                }).format(payment.amountCents / 100)}
+                              </td>
+                              <td className="py-3 pr-4">
+                                <PaymentStatusBadge status={payment.status} />
+                              </td>
+                              <td className="py-3 pr-4 text-muted-foreground">
+                                {formatDate(payment.dueAt)}
+                              </td>
+                              <td className="py-3 text-muted-foreground">
+                                {formatDate(payment.paidAt)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
         </TabsContent>
 
         {/* ---- Tab: Plazos ---- */}
