@@ -140,6 +140,22 @@ export async function GET(
       );
     }
 
+    // Helper: serializar cualquier objeto eliminando BigInt y Date
+    function safeSerialize(obj: any): any {
+      if (obj === null || obj === undefined) return obj;
+      if (typeof obj === 'bigint') return obj.toString();
+      if (obj instanceof Date) return obj.toISOString();
+      if (Array.isArray(obj)) return obj.map(safeSerialize);
+      if (typeof obj === 'object') {
+        const result: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          result[key] = safeSerialize(value);
+        }
+        return result;
+      }
+      return obj;
+    }
+
     // Filtrar carpetas + documentos por rol
     const { filterFoldersByRole, filterDocumentsByRole } = await import(
       "@/lib/document-visibility"
@@ -234,15 +250,14 @@ export async function GET(
       ],
     };
 
+    // Aplicar safeSerialize para eliminar cualquier BigInt/Date residual
+    const safe = safeSerialize(serialized);
+
     if (accessResult.accessLevel === "own") {
-      const filteredCase = {
-        ...serialized,
-        _count: { ...caseData._count },
-      };
-      return NextResponse.json({ case: filteredCase });
+      return NextResponse.json({ case: { ...safe, _count: caseData._count } });
     }
 
-    return NextResponse.json({ case: serialized });
+    return NextResponse.json({ case: safe });
   } catch (error) {
     console.error("Error fetching case:", error);
     return NextResponse.json(
