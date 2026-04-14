@@ -1281,85 +1281,221 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
         {/* ---- Tab: Pagos ---- */}
         <TabsContent value="pagos">
           {(() => {
-            const unique = mergedPayments;
+            const [payFilter, setPayFilter] = useState<string>("all");
+            const [addPayOpen, setAddPayOpen] = useState(false);
+            const [newPay, setNewPay] = useState({ concept: "GASTOS_ADMINISTRATIVOS", description: "", amount: "", igv: "", currency: "PEN" });
+            const [savingPay, setSavingPay] = useState(false);
+            const [editPayId, setEditPayId] = useState<string | null>(null);
+            const [editPayStatus, setEditPayStatus] = useState("");
+
+            const filtered = payFilter === "all"
+              ? mergedPayments
+              : mergedPayments.filter((p) => p.status === payFilter);
+
+            const totalMonto = mergedPayments.reduce((s, p) => s + (p.amountCents || 0), 0);
+            const totalPaid = mergedPayments.filter(p => p.status === "PAID" || p.status === "CONFIRMED").reduce((s, p) => s + (p.amountCents || 0), 0);
+            const totalPending = totalMonto - totalPaid;
+
+            async function handleAddPayment() {
+              if (!newPay.amount) return;
+              setSavingPay(true);
+              try {
+                const amountCents = Math.round(Number(newPay.amount) * 100);
+                const igvCents = newPay.igv ? Math.round(Number(newPay.igv) * 100) : 0;
+                const res = await fetch("/api/payment-orders", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    caseId: caseData.id,
+                    concept: newPay.concept,
+                    description: newPay.description,
+                    amountCents,
+                    igvCents,
+                    totalCents: amountCents + igvCents,
+                    currency: newPay.currency,
+                  }),
+                });
+                if (!res.ok) throw new Error("Error");
+                setAddPayOpen(false);
+                window.location.reload();
+              } catch { toast.error("Error al crear orden"); }
+              finally { setSavingPay(false); }
+            }
+
+            async function handleChangeStatus(id: string, newStatus: string) {
+              try {
+                if (newStatus === "PAID") {
+                  await handleMarkPaymentPaid(id);
+                } else {
+                  const res = await fetch(`/api/payment-orders/${id}/status`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: newStatus }),
+                  });
+                  if (!res.ok) throw new Error("Error");
+                  window.location.reload();
+                }
+              } catch { toast.error("Error al actualizar"); }
+            }
+
             return (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Pagos y Órdenes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {unique.length === 0 ? (
-                    <EmptyState text="No hay pagos ni órdenes registradas." />
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b text-left text-muted-foreground">
-                            <th className="pb-3 pr-4 font-medium">Concepto</th>
-                            <th className="pb-3 pr-4 font-medium">Monto</th>
-                            <th className="pb-3 pr-4 font-medium">Estado</th>
-                            <th className="pb-3 pr-4 font-medium">Vencimiento</th>
-                            <th className="pb-3 pr-4 font-medium">Pagado</th>
-                            <th className="pb-3 font-medium">Acciones</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {unique.map((payment) => (
-                            <tr key={payment.id} className="border-b last:border-0">
-                              <td className="py-3 pr-4 font-medium">
-                                {payment.concept}
-                                {payment.description && (
-                                  <span className="block text-xs text-muted-foreground">
-                                    {payment.description}
-                                  </span>
-                                )}
-                                {payment.orderNumber && (
-                                  <span className="block text-xs font-mono text-muted-foreground">
-                                    {payment.orderNumber}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-3 pr-4">
-                                {new Intl.NumberFormat("es-PE", {
-                                  style: "currency",
-                                  currency: payment.currency || "PEN",
-                                }).format(payment.amountCents / 100)}
-                              </td>
-                              <td className="py-3 pr-4">
-                                <PaymentStatusBadge status={payment.status} />
-                              </td>
-                              <td className="py-3 pr-4 text-muted-foreground">
-                                {formatDate(payment.dueAt)}
-                              </td>
-                              <td className="py-3 pr-4 text-muted-foreground">
-                                {formatDate(payment.paidAt)}
-                              </td>
-                              <td className="py-3">
-                                {payment.status === "PENDING" || payment.status === "OVERDUE" ? (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-green-600 border-green-300 hover:bg-green-50 h-7 text-xs"
-                                    onClick={() => handleMarkPaymentPaid(payment.id)}
-                                  >
-                                    <Check className="h-3 w-3 mr-1" />
-                                    Pagado
-                                  </Button>
-                                ) : payment.status === "PAID" || payment.status === "CONFIRMED" ? (
-                                  <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                                    Pagado
-                                  </Badge>
-                                ) : null}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+              <div className="space-y-4">
+                {/* Summary cards */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg border bg-blue-50 p-3 text-center">
+                    <p className="text-xs text-blue-600 uppercase">Total</p>
+                    <p className="text-lg font-bold text-blue-900">
+                      {new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(totalMonto / 100)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border bg-green-50 p-3 text-center">
+                    <p className="text-xs text-green-600 uppercase">Pagado</p>
+                    <p className="text-lg font-bold text-green-900">
+                      {new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(totalPaid / 100)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border bg-amber-50 p-3 text-center">
+                    <p className="text-xs text-amber-600 uppercase">Pendiente</p>
+                    <p className="text-lg font-bold text-amber-900">
+                      {new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(totalPending / 100)}
+                    </p>
+                  </div>
+                </div>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Órdenes de Pago</CardTitle>
+                    <div className="flex gap-2">
+                      <select
+                        className="text-xs border rounded px-2 py-1 bg-white"
+                        value={payFilter}
+                        onChange={(e) => setPayFilter(e.target.value)}
+                      >
+                        <option value="all">Todos ({mergedPayments.length})</option>
+                        <option value="PAID">Pagados</option>
+                        <option value="PENDING">Pendientes</option>
+                        <option value="OVERDUE">Vencidos</option>
+                      </select>
+                      <Button
+                        size="sm"
+                        onClick={() => setAddPayOpen(true)}
+                        style={{ backgroundColor: "#D66829", color: "white" }}
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Agregar
+                      </Button>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardHeader>
+                  <CardContent>
+                    {filtered.length === 0 ? (
+                      <EmptyState text="No hay órdenes con ese filtro." />
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-left text-muted-foreground">
+                              <th className="pb-3 pr-4 font-medium">Concepto</th>
+                              <th className="pb-3 pr-4 font-medium">Base</th>
+                              <th className="pb-3 pr-4 font-medium">IGV</th>
+                              <th className="pb-3 pr-4 font-medium">Total</th>
+                              <th className="pb-3 pr-4 font-medium">Estado</th>
+                              <th className="pb-3 font-medium">Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filtered.map((payment) => {
+                              const fmt = (cents: number) => new Intl.NumberFormat("es-PE", { style: "currency", currency: payment.currency || "PEN" }).format(cents / 100);
+                              return (
+                                <tr key={payment.id} className="border-b last:border-0">
+                                  <td className="py-3 pr-4">
+                                    <span className="font-medium">{payment.concept}</span>
+                                    {payment.description && <span className="block text-xs text-muted-foreground">{payment.description}</span>}
+                                  </td>
+                                  <td className="py-3 pr-4">{fmt(payment.amountCents || 0)}</td>
+                                  <td className="py-3 pr-4 text-muted-foreground">{payment.igvCents ? fmt(payment.igvCents) : "-"}</td>
+                                  <td className="py-3 pr-4 font-medium">{fmt(payment.amountCents + (payment.igvCents || 0))}</td>
+                                  <td className="py-3 pr-4">
+                                    <PaymentStatusBadge status={payment.status} />
+                                  </td>
+                                  <td className="py-3">
+                                    <div className="flex gap-1">
+                                      {(payment.status === "PENDING" || payment.status === "OVERDUE") && (
+                                        <Button variant="outline" size="sm" className="text-green-600 border-green-300 h-7 text-xs" onClick={() => handleChangeStatus(payment.id, "PAID")}>
+                                          <Check className="h-3 w-3 mr-1" /> Pagado
+                                        </Button>
+                                      )}
+                                      {payment.status === "PAID" && (
+                                        <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                                          <CheckCircle2 className="h-3 w-3 mr-1" /> Pagado
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Add Payment Dialog */}
+                <Dialog open={addPayOpen} onOpenChange={setAddPayOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Nueva Orden de Pago</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <div>
+                        <Label>Concepto</Label>
+                        <select className="w-full border rounded px-3 py-2 text-sm" value={newPay.concept} onChange={(e) => setNewPay({ ...newPay, concept: e.target.value })}>
+                          <option value="GASTOS_ADMINISTRATIVOS">Gastos Administrativos</option>
+                          <option value="TASA_PRESENTACION">Tasa de Presentación</option>
+                          <option value="HONORARIOS_TRIBUNAL">Honorarios Tribunal</option>
+                          <option value="HONORARIOS_ARBITRO_UNICO">Honorarios Árbitro Único</option>
+                          <option value="TASA_EMERGENCIA">Tasa Emergencia</option>
+                          <option value="OTROS">Otros</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label>Descripción</Label>
+                        <Input value={newPay.description} onChange={(e) => setNewPay({ ...newPay, description: e.target.value })} placeholder="Descripción del pago" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>Monto base (sin IGV)</Label>
+                          <Input type="number" step="0.01" value={newPay.amount} onChange={(e) => setNewPay({ ...newPay, amount: e.target.value, igv: (Number(e.target.value) * 0.18).toFixed(2) })} placeholder="0.00" />
+                        </div>
+                        <div>
+                          <Label>IGV (18%)</Label>
+                          <Input type="number" step="0.01" value={newPay.igv} onChange={(e) => setNewPay({ ...newPay, igv: e.target.value })} placeholder="0.00" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Moneda</Label>
+                        <select className="w-full border rounded px-3 py-2 text-sm" value={newPay.currency} onChange={(e) => setNewPay({ ...newPay, currency: e.target.value })}>
+                          <option value="PEN">PEN (Soles)</option>
+                          <option value="USD">USD (Dólares)</option>
+                        </select>
+                      </div>
+                      {newPay.amount && (
+                        <div className="rounded bg-slate-50 p-3 text-sm">
+                          <p>Base: S/. {Number(newPay.amount || 0).toFixed(2)}</p>
+                          <p>IGV: S/. {Number(newPay.igv || 0).toFixed(2)}</p>
+                          <p className="font-bold">Total: S/. {(Number(newPay.amount || 0) + Number(newPay.igv || 0)).toFixed(2)}</p>
+                        </div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setAddPayOpen(false)}>Cancelar</Button>
+                      <Button onClick={handleAddPayment} disabled={savingPay || !newPay.amount}>
+                        {savingPay ? "Creando..." : "Crear Orden"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             );
           })()}
         </TabsContent>
