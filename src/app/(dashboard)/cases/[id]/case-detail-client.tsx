@@ -579,34 +579,67 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
 
   async function handleCompleteDeadline(deadlineId: string) {
     try {
-      const res = await fetch(
-        `/api/cases/${caseData.id}/deadlines/${deadlineId}`,
-        {
+      // Try ProcessDeadline first, fallback to CaseDeadline
+      let res = await fetch(`/api/deadlines/${deadlineId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED" }),
+      });
+      if (!res.ok) {
+        res = await fetch(`/api/cases/${caseData.id}/deadlines/${deadlineId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isCompleted: true }),
-        }
-      );
+        });
+      }
       if (!res.ok) throw new Error("Error");
-      toast.success("Plazo completado");
+      toast.success("Plazo marcado como cumplido");
       window.location.reload();
     } catch {
       toast.error("Error al completar plazo");
     }
   }
 
+  async function handleReopenDeadline(deadlineId: string) {
+    try {
+      const res = await fetch(`/api/deadlines/${deadlineId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ACTIVE" }),
+      });
+      if (!res.ok) throw new Error("Error");
+      toast.success("Plazo reabierto");
+      window.location.reload();
+    } catch {
+      toast.error("Error al reabrir plazo");
+    }
+  }
+
   async function handleDeleteDeadline(deadlineId: string) {
     if (!confirm("¿Eliminar este plazo?")) return;
     try {
-      const res = await fetch(
-        `/api/cases/${caseData.id}/deadlines/${deadlineId}`,
-        { method: "DELETE" }
-      );
+      let res = await fetch(`/api/deadlines/${deadlineId}`, { method: "DELETE" });
+      if (!res.ok) {
+        res = await fetch(`/api/cases/${caseData.id}/deadlines/${deadlineId}`, { method: "DELETE" });
+      }
       if (!res.ok) throw new Error("Error");
       toast.success("Plazo eliminado");
       window.location.reload();
     } catch {
       toast.error("Error al eliminar plazo");
+    }
+  }
+
+  async function handleMarkPaymentPaid(paymentOrderId: string) {
+    try {
+      const res = await fetch(`/api/payment-orders/${paymentOrderId}/mark-paid`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Error");
+      toast.success("Pago marcado como pagado");
+      window.location.reload();
+    } catch {
+      toast.error("Error al actualizar pago");
     }
   }
 
@@ -1266,7 +1299,8 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                             <th className="pb-3 pr-4 font-medium">Monto</th>
                             <th className="pb-3 pr-4 font-medium">Estado</th>
                             <th className="pb-3 pr-4 font-medium">Vencimiento</th>
-                            <th className="pb-3 font-medium">Pagado</th>
+                            <th className="pb-3 pr-4 font-medium">Pagado</th>
+                            <th className="pb-3 font-medium">Acciones</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1297,8 +1331,26 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                               <td className="py-3 pr-4 text-muted-foreground">
                                 {formatDate(payment.dueAt)}
                               </td>
-                              <td className="py-3 text-muted-foreground">
+                              <td className="py-3 pr-4 text-muted-foreground">
                                 {formatDate(payment.paidAt)}
+                              </td>
+                              <td className="py-3">
+                                {payment.status === "PENDING" || payment.status === "OVERDUE" ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-green-600 border-green-300 hover:bg-green-50 h-7 text-xs"
+                                    onClick={() => handleMarkPaymentPaid(payment.id)}
+                                  >
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Pagado
+                                  </Button>
+                                ) : payment.status === "PAID" || payment.status === "CONFIRMED" ? (
+                                  <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                    Pagado
+                                  </Badge>
+                                ) : null}
                               </td>
                             </tr>
                           ))}
@@ -1382,23 +1434,34 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
                           </Badge>
                         )}
                         <div className="flex items-center gap-1 shrink-0">
-                          {!deadline.isCompleted && (
+                          {!deadline.isCompleted ? (
                             <Button
-                              variant="ghost"
-                              size="icon"
+                              variant="outline"
+                              size="sm"
+                              className="text-green-600 border-green-300 hover:bg-green-50 h-7 text-xs"
                               onClick={() => handleCompleteDeadline(deadline.id)}
-                              title="Marcar completado"
                             >
-                              <Check className="h-4 w-4 text-green-600" />
+                              <Check className="h-3 w-3 mr-1" />
+                              Cumplido
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-blue-600 border-blue-300 hover:bg-blue-50 h-7 text-xs"
+                              onClick={() => handleReopenDeadline(deadline.id)}
+                            >
+                              Reabrir
                             </Button>
                           )}
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="h-7 w-7"
                             onClick={() => handleDeleteDeadline(deadline.id)}
                             title="Eliminar"
                           >
-                            <Trash2 className="h-4 w-4 text-red-600" />
+                            <Trash2 className="h-3 w-3 text-red-600" />
                           </Button>
                         </div>
                       </div>
