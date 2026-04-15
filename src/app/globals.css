@@ -3,6 +3,29 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ===== Protección anti-copia CAARD ===== */
+.no-copy {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.no-copy img {
+  -webkit-user-drag: none;
+  user-drag: none;
+  pointer-events: none;
+}
+.no-copy input, .no-copy textarea, .no-copy select,
+.no-copy [contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+}
+@media print {
+  body.no-print { display: none !important; }
+}
+
 /*
  * CAARD - Sistema Integral de Control de Arbitrajes
  * Tema institucional basado en Manual de Identidad
