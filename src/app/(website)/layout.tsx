@@ -8,7 +8,7 @@ import { WebsiteHeader } from "@/components/cms/website-header";
 import { WebsiteFooter } from "@/components/cms/website-footer";
 import { WhatsAppButton } from "@/components/cms/whatsapp-button";
 import { PublicChatbot } from "@/components/ai/public-chatbot";
-import { AntiCopy } from "@/components/anti-copy";
+// AntiCopy ya está en root layout
 
 interface SiteConfig {
   siteName?: string | null;
@@ -66,9 +66,6 @@ export default async function WebsiteLayout({
       />
       <main>{children}</main>
       <WebsiteFooter config={config} />
-
-      {/* Protección anti-copia */}
-      <AntiCopy />
 
       {/* Chatbot público con IA */}
       <PublicChatbot />
