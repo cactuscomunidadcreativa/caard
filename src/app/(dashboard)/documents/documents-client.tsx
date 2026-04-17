@@ -1207,12 +1207,9 @@ function FolderDocuments({
         Cargando...
       </p>
     );
-  if (!docs || docs.length === 0)
-    return (
-      <p className="text-xs text-muted-foreground py-2 italic" style={{ paddingLeft }}>
-        Sin documentos
-      </p>
-    );
+  // Si no hay documentos, no renderizamos nada (evita ruido visual
+  // en carpetas que solo tienen subcarpetas o en el estado de carga inicial).
+  if (!docs || docs.length === 0) return null;
 
   return (
     <ul className="bg-white">

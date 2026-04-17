@@ -38,10 +38,12 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
-    const pageSize = parseInt(searchParams.get("pageSize") || "20");
+    const pageSize = parseInt(searchParams.get("pageSize") || "200");
     const search = searchParams.get("search");
     const documentType = searchParams.get("documentType");
     const caseId = searchParams.get("caseId");
+    const folderId = searchParams.get("folderId");
+    const folderIdNull = searchParams.get("noFolder"); // "1" = solo docs sin carpeta
 
     // Construir where clause
     const whereClause: any = {
@@ -62,6 +64,12 @@ export async function GET(request: NextRequest) {
 
     if (caseId) {
       whereClause.caseId = caseId;
+    }
+
+    if (folderId) {
+      whereClause.folderId = folderId;
+    } else if (folderIdNull === "1") {
+      whereClause.folderId = null;
     }
 
     // Filtrar escritos no notificados: partes y abogados NO deben ver escritos
