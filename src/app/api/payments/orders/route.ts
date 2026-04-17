@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       select: { role: true },
     });
 
-    if (!user || !["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(user.role)) {
+    if (!user || !["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(user.role)) {
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
     }
 

@@ -50,11 +50,13 @@ interface Case {
 }
 
 const CONCEPT_OPTIONS = [
-  { value: "REGISTRO", label: "Tasa de Registro" },
-  { value: "ARBITRAJE", label: "Gastos de Arbitraje" },
-  { value: "HONORARIOS", label: "Honorarios de Árbitros" },
-  { value: "ADMINISTRACION", label: "Gastos Administrativos" },
-  { value: "DEPOSITO", label: "Depósito de Garantía" },
+  { value: "TASA_PRESENTACION", label: "Tasa de Presentación" },
+  { value: "GASTOS_ADMINISTRATIVOS", label: "Gastos Administrativos" },
+  { value: "HONORARIOS_TRIBUNAL", label: "Honorarios Tribunal Arbitral" },
+  { value: "HONORARIOS_ARBITRO_UNICO", label: "Honorarios Árbitro Único" },
+  { value: "TASA_EMERGENCIA", label: "Tasa de Emergencia" },
+  { value: "GASTOS_RECONVENCION", label: "Gastos de Reconvención" },
+  { value: "RELIQUIDACION", label: "Reliquidación" },
   { value: "OTROS", label: "Otros Conceptos" },
 ];
 

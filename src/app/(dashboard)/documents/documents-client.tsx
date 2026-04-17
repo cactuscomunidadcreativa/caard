@@ -646,60 +646,73 @@ export function DocumentsClient({
           </div>
         </TabsContent>
 
-        {/* Cases Tab */}
-        <TabsContent value="cases" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Cases Tab - vista jerárquica estilo Drive */}
+        <TabsContent value="cases" className="space-y-2">
+          <div className="rounded-lg border bg-white divide-y">
             {cases.map((caseItem) => (
-              <Card key={caseItem.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline">{caseItem.code}</Badge>
-                    {caseItem.driveFolderId ? (
-                      <Cloud className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <Cloud className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                  <CardTitle className="text-base truncate">
-                    {caseItem.title || "Sin título"}
-                  </CardTitle>
-                  <CardDescription>
-                    {caseItem._count.documents} documentos
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {caseItem.folders.slice(0, 4).map((folder) => (
-                      <div
-                        key={folder.id}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <div className="flex items-center gap-2">
-                          <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                          <span className="truncate">{folder.name}</span>
-                        </div>
-                        <Badge variant="secondary" className="text-xs">
-                          {folder._count.documents}
-                        </Badge>
-                      </div>
-                    ))}
-                    {caseItem.folders.length > 4 && (
-                      <p className="text-xs text-muted-foreground text-center pt-2">
-                        +{caseItem.folders.length - 4} carpetas más
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="w-full mt-4"
-                    onClick={() => window.location.href = `/cases/${caseItem.id}/documents`}
+              <details key={caseItem.id} className="group/case">
+                <summary className="cursor-pointer list-none flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+                  <svg
+                    className="h-4 w-4 text-slate-400 transition-transform group-open/case:rotate-90 flex-shrink-0"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
                   >
-                    Ver documentos
-                    <ChevronRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </CardContent>
-              </Card>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  <FolderOpen className="h-5 w-5 text-[#D66829] flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-semibold text-[#0B2A5B]">{caseItem.code}</span>
+                      {caseItem.driveFolderId && <Cloud className="h-3.5 w-3.5 text-green-500" />}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{caseItem.title || "Sin título"}</p>
+                  </div>
+                  <Badge variant="secondary" className="text-xs flex-shrink-0">
+                    {caseItem._count.documents} docs
+                  </Badge>
+                  <Badge variant="outline" className="text-xs flex-shrink-0">
+                    {caseItem.folders.length} carpetas
+                  </Badge>
+                </summary>
+                <div className="bg-slate-50/50 border-t">
+                  {caseItem.folders.length === 0 ? (
+                    <p className="text-xs text-muted-foreground px-8 py-3 italic">Sin carpetas</p>
+                  ) : (
+                    <div className="divide-y divide-slate-100">
+                      {caseItem.folders.map((folder) => (
+                        <details key={folder.id} className="group/folder">
+                          <summary className="cursor-pointer list-none flex items-center gap-3 px-8 py-2.5 hover:bg-white transition-colors">
+                            <svg
+                              className="h-3.5 w-3.5 text-slate-400 transition-transform group-open/folder:rotate-90 flex-shrink-0"
+                              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            <FolderOpen className="h-4 w-4 text-[#0B2A5B]/70 flex-shrink-0" />
+                            <span className="text-sm font-medium text-[#0B2A5B] flex-1 truncate">
+                              {folder.name}
+                            </span>
+                            <Badge variant="secondary" className="text-xs">{folder._count.documents}</Badge>
+                          </summary>
+                          <FolderDocuments caseId={caseItem.id} folderId={folder.id} />
+                        </details>
+                      ))}
+                    </div>
+                  )}
+                  <div className="px-8 py-2 border-t bg-white">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => window.location.href = `/cases/${caseItem.id}`}>
+                      Ver expediente completo
+                      <ChevronRight className="ml-1 h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </details>
             ))}
+            {cases.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <FolderOpen className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                <p>No hay expedientes</p>
+              </div>
+            )}
           </div>
         </TabsContent>
 
@@ -1049,5 +1062,43 @@ export function DocumentsClient({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Componente que carga documentos de una carpeta on-demand
+function FolderDocuments({ caseId, folderId }: { caseId: string; folderId: string }) {
+  const [docs, setDocs] = useState<any[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (docs !== null) return;
+    setLoading(true);
+    fetch(`/api/documents?caseId=${caseId}&folderId=${folderId}`)
+      .then((r) => r.json())
+      .then((d) => setDocs(d.documents || d.items || []))
+      .catch(() => setDocs([]))
+      .finally(() => setLoading(false));
+  }, [caseId, folderId, docs]);
+
+  if (loading) return <p className="text-xs text-muted-foreground px-14 py-2">Cargando...</p>;
+  if (!docs || docs.length === 0) return <p className="text-xs text-muted-foreground px-14 py-2 italic">Sin documentos</p>;
+
+  return (
+    <ul className="bg-white">
+      {docs.map((d: any) => (
+        <li key={d.id}>
+          <a
+            href={`/api/documents/${d.id}/view`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-14 py-2 hover:bg-[#D66829]/5 border-b border-slate-100 last:border-0 transition-colors"
+          >
+            <FileText className="h-3.5 w-3.5 text-[#D66829] flex-shrink-0" />
+            <span className="text-xs flex-1 truncate">{d.originalFileName || d.title}</span>
+            <ChevronRight className="h-3 w-3 text-slate-400 flex-shrink-0" />
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }
