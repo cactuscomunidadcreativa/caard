@@ -40,6 +40,26 @@ export default async function PaymentsAdminPage() {
     },
   });
 
+  // Traer planes de fraccionamiento asociados para marcar las órdenes
+  const orderIds = paymentOrders.map((o) => o.id);
+  const installmentPlans = orderIds.length
+    ? await prisma.paymentInstallmentPlan.findMany({
+        where: { paymentOrderId: { in: orderIds } },
+        select: {
+          id: true,
+          paymentOrderId: true,
+          numberOfInstallments: true,
+          status: true,
+          installments: {
+            select: { id: true, installmentNumber: true, status: true, amountCents: true, dueAt: true, paidAt: true },
+            orderBy: { installmentNumber: "asc" },
+          },
+        },
+      })
+    : [];
+  const planByOrderId: Record<string, typeof installmentPlans[number] | undefined> = {};
+  for (const p of installmentPlans) planByOrderId[p.paymentOrderId] = p;
+
   // Obtener pagos confirmados recientes
   const payments = await prisma.payment.findMany({
     take: 50,
@@ -81,21 +101,40 @@ export default async function PaymentsAdminPage() {
 
   return (
     <PaymentsPageClient
-      paymentOrders={paymentOrders.map((po) => ({
-        id: po.id,
-        concept: po.concept,
-        description: po.description,
-        totalCents: po.totalCents,
-        currency: po.currency,
-        status: po.status,
-        dueDate: po.dueAt?.toISOString() || null,
-        paidAt: po.paidAt?.toISOString() || null,
-        createdAt: po.createdAt.toISOString(),
-        caseCode: po.case?.code || null,
-        caseId: po.case?.id || null,
-        createdByName: null,
-        createdByEmail: null,
-      }))}
+      paymentOrders={paymentOrders.map((po) => {
+        const plan = planByOrderId[po.id];
+        return {
+          id: po.id,
+          concept: po.concept,
+          description: po.description,
+          totalCents: po.totalCents,
+          currency: po.currency,
+          status: po.status,
+          dueDate: po.dueAt?.toISOString() || null,
+          paidAt: po.paidAt?.toISOString() || null,
+          createdAt: po.createdAt.toISOString(),
+          caseCode: po.case?.code || null,
+          caseId: po.case?.id || null,
+          createdByName: null,
+          createdByEmail: null,
+          installmentPlan: plan
+            ? {
+                id: plan.id,
+                status: plan.status,
+                numberOfInstallments: plan.numberOfInstallments,
+                paidInstallments: plan.installments.filter((i) => i.status === "PAID").length,
+                installments: plan.installments.map((i) => ({
+                  id: i.id,
+                  number: i.installmentNumber,
+                  status: i.status,
+                  amountCents: i.amountCents,
+                  dueAt: i.dueAt.toISOString(),
+                  paidAt: i.paidAt ? i.paidAt.toISOString() : null,
+                })),
+              }
+            : null,
+        };
+      })}
       payments={payments.map((p) => ({
         id: p.id,
         provider: p.provider,

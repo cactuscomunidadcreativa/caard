@@ -78,9 +78,15 @@ export async function POST(req: NextRequest) {
       caseId,
       concept,
       description,
+      amountCents: reqAmountCents,
+      igvCents: reqIgvCents,
       totalCents,
       currency = "PEN",
       dueDate,
+      payeeType,
+      payeeMemberId,
+      payeeName: reqPayeeName,
+      payeeEmail: reqPayeeEmail,
     } = body;
 
     // Validaciones
@@ -136,9 +142,34 @@ export async function POST(req: NextRequest) {
     }
     const orderNumber = `OP-${year}-${sequence.toString().padStart(6, "0")}`;
 
-    // Calcular montos (sin IGV por simplicidad)
-    const amountCents = totalCents;
-    const igvCents = 0;
+    // Usar amountCents/igvCents del body si vienen, sino calcular
+    const amountCents = reqAmountCents || totalCents;
+    const igvCents = reqIgvCents || 0;
+
+    // Resolver destinatario
+    let payeeName = reqPayeeName || null;
+    let payeeEmail = reqPayeeEmail || null;
+    if (payeeMemberId) {
+      const member = await prisma.caseMember.findUnique({
+        where: { id: payeeMemberId },
+        select: { displayName: true, email: true },
+      });
+      if (member) {
+        payeeName = member.displayName || payeeName;
+        payeeEmail = member.email || payeeEmail;
+      }
+    } else if (payeeType && payeeType !== "TERCERO" && !payeeName) {
+      // Buscar primer miembro con ese rol
+      const role = payeeType === "AMBAS_PARTES" ? "DEMANDANTE" : payeeType;
+      const m = await prisma.caseMember.findFirst({
+        where: { caseId, role: role as any },
+        select: { displayName: true, email: true },
+      });
+      if (m) {
+        payeeName = m.displayName;
+        payeeEmail = m.email;
+      }
+    }
 
     // Fecha de vencimiento (5 días por defecto si no se especifica)
     const dueDateValue = dueDate ? new Date(dueDate) : new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
@@ -157,8 +188,39 @@ export async function POST(req: NextRequest) {
         status: "PENDING",
         dueAt: dueDateValue,
         createdById: session.user.id,
+        payeeType: payeeType || null,
+        payeeMemberId: payeeMemberId || null,
+        payeeName,
+        payeeEmail,
       },
     });
+
+    // Enviar notificación por email al destinatario (si tiene email)
+    if (payeeEmail) {
+      try {
+        const { sendEmail } = await import("@/lib/email/service");
+        const monto = new Intl.NumberFormat("es-PE", { style: "currency", currency }).format(totalCents / 100);
+        await sendEmail({
+          to: payeeEmail,
+          subject: `Orden de pago ${orderNumber} - Expediente ${caseExists.code}`,
+          html: `
+            <h2 style="color:#0B2A5B">Orden de Pago Emitida</h2>
+            <p>Estimado(a) ${payeeName || ""}:</p>
+            <p>Se ha emitido una orden de pago a su nombre en el expediente <strong>${caseExists.code}</strong>.</p>
+            <table style="border-collapse:collapse;width:100%;margin:20px 0">
+              <tr><td style="padding:8px;border:1px solid #ddd"><strong>N° Orden</strong></td><td style="padding:8px;border:1px solid #ddd">${orderNumber}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd"><strong>Concepto</strong></td><td style="padding:8px;border:1px solid #ddd">${concept}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd"><strong>Monto</strong></td><td style="padding:8px;border:1px solid #ddd"><strong>${monto}</strong></td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd"><strong>Fecha límite</strong></td><td style="padding:8px;border:1px solid #ddd">${dueDateValue.toLocaleDateString("es-PE")}</td></tr>
+            </table>
+            <p><a href="${process.env.NEXTAUTH_URL || "https://caardpe.com"}/pago/${paymentOrder.id}" style="background:#D66829;color:white;padding:12px 20px;text-decoration:none;border-radius:6px;display:inline-block">Ver y pagar orden</a></p>
+            <p style="color:#666;font-size:12px;margin-top:30px">CAARD - Centro de Administración de Arbitrajes y Resolución de Disputas</p>
+          `,
+        });
+      } catch (emailErr) {
+        console.error("Error enviando email:", emailErr);
+      }
+    }
 
     // Registrar en audit log
     await prisma.auditLog.create({

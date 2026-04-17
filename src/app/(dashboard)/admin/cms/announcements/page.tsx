@@ -35,7 +35,7 @@ export default async function AnnouncementsPage() {
     redirect("/login");
   }
 
-  if (session.user.role !== "SUPER_ADMIN") {
+  if (!["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"].includes(session.user.role)) {
     redirect("/dashboard");
   }
 

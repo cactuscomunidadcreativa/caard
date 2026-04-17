@@ -312,8 +312,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
-    // Solo SUPER_ADMIN y ADMIN pueden cancelar
-    if (!["SUPER_ADMIN", "ADMIN"].includes(user.role)) {
+    // SUPER_ADMIN, ADMIN, SECRETARIA, CENTER_STAFF pueden cancelar
+    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(user.role)) {
       return NextResponse.json(
         { error: "No tiene permisos para cancelar órdenes de pago" },
         { status: 403 }

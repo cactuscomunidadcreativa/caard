@@ -32,6 +32,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { RoleEditForm } from "./role-edit-form";
+import { AssignUserToRole } from "./assign-user-to-role";
 
 export const metadata: Metadata = {
   title: "Editar Rol | CAARD",
@@ -340,6 +341,12 @@ export default async function RoleEditPage({
               )}
             </CardContent>
           </Card>
+
+          {/* Asignar usuarios a este rol (búsqueda) */}
+          <AssignUserToRole
+            targetRole={roleData.role}
+            targetRoleLabel={roleData.displayName}
+          />
 
           {/* Info del rol */}
           <Card>

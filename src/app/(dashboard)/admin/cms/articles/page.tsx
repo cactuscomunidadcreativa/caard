@@ -39,7 +39,7 @@ export default async function ArticlesPage() {
     redirect("/login");
   }
 
-  if (session.user.role !== "SUPER_ADMIN") {
+  if (!["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"].includes(session.user.role)) {
     redirect("/dashboard");
   }
 

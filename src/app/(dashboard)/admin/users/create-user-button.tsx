@@ -253,14 +253,17 @@ export function CreateUserButton({ centers }: CreateUserButtonProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Centro</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select
+                      onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
+                      value={field.value ? field.value : "__none__"}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Sin centro" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Sin centro</SelectItem>
+                        <SelectItem value="__none__">Sin centro</SelectItem>
                         {centers.map((center) => (
                           <SelectItem key={center.id} value={center.id}>
                             {center.name}

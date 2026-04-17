@@ -123,6 +123,29 @@ export default function PaymentOrderDetailPage() {
     }
   }
 
+  async function handleCancel() {
+    const reason = prompt("Motivo de anulación (obligatorio):");
+    if (!reason || reason.trim().length < 5) { toast.error("Debe indicar un motivo"); return; }
+    try {
+      const res = await fetch(`/api/payment-orders/${id}?reason=${encodeURIComponent(reason)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Error");
+      toast.success("Orden anulada");
+      window.location.reload();
+    } catch { toast.error("Error al anular"); }
+  }
+
+  async function handleUploadVoucher(file: File, kind: "voucher" | "detraction") {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("kind", kind);
+    try {
+      const res = await fetch(`/api/payment-orders/${id}/voucher`, { method: "POST", body: fd });
+      if (!res.ok) throw new Error("Error");
+      toast.success(kind === "voucher" ? "Voucher subido" : "Voucher detracción subido");
+      window.location.reload();
+    } catch { toast.error("Error al subir archivo"); }
+  }
+
   if (loading) return <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   if (!order) return <div className="container py-12 text-center text-muted-foreground">Orden no encontrada</div>;
 
@@ -141,9 +164,16 @@ export default function PaymentOrderDetailPage() {
         </div>
         <Badge className={st.color}>{st.label}</Badge>
         {!editing && (
-          <Button variant="outline" onClick={() => setEditing(true)}>
-            <Pencil className="h-4 w-4 mr-2" /> Editar
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => setEditing(true)}>
+              <Pencil className="h-4 w-4 mr-2" /> Editar
+            </Button>
+            {order.status !== "CANCELLED" && order.status !== "PAID" && (
+              <Button variant="outline" onClick={handleCancel} className="text-red-600 border-red-300 hover:bg-red-50">
+                <X className="h-4 w-4 mr-2" /> Anular
+              </Button>
+            )}
+          </>
         )}
       </div>
 
@@ -312,6 +342,47 @@ export default function PaymentOrderDetailPage() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Comprobantes de pago */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Comprobantes de Pago</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>Voucher de pago principal</Label>
+            {order.voucherUrl ? (
+              <div className="flex items-center gap-2 mt-1">
+                <a href={order.voucherUrl} target="_blank" rel="noopener noreferrer" className="text-[#D66829] hover:underline text-sm">
+                  Ver voucher subido
+                </a>
+              </div>
+            ) : (
+              <Input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => e.target.files?.[0] && handleUploadVoucher(e.target.files[0], "voucher")}
+              />
+            )}
+          </div>
+          <div>
+            <Label>Voucher de detracción (si aplica)</Label>
+            {order.detractionVoucherUrl ? (
+              <div className="flex items-center gap-2 mt-1">
+                <a href={order.detractionVoucherUrl} target="_blank" rel="noopener noreferrer" className="text-[#D66829] hover:underline text-sm">
+                  Ver voucher de detracción
+                </a>
+              </div>
+            ) : (
+              <Input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => e.target.files?.[0] && handleUploadVoucher(e.target.files[0], "detraction")}
+              />
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

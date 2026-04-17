@@ -2118,6 +2118,21 @@ model PaymentOrder {
   // Bloqueo automático
   blocksCase    Boolean @default(true)
 
+  // Destinatario de la orden (a quién se le cobra)
+  payeeType     String?  // DEMANDANTE, DEMANDADO, AMBAS_PARTES, ARBITRO, TERCERO
+  payeeName     String?  // Nombre del destinatario (snapshot)
+  payeeEmail    String?  // Email para notificación
+  payeeMemberId String?  // FK a CaseMember si aplica
+
+  // Comprobantes de pago (voucher + detracción)
+  voucherUrl          String?
+  detractionVoucherUrl String?
+
+  // Anulación
+  cancelledAt     DateTime?
+  cancelledById   String?
+  cancellationReason String?
+
   // Devolución
   refundedAt    DateTime?
   refundAmount  Int?

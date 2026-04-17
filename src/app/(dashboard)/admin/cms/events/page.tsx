@@ -38,7 +38,7 @@ export default async function EventsPage() {
     redirect("/login");
   }
 
-  if (session.user.role !== "SUPER_ADMIN") {
+  if (!["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"].includes(session.user.role)) {
     redirect("/dashboard");
   }
 

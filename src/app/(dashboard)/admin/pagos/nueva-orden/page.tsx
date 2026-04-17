@@ -76,7 +76,13 @@ export default function NewPaymentOrderPage() {
     currency: "PEN",
     dueDate: "",
     voucherType: "NONE" as "NONE" | "RHE" | "FACTURA",
+    payeeType: "DEMANDANTE" as "DEMANDANTE" | "DEMANDADO" | "AMBAS_PARTES" | "ARBITRO" | "TERCERO",
+    payeeMemberId: "",
+    payeeName: "",
+    payeeEmail: "",
   });
+
+  const [caseMembers, setCaseMembers] = useState<any[]>([]);
 
   // Cálculos automáticos según tipo de comprobante
   const baseAmount = parseFloat(formData.amount || "0");
@@ -143,6 +149,10 @@ export default function NewPaymentOrderPage() {
           currency: formData.currency,
           dueDate: formData.dueDate || undefined,
           voucherType: formData.voucherType !== "NONE" ? formData.voucherType : undefined,
+          payeeType: formData.payeeType,
+          payeeMemberId: formData.payeeMemberId || undefined,
+          payeeName: formData.payeeName || undefined,
+          payeeEmail: formData.payeeEmail || undefined,
         }),
       });
 
@@ -233,6 +243,10 @@ export default function NewPaymentOrderPage() {
                     currency: "PEN",
                     dueDate: "",
                     voucherType: "NONE",
+                    payeeType: "DEMANDANTE",
+                    payeeMemberId: "",
+                    payeeName: "",
+                    payeeEmail: "",
                   });
                 }}>
                   Crear otra orden
@@ -299,7 +313,17 @@ export default function NewPaymentOrderPage() {
               ) : (
                 <Select
                   value={formData.caseId}
-                  onValueChange={(v) => setFormData((f) => ({ ...f, caseId: v }))}
+                  onValueChange={async (v) => {
+                    setFormData((f) => ({ ...f, caseId: v, payeeMemberId: "", payeeName: "", payeeEmail: "" }));
+                    // Cargar miembros del caso
+                    try {
+                      const res = await fetch(`/api/cases/${v}`);
+                      if (res.ok) {
+                        const { case: c } = await res.json();
+                        setCaseMembers(c.members || []);
+                      }
+                    } catch {}
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar caso" />
@@ -342,6 +366,74 @@ export default function NewPaymentOrderPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Destinatario de la orden */}
+            <div className="space-y-2">
+              <Label>Se le cobra a *</Label>
+              <Select
+                value={formData.payeeType}
+                onValueChange={(v: any) => {
+                  setFormData((f) => ({ ...f, payeeType: v, payeeMemberId: "", payeeName: "", payeeEmail: "" }));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DEMANDANTE">Demandante</SelectItem>
+                  <SelectItem value="DEMANDADO">Demandado</SelectItem>
+                  <SelectItem value="AMBAS_PARTES">Ambas partes (50/50)</SelectItem>
+                  <SelectItem value="ARBITRO">Árbitro</SelectItem>
+                  <SelectItem value="TERCERO">Tercero (externo)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Se enviará notificación al destinatario cuando se emita la orden.</p>
+            </div>
+
+            {/* Selector de persona específica del caso */}
+            {formData.caseId && formData.payeeType !== "TERCERO" && formData.payeeType !== "AMBAS_PARTES" && (
+              <div className="space-y-2">
+                <Label>Persona específica (opcional)</Label>
+                <Select
+                  value={formData.payeeMemberId}
+                  onValueChange={(v) => {
+                    const m = caseMembers.find(x => x.id === v);
+                    setFormData((f) => ({
+                      ...f,
+                      payeeMemberId: v,
+                      payeeName: m?.displayName || "",
+                      payeeEmail: m?.email || "",
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="(todos los que coincidan con el rol)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {caseMembers
+                      .filter(m => m.role === formData.payeeType || (formData.payeeType === "DEMANDANTE" && m.role === "DEMANDANTE") || (formData.payeeType === "DEMANDADO" && m.role === "DEMANDADO") || (formData.payeeType === "ARBITRO" && m.role === "ARBITRO"))
+                      .map((m: any) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.displayName} {m.email ? `(${m.email})` : ""}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {formData.payeeType === "TERCERO" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Nombre del tercero *</Label>
+                  <Input value={formData.payeeName} onChange={e => setFormData(f => ({ ...f, payeeName: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Email del tercero</Label>
+                  <Input type="email" value={formData.payeeEmail} onChange={e => setFormData(f => ({ ...f, payeeEmail: e.target.value }))} />
+                </div>
+              </div>
+            )}
 
             {/* Descripción */}
             <div className="space-y-2">

@@ -5,7 +5,7 @@
  * Permite crear, aprobar y gestionar planes de fraccionamiento
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -75,13 +75,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CalendarClock } from "lucide-react";
 
 // Status configuration
 const STATUS_CONFIG = {
@@ -210,6 +206,13 @@ export function FraccionamientosClient({
   const [partyRequestsEnabled, setPartyRequestsEnabled] = useState(allowPartyRequests);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
+  // Prórroga (extend) state
+  const [showExtendDialog, setShowExtendDialog] = useState(false);
+  const [extendPlan, setExtendPlan] = useState<InstallmentPlan | null>(null);
+  const [extendDays, setExtendDays] = useState(30);
+  const [extendReason, setExtendReason] = useState("");
+  const [extendInstallmentId, setExtendInstallmentId] = useState<string>("ALL");
+
   // Estadísticas
   const stats = {
     pending: plans.filter((p) => p.status === "PENDING").length,
@@ -334,6 +337,45 @@ export function FraccionamientosClient({
   const calculateInstallmentAmount = () => {
     if (!selectedPaymentOrder) return 0;
     return Math.ceil(selectedPaymentOrder.amountCents / numberOfInstallments);
+  };
+
+  // Handle extend (prórroga)
+  const handleExtend = async () => {
+    if (!extendPlan || !extendDays) return;
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/payments/installments/${extendPlan.id}/extend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          days: extendDays,
+          reason: extendReason || "Prórroga otorgada por administrador",
+          installmentId: extendInstallmentId === "ALL" ? undefined : extendInstallmentId,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Error al prorrogar");
+      }
+      setShowExtendDialog(false);
+      setExtendPlan(null);
+      setExtendDays(30);
+      setExtendReason("");
+      setExtendInstallmentId("ALL");
+      router.refresh();
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openExtendDialog = (plan: InstallmentPlan) => {
+    setExtendPlan(plan);
+    setExtendDays(30);
+    setExtendReason("");
+    setExtendInstallmentId("ALL");
+    setShowExtendDialog(true);
   };
 
   return (
@@ -480,11 +522,12 @@ export function FraccionamientosClient({
                   const StatusIcon = statusConfig.icon;
                   const isExpanded = expandedPlanId === plan.id;
                   const paidInstallments = plan.installments.filter((i) => i.status === "PAID").length;
+                  const canExtend = plan.status === "ACTIVE" || plan.status === "APPROVED" || plan.status === "DEFAULTED";
 
                   return (
-                    <Collapsible key={plan.id} open={isExpanded}>
-                      <TableRow className="cursor-pointer hover:bg-muted/50">
-                        <TableCell>
+                    <Fragment key={plan.id}>
+                      <TableRow className="hover:bg-muted/50">
+                        <TableCell className="align-top">
                           <Link
                             href={`/admin/expedientes/${plan.case.id}`}
                             className="font-medium text-[#D66829] hover:underline"
@@ -497,21 +540,21 @@ export function FraccionamientosClient({
                             </p>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="align-top">
                           <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <p className="font-medium">{plan.requestedBy.name}</p>
-                              <p className="text-xs text-muted-foreground">
+                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{plan.requestedBy.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">
                                 {plan.requestedBy.email}
                               </p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="text-right font-medium align-top whitespace-nowrap">
                           S/. {(plan.totalAmountCents / 100).toFixed(2)}
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center align-top whitespace-nowrap">
                           {plan.status === "ACTIVE" || plan.status === "COMPLETED" ? (
                             <span className="text-sm">
                               {paidInstallments}/{plan.numberOfInstallments}
@@ -520,13 +563,13 @@ export function FraccionamientosClient({
                             <span className="text-sm">{plan.numberOfInstallments}</span>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="align-top">
                           <Badge className={statusConfig.color}>
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {statusConfig.label}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="align-top whitespace-nowrap">
                           <span className="text-sm text-muted-foreground">
                             {formatDistanceToNow(new Date(plan.requestedAt), {
                               addSuffix: true,
@@ -534,8 +577,8 @@ export function FraccionamientosClient({
                             })}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                        <TableCell className="text-right align-top">
+                          <div className="flex items-center justify-end gap-1 flex-wrap">
                             {plan.status === "PENDING" && (
                               <>
                                 <Button
@@ -558,25 +601,34 @@ export function FraccionamientosClient({
                                 </Button>
                               </>
                             )}
-                            <CollapsibleTrigger asChild>
+                            {canExtend && (
                               <Button
                                 size="sm"
-                                variant="ghost"
-                                onClick={() =>
-                                  setExpandedPlanId(isExpanded ? null : plan.id)
-                                }
+                                variant="outline"
+                                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                                onClick={() => openExtendDialog(plan)}
+                                title="Prorrogar cuotas"
                               >
-                                <ChevronDown
-                                  className={`h-4 w-4 transition-transform ${
-                                    isExpanded ? "rotate-180" : ""
-                                  }`}
-                                />
+                                <CalendarClock className="h-4 w-4 mr-1" />
+                                Prorrogar
                               </Button>
-                            </CollapsibleTrigger>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setExpandedPlanId(isExpanded ? null : plan.id)}
+                              aria-label={isExpanded ? "Contraer" : "Expandir"}
+                            >
+                              <ChevronDown
+                                className={`h-4 w-4 transition-transform ${
+                                  isExpanded ? "rotate-180" : ""
+                                }`}
+                              />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
-                      <CollapsibleContent asChild>
+                      {isExpanded && (
                         <TableRow>
                           <TableCell colSpan={7} className="bg-muted/30 p-4">
                             <div className="space-y-4">
@@ -649,7 +701,7 @@ export function FraccionamientosClient({
 
                               {/* Info de revisión */}
                               {plan.reviewedBy && (
-                                <div className="flex gap-8 text-sm">
+                                <div className="flex gap-8 text-sm flex-wrap">
                                   <div>
                                     <Label className="text-xs text-muted-foreground">
                                       Revisado por
@@ -674,13 +726,21 @@ export function FraccionamientosClient({
                                       <p className="text-red-600">{plan.rejectionReason}</p>
                                     </div>
                                   )}
+                                  {plan.reviewNotes && (
+                                    <div className="basis-full">
+                                      <Label className="text-xs text-muted-foreground">
+                                        Historial / Notas
+                                      </Label>
+                                      <pre className="text-xs whitespace-pre-wrap mt-1 bg-white/50 p-2 rounded">{plan.reviewNotes}</pre>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
                           </TableCell>
                         </TableRow>
-                      </CollapsibleContent>
-                    </Collapsible>
+                      )}
+                    </Fragment>
                   );
                 })
               )}
@@ -957,6 +1017,96 @@ export function FraccionamientosClient({
                   <Plus className="mr-2 h-4 w-4" />
                   Crear Fraccionamiento
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de prórroga */}
+      <Dialog open={showExtendDialog} onOpenChange={setShowExtendDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="h-5 w-5" />
+              Prorrogar Cuotas
+            </DialogTitle>
+            <DialogDescription>
+              Agregue días adicionales a las fechas de vencimiento de las cuotas pendientes.
+            </DialogDescription>
+          </DialogHeader>
+
+          {extendPlan && (
+            <div className="space-y-4">
+              <Card className="bg-muted/50">
+                <CardContent className="p-4 space-y-1 text-sm">
+                  <div className="flex justify-between"><span>Caso:</span><span className="font-medium">{extendPlan.case.code}</span></div>
+                  <div className="flex justify-between"><span>Solicitante:</span><span className="font-medium">{extendPlan.requestedBy.name}</span></div>
+                  <div className="flex justify-between"><span>Plan:</span><span className="font-medium">{extendPlan.numberOfInstallments} cuotas</span></div>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-2">
+                <Label>Cuota a prorrogar</Label>
+                <Select value={extendInstallmentId} onValueChange={setExtendInstallmentId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Todas las cuotas pendientes/vencidas</SelectItem>
+                    {extendPlan.installments
+                      .filter((i) => i.status === "PENDING" || i.status === "OVERDUE")
+                      .map((i) => (
+                        <SelectItem key={i.id} value={i.id}>
+                          Cuota {i.installmentNumber} — S/. {(i.amountCents / 100).toFixed(2)} — vence {new Date(i.dueAt).toLocaleDateString("es-PE")}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Días a agregar *</Label>
+                <Select value={extendDays.toString()} onValueChange={(v) => setExtendDays(parseInt(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">7 días</SelectItem>
+                    <SelectItem value="15">15 días</SelectItem>
+                    <SelectItem value="30">30 días</SelectItem>
+                    <SelectItem value="45">45 días</SelectItem>
+                    <SelectItem value="60">60 días</SelectItem>
+                    <SelectItem value="90">90 días</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Motivo de la prórroga</Label>
+                <Textarea
+                  value={extendReason}
+                  onChange={(e) => setExtendReason(e.target.value)}
+                  placeholder="Ej: Solicitud de la parte por dificultades económicas..."
+                  rows={2}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExtendDialog(false)} disabled={isSubmitting}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleExtend}
+              disabled={isSubmitting || !extendDays}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isSubmitting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Procesando...</>
+              ) : (
+                <><CalendarClock className="mr-2 h-4 w-4" />Aplicar Prórroga</>
               )}
             </Button>
           </DialogFooter>
