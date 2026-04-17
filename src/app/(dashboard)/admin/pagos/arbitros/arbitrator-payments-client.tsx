@@ -152,36 +152,52 @@ export function ArbitratorPaymentsClient({
     netPayment: number;
   } | null>(null);
 
-  const calculateTaxPreview = (amount: number, taxpayerType: string) => {
+  const calculateTaxPreview = (amount: number, taxpayerType: string, voucherType?: string) => {
     if (amount <= 0) {
       setTaxPreview(null);
       return;
     }
-
-    const amountCents = amount * 100;
+    // amount viene en soles, trabajamos en céntimos para precisión
+    const amountCents = Math.round(amount * 100);
     let igv = 0;
     let retencion4ta = 0;
     let detraction = 0;
+    let netPayment = amountCents;
 
-    if (taxpayerType === "PERSONA_NATURAL") {
-      // Retención 4ta categoría si > S/. 1,500
+    // ---- RHE (Recibo por Honorarios Electrónico) - Persona Natural 4ta categoría ----
+    // Base imponible = monto (no hay IGV)
+    // Retención 4ta: 8% solo si MONTO > S/. 1,500 (art. 74 LIR)
+    // No hay detracción para RHE
+    if (taxpayerType === "PERSONA_NATURAL" || voucherType === "RHE") {
       if (amountCents > 150000) {
-        retencion4ta = amountCents * 0.08;
+        retencion4ta = Math.round(amountCents * 0.08);
       }
-    } else if (taxpayerType === "PERSONA_JURIDICA") {
-      // IGV incluido en el monto
-      const baseImponible = amountCents / 1.18;
-      igv = amountCents - baseImponible;
-      // Detracción si > S/. 700
-      if (amountCents > 70000) {
-        detraction = amountCents * 0.12;
-      }
-    } else if (taxpayerType === "NO_DOMICILIADO") {
-      retencion4ta = amountCents * 0.30;
+      netPayment = amountCents - retencion4ta;
     }
 
-    const totalDeductions = retencion4ta + detraction;
-    const netPayment = amountCents - totalDeductions;
+    // ---- FACTURA - Persona Jurídica con IGV ----
+    // El "amount" ingresado es la BASE IMPONIBLE (sin IGV)
+    // IGV = 18% de la base
+    // Total factura = base + IGV
+    // Detracción 12% sobre TOTAL (con IGV) si > S/. 700 en servicios empresariales
+    else if (taxpayerType === "PERSONA_JURIDICA" || voucherType === "FACTURA") {
+      const base = amountCents;
+      igv = Math.round(base * 0.18);
+      const totalFactura = base + igv;
+      // Detracción aplica sobre el TOTAL con IGV si es > S/. 700
+      if (totalFactura > 70000) {
+        detraction = Math.round(totalFactura * 0.12);
+      }
+      // Neto a transferir al proveedor = total - detracción (la detracción va a SUNAT)
+      netPayment = totalFactura - detraction;
+    }
+
+    // ---- NO DOMICILIADO ----
+    // Retención 30% sobre el total
+    else if (taxpayerType === "NO_DOMICILIADO") {
+      retencion4ta = Math.round(amountCents * 0.30);
+      netPayment = amountCents - retencion4ta;
+    }
 
     setTaxPreview({
       igv: igv / 100,
@@ -579,22 +595,32 @@ export function ArbitratorPaymentsClient({
                 <CardContent className="space-y-3">
                   {taxPreview ? (
                     <>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Monto Bruto:</span>
-                        <span className="font-medium">S/. {formData.grossAmount.toFixed(2)}</span>
-                      </div>
-
-                      {taxPreview.igv > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">IGV (18%):</span>
-                          <span className="text-blue-600">S/. {taxPreview.igv.toFixed(2)}</span>
+                      {formData.taxpayerType === "PERSONA_JURIDICA" ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Base imponible:</span>
+                            <span className="font-medium">S/. {formData.grossAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">IGV (18%):</span>
+                            <span className="text-blue-600">+ S/. {taxPreview.igv.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm font-semibold border-t pt-1">
+                            <span>Total Factura:</span>
+                            <span>S/. {(formData.grossAmount + taxPreview.igv).toFixed(2)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Monto honorarios:</span>
+                          <span className="font-medium">S/. {formData.grossAmount.toFixed(2)}</span>
                         </div>
                       )}
 
                       {taxPreview.retencion4ta > 0 && (
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">
-                            Retención 4ta ({formData.taxpayerType === "NO_DOMICILIADO" ? "30%" : "8%"}):
+                            Retención {formData.taxpayerType === "NO_DOMICILIADO" ? "no domiciliado (30%)" : "4ta categoría (8%)"}:
                           </span>
                           <span className="text-red-600">- S/. {taxPreview.retencion4ta.toFixed(2)}</span>
                         </div>
@@ -602,7 +628,7 @@ export function ArbitratorPaymentsClient({
 
                       {taxPreview.detraction > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Detracción (12%):</span>
+                          <span className="text-muted-foreground">Detracción 12% (va a SUNAT):</span>
                           <span className="text-orange-600">- S/. {taxPreview.detraction.toFixed(2)}</span>
                         </div>
                       )}
@@ -610,7 +636,7 @@ export function ArbitratorPaymentsClient({
                       <hr />
 
                       <div className="flex justify-between text-lg font-bold">
-                        <span>Neto a Pagar:</span>
+                        <span>Neto a transferir:</span>
                         <span className="text-green-600">S/. {taxPreview.netPayment.toFixed(2)}</span>
                       </div>
 
