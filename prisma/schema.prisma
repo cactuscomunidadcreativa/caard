@@ -3722,15 +3722,50 @@ model ArbitratorProfile {
   title           String?  // e.g., "Árbitro Especialista en Derecho Comercial"
   photoUrl        String?
   biography       String?  // Rich text
-  education       Json?    // [{degree, institution, year}]
-  experience      Json?    // [{position, organization, period}]
-  publications    Json?    // [{title, publisher, year, url}]
-  languages       Json?    // ["Español", "Inglés", "Portugués"]
+
+  // Datos de contacto y registro
   contactEmail    String?
+  phone           String?
   linkedinUrl     String?
+
+  // Datos profesionales
+  colegiatura     String?  // Número de colegiatura (ej. CAL 12345)
+  colegio         String?  // Nombre del colegio profesional
+  rnaNumber       String?  // Registro Nacional de Árbitros (si aplica)
+  especialidad    String?  // Especialidad principal (texto libre)
+  specializations String[] @default([]) // Áreas de especialización (array)
   yearsExperience Int?
   laudosCount     Int      @default(0)
 
+  // Centros a los que pertenece (nómina)
+  affiliatedCenters Json?  // [{name, url?, role?, since?}]
+
+  // Educación, experiencia, publicaciones, idiomas
+  education       Json?    // [{degree, institution, year, documentUrl?}]
+  experience      Json?    // [{position, organization, period}]
+  publications    Json?    // [{title, publisher, year, url}]
+  languages       Json?    // ["Español", "Inglés", "Portugués"]
+
+  // Documentos subidos por el árbitro (URLs a Drive)
+  cvDocumentUrl           String?  // CV
+  rnaDocumentUrl          String?  // Registro RNA
+  contraloriaDocumentUrl  String?  // Declaración jurada de contraloría (firmada)
+  otherDocuments          Json?    // [{name, url, uploadedAt}]
+
+  // Disponibilidad y declaraciones
+  availableForCases       Boolean  @default(true)
+  availabilityNotes       String?  // Texto libre sobre disponibilidad
+  independenceDeclaration String?  // Texto de declaración de independencia
+  independenceSignedAt    DateTime?
+  independenceSignatureUrl String? // Firma electrónica (base64 o URL)
+
+  // Procesos en los que participa (últimos 5 años)
+  // Cada proceso: {expedienteNumber, centerName, rol (ARBITRO_UNICO|PRESIDENTE|COARBITRO|ABOGADO_PARTE|PROCURADOR),
+  //                type (AD_HOC|INSTITUCIONAL), status (VIGENTE|LAUDADO|ARCHIVADO), startDate, endDate?,
+  //                claimantName?, respondentName?, isCaardCase?, caardCaseId?}
+  processesHistory Json?   // Array de procesos
+
+  // Publicación del perfil
   isPublished     Boolean  @default(false)
   isFeatured      Boolean  @default(false)
 
@@ -3738,6 +3773,7 @@ model ArbitratorProfile {
   updatedAt DateTime @updatedAt
 
   @@index([isPublished])
+  @@index([availableForCases])
 }
 
 //

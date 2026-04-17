@@ -132,5 +132,11 @@ export default async function CaseDetailPage({
 
   const serialized = serializeForClient(caseData);
 
-  return <CaseDetailClient caseData={serialized as any} />;
+  return (
+    <CaseDetailClient
+      caseData={serialized as any}
+      userId={session.user.id}
+      userRole={session.user.role}
+    />
+  );
 }

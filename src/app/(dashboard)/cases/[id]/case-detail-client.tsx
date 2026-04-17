@@ -30,7 +30,10 @@ import {
   Trash2,
   X,
   Check,
+  Send,
 } from "lucide-react";
+
+import { EscritosSection } from "./escritos-section";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -294,6 +297,8 @@ function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
 
 interface CaseDetailClientProps {
   caseData: SerializedCase;
+  userId?: string;
+  userRole?: string;
 }
 
 const CASE_STATUSES: CaseStatus[] = [
@@ -328,7 +333,7 @@ interface UserSearchItem {
   role: string;
 }
 
-export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
+export default function CaseDetailClient({ caseData, userId, userRole }: CaseDetailClientProps) {
   const router = useRouter();
 
   // Merge processDeadlines into deadlines
@@ -847,6 +852,10 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
               {caseData.documents.length}
             </Badge>
           </TabsTrigger>
+          <TabsTrigger value="escritos" className="gap-1.5">
+            <Send className="h-4 w-4" />
+            Escritos
+          </TabsTrigger>
           <TabsTrigger value="pagos" className="gap-1.5">
             <CreditCard className="h-4 w-4" />
             Pagos
@@ -1276,6 +1285,28 @@ export default function CaseDetailClient({ caseData }: CaseDetailClientProps) {
               </div>
             );
           })()}
+        </TabsContent>
+
+        {/* ---- Tab: Escritos ---- */}
+        <TabsContent value="escritos">
+          <EscritosSection
+            caseId={caseData.id}
+            caseCode={caseData.code}
+            userRole={userRole || ""}
+            userId={userId || ""}
+            isArbitratorOfCase={
+              !!caseData.members?.find(
+                (m: any) => m.userId === userId && m.role === "ARBITRO"
+              )
+            }
+            isPartyOfCase={
+              !!caseData.members?.find(
+                (m: any) =>
+                  m.userId === userId &&
+                  ["DEMANDANTE", "DEMANDADO", "ABOGADO"].includes(m.role)
+              )
+            }
+          />
         </TabsContent>
 
         {/* ---- Tab: Pagos ---- */}

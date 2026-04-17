@@ -183,6 +183,26 @@ function useNavigationItems() {
       href: "/arbitro",
       icon: Gavel,
       roles: ["SUPER_ADMIN", "ADMIN", "ARBITRO"],
+      children: [
+        {
+          title: "Panel",
+          href: "/arbitro",
+          icon: Gavel,
+          roles: ["SUPER_ADMIN", "ADMIN", "ARBITRO"],
+        },
+        {
+          title: "Mi perfil",
+          href: "/arbitro/perfil",
+          icon: UserCircle,
+          roles: ["SUPER_ADMIN", "ADMIN", "ARBITRO"],
+        },
+        {
+          title: "Recusaciones",
+          href: "/arbitro/recusaciones",
+          icon: Ban,
+          roles: ["SUPER_ADMIN", "ADMIN", "ARBITRO"],
+        },
+      ],
     },
     {
       title: t.sidebar.lawyerPanel,
