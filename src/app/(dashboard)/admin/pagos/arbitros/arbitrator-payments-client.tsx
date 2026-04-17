@@ -523,7 +523,7 @@ export function ArbitratorPaymentsClient({
               </div>
 
               <div className="space-y-2">
-                <Label>Tipo de Contribuyente *</Label>
+                <Label>Tipo de Comprobante *</Label>
                 <Select
                   value={formData.taxpayerType}
                   onValueChange={(v) => {
@@ -535,20 +535,32 @@ export function ArbitratorPaymentsClient({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(TAXPAYER_TYPE_CONFIG).map(([key, config]) => (
-                      <SelectItem key={key} value={key}>
-                        <div>
-                          <div>{config.label}</div>
-                          <div className="text-xs text-muted-foreground">{config.description}</div>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="PERSONA_NATURAL">
+                      <div>
+                        <div>Recibo por Honorarios (RHE)</div>
+                        <div className="text-xs text-muted-foreground">Persona natural · monto - retención 8% = neto</div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="PERSONA_JURIDICA">
+                      <div>
+                        <div>Factura (Persona Jurídica)</div>
+                        <div className="text-xs text-muted-foreground">Persona jurídica · monto + IGV 18%</div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="NO_DOMICILIADO">
+                      <div>
+                        <div>No domiciliado</div>
+                        <div className="text-xs text-muted-foreground">Retención 30%</div>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>Monto Bruto (S/.) *</Label>
+                <Label>
+                  {formData.taxpayerType === "PERSONA_JURIDICA" ? "Monto sin IGV (S/.) *" : "Monto honorarios (S/.) *"}
+                </Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -636,9 +648,25 @@ export function ArbitratorPaymentsClient({
                       <hr />
 
                       <div className="flex justify-between text-lg font-bold">
-                        <span>Neto a transferir:</span>
+                        <span>
+                          {formData.taxpayerType === "PERSONA_JURIDICA"
+                            ? "CAARD paga al árbitro:"
+                            : "CAARD paga al árbitro (neto):"}
+                        </span>
                         <span className="text-green-600">S/. {taxPreview.netPayment.toFixed(2)}</span>
                       </div>
+
+                      {formData.taxpayerType === "PERSONA_JURIDICA" && (
+                        <div className="text-xs text-muted-foreground text-center pt-1">
+                          (Factura: base {formData.grossAmount.toFixed(2)} + IGV {taxPreview.igv.toFixed(2)}
+                          {taxPreview.detraction > 0 ? ` - Detracción ${taxPreview.detraction.toFixed(2)}` : ""})
+                        </div>
+                      )}
+                      {formData.taxpayerType === "PERSONA_NATURAL" && taxPreview.retencion4ta > 0 && (
+                        <div className="text-xs text-muted-foreground text-center pt-1">
+                          (RHE: honorarios {formData.grossAmount.toFixed(2)} - retención {taxPreview.retencion4ta.toFixed(2)})
+                        </div>
+                      )}
 
                       {formData.taxpayerType === "PERSONA_NATURAL" && (
                         <Alert className="mt-2">
