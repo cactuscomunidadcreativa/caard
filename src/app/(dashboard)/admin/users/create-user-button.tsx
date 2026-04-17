@@ -1,14 +1,11 @@
 /**
- * CAARD - Botón y Dialog para Crear Usuario
+ * CAARD - Botón y Dialog para Crear Usuario (versión simplificada, sin react-hook-form)
  */
 
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Role } from "@prisma/client";
 
@@ -21,16 +18,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -51,25 +40,7 @@ interface CreateUserButtonProps {
   centers: Center[];
 }
 
-const createUserSchema = z.object({
-  email: z.string().email("Email inválido"),
-  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres").max(100),
-  password: z
-    .string()
-    .min(8, "La contraseña debe tener al menos 8 caracteres")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      "Debe contener mayúscula, minúscula y número"
-    ),
-  role: z.nativeEnum(Role),
-  phoneE164: z.string().optional(),
-  centerId: z.string().optional(),
-  isActive: z.boolean(),
-});
-
-type CreateUserFormData = z.input<typeof createUserSchema>;
-
-const ROLE_LABELS: Record<Role, string> = {
+const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super Administrador",
   ADMIN: "Administrador General",
   CENTER_STAFF: "Personal del Centro",
@@ -81,6 +52,8 @@ const ROLE_LABELS: Record<Role, string> = {
   ESTUDIANTE: "Estudiante",
 };
 
+const NONE_CENTER = "__none__";
+
 export function CreateUserButton({ centers }: CreateUserButtonProps) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,50 +61,75 @@ export function CreateUserButton({ centers }: CreateUserButtonProps) {
   const { toast } = useToast();
   const router = useRouter();
 
-  const form = useForm<CreateUserFormData>({
-    resolver: zodResolver(createUserSchema),
-    defaultValues: {
-      email: "",
-      name: "",
-      password: "",
-      role: "DEMANDANTE",
-      phoneE164: "",
-      centerId: "",
-      isActive: true,
-    },
-  });
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<string>("DEMANDANTE");
+  const [phoneE164, setPhoneE164] = useState("");
+  const [centerId, setCenterId] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const onSubmit = async (data: CreateUserFormData) => {
+  const reset = () => {
+    setName("");
+    setEmail("");
+    setPassword("");
+    setRole("DEMANDANTE");
+    setPhoneE164("");
+    setCenterId("");
+    setIsActive(true);
+    setErrors({});
+  };
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!name || name.trim().length < 2) e.name = "Nombre requerido (mín. 2)";
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Email inválido";
+    if (!password || password.length < 8)
+      e.password = "Contraseña mínima 8 caracteres";
+    else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password))
+      e.password = "Debe tener mayúscula, minúscula y número";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!validate()) return;
     setIsLoading(true);
     try {
       const response = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...data,
-          centerId: data.centerId || null,
-          phoneE164: data.phoneE164 || null,
+          email: email.trim(),
+          name: name.trim(),
+          password,
+          role,
+          phoneE164: phoneE164 || null,
+          centerId: centerId || null,
+          isActive,
         }),
       });
 
-      const result = await response.json();
-
+      const result = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(result.error || "Error al crear usuario");
       }
 
       toast({
         title: "Usuario creado",
-        description: `${result.name} ha sido creado exitosamente.`,
+        description: `${result.name || name} ha sido creado exitosamente.`,
       });
 
-      form.reset();
+      reset();
       setOpen(false);
       router.refresh();
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Error al crear usuario",
+        description:
+          error instanceof Error ? error.message : "Error al crear usuario",
         variant: "destructive",
       });
     } finally {
@@ -140,7 +138,13 @@ export function CreateUserButton({ centers }: CreateUserButtonProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) reset();
+      }}
+    >
       <DialogTrigger asChild>
         <Button className="bg-[#D66829] hover:bg-[#c45a22]">
           <UserPlus className="h-4 w-4 mr-2" />
@@ -155,175 +159,134 @@ export function CreateUserButton({ centers }: CreateUserButtonProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nombre completo</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Juan Pérez" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <Label htmlFor="cu-name">Nombre completo</Label>
+            <Input
+              id="cu-name"
+              placeholder="Juan Pérez"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
+            {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
+          </div>
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="juan@ejemplo.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          <div className="space-y-1">
+            <Label htmlFor="cu-email">Email</Label>
+            <Input
+              id="cu-email"
+              type="email"
+              placeholder="juan@ejemplo.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
+            {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
+          </div>
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contraseña</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Mínimo 8 caracteres"
-                        {...field}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    Mayúscula, minúscula y número requeridos
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Rol</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona rol" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.entries(ROLE_LABELS).map(([key, label]) => (
-                          <SelectItem key={key} value={key}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+          <div className="space-y-1">
+            <Label htmlFor="cu-password">Contraseña</Label>
+            <div className="relative">
+              <Input
+                id="cu-password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Mínimo 8 caracteres"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
-
-              <FormField
-                control={form.control}
-                name="centerId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Centro</FormLabel>
-                    <Select
-                      onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}
-                      value={field.value ? field.value : "__none__"}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sin centro" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="__none__">Sin centro</SelectItem>
-                        {centers.map((center) => (
-                          <SelectItem key={center.id} value={center.id}>
-                            {center.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="phoneE164"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Teléfono (opcional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="+51 999 999 999" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="isActive"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-0.5">
-                    <FormLabel>Usuario activo</FormLabel>
-                    <FormDescription>
-                      El usuario podrá acceder al sistema
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
-              </Button>
               <Button
-                type="submit"
-                disabled={isLoading}
-                className="bg-[#D66829] hover:bg-[#c45a22]"
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3"
+                onClick={() => setShowPassword((s) => !s)}
               >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Crear Usuario
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
               </Button>
             </div>
-          </form>
-        </Form>
+            <p className="text-xs text-muted-foreground">
+              Mayúscula, minúscula y número requeridos
+            </p>
+            {errors.password && (
+              <p className="text-xs text-red-600">{errors.password}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>Rol</Label>
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ROLE_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Centro</Label>
+              <Select
+                value={centerId ? centerId : NONE_CENTER}
+                onValueChange={(v) => setCenterId(v === NONE_CENTER ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin centro" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_CENTER}>Sin centro</SelectItem>
+                  {centers.map((center) => (
+                    <SelectItem key={center.id} value={center.id}>
+                      {center.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="cu-phone">Teléfono (opcional)</Label>
+            <Input
+              id="cu-phone"
+              placeholder="+51 999 999 999"
+              value={phoneE164}
+              onChange={(e) => setPhoneE164(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label>Usuario activo</Label>
+              <p className="text-xs text-muted-foreground">
+                El usuario podrá acceder al sistema
+              </p>
+            </div>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="bg-[#D66829] hover:bg-[#c45a22]"
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Crear Usuario
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
