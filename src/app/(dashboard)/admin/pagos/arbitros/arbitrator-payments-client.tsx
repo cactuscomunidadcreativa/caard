@@ -142,7 +142,11 @@ export function ArbitratorPaymentsClient({
     arbitratorRuc: "",
     bankAccountNumber: "",
     bankName: "",
+    paymentMethod: "TRANSFERENCIA" as "TRANSFERENCIA" | "TARJETA" | "CHEQUE",
   });
+
+  // Árbitros del caso seleccionado (para auto-sugerir)
+  const [caseArbitrators, setCaseArbitrators] = useState<any[]>([]);
 
   // Calculated taxes preview
   const [taxPreview, setTaxPreview] = useState<{
@@ -150,60 +154,70 @@ export function ArbitratorPaymentsClient({
     retencion4ta: number;
     detraction: number;
     netPayment: number;
+    cardSurcharge?: number;
   } | null>(null);
 
-  const calculateTaxPreview = (amount: number, taxpayerType: string, voucherType?: string) => {
+  const calculateTaxPreview = (amount: number, taxpayerType: string, voucherType?: string, paymentMethod?: string) => {
     if (amount <= 0) {
       setTaxPreview(null);
       return;
     }
-    // amount viene en soles, trabajamos en céntimos para precisión
-    const amountCents = Math.round(amount * 100);
+    // amount ingresado = lo que RECIBE el árbitro
+    const netoArbitro = Math.round(amount * 100);
     let igv = 0;
     let retencion4ta = 0;
     let detraction = 0;
-    let netPayment = amountCents;
+    let totalCaard = netoArbitro; // lo que CAARD desembolsa (neto árbitro + impuestos)
 
     // ---- RHE (Recibo por Honorarios Electrónico) - Persona Natural 4ta categoría ----
-    // Base imponible = monto (no hay IGV)
-    // Retención 4ta: 8% solo si MONTO > S/. 1,500 (art. 74 LIR)
-    // No hay detracción para RHE
+    // El árbitro RECIBE el monto completo. CAARD paga adicionalmente la retención a SUNAT.
+    // Si neto > S/. 1,500 → se aplica retención 8%
+    // Fórmula: neto = bruto * 0.92 → bruto = neto / 0.92 → retención = bruto * 0.08
     if (taxpayerType === "PERSONA_NATURAL" || voucherType === "RHE") {
-      if (amountCents > 150000) {
-        retencion4ta = Math.round(amountCents * 0.08);
+      if (netoArbitro > 150000) {
+        const bruto = Math.round(netoArbitro / 0.92);
+        retencion4ta = bruto - netoArbitro;
       }
-      netPayment = amountCents - retencion4ta;
+      // CAARD paga: neto al árbitro + retención a SUNAT
+      totalCaard = netoArbitro + retencion4ta;
     }
 
     // ---- FACTURA - Persona Jurídica con IGV ----
-    // El "amount" ingresado es la BASE IMPONIBLE (sin IGV)
-    // IGV = 18% de la base
-    // Total factura = base + IGV
-    // Detracción 12% sobre TOTAL (con IGV) si > S/. 700 en servicios empresariales
+    // El árbitro RECIBE base + IGV - detracción
+    // CAARD paga: base + IGV (la detracción va a SUNAT, no al árbitro)
     else if (taxpayerType === "PERSONA_JURIDICA" || voucherType === "FACTURA") {
-      const base = amountCents;
+      const base = netoArbitro; // lo ingresado es la base
       igv = Math.round(base * 0.18);
       const totalFactura = base + igv;
-      // Detracción aplica sobre el TOTAL con IGV si es > S/. 700
       if (totalFactura > 70000) {
         detraction = Math.round(totalFactura * 0.12);
       }
-      // Neto a transferir al proveedor = total - detracción (la detracción va a SUNAT)
-      netPayment = totalFactura - detraction;
+      // CAARD paga totalFactura (detracción va directo a SUNAT por separado)
+      totalCaard = totalFactura;
     }
 
     // ---- NO DOMICILIADO ----
-    // Retención 30% sobre el total
+    // Mismo enfoque: árbitro RECIBE el monto, CAARD paga retención adicional
     else if (taxpayerType === "NO_DOMICILIADO") {
-      retencion4ta = Math.round(amountCents * 0.30);
-      netPayment = amountCents - retencion4ta;
+      const bruto = Math.round(netoArbitro / 0.70);
+      retencion4ta = bruto - netoArbitro;
+      totalCaard = netoArbitro + retencion4ta;
+    }
+
+    // Recargo 5% por pago con tarjeta (aplica sobre total desembolsado por CAARD)
+    const method = paymentMethod || formData.paymentMethod;
+    let cardSurcharge = 0;
+    if (method === "TARJETA") {
+      cardSurcharge = Math.round(totalCaard * 0.05);
+      totalCaard += cardSurcharge;
     }
 
     setTaxPreview({
       igv: igv / 100,
       retencion4ta: retencion4ta / 100,
       detraction: detraction / 100,
-      netPayment: netPayment / 100,
+      netPayment: totalCaard / 100,
+      cardSurcharge: cardSurcharge / 100,
     });
   };
 
@@ -488,7 +502,28 @@ export function ArbitratorPaymentsClient({
                 <Label>Caso *</Label>
                 <Select
                   value={formData.caseId}
-                  onValueChange={(v) => setFormData({ ...formData, caseId: v })}
+                  onValueChange={async (v) => {
+                    setFormData({ ...formData, caseId: v, arbitratorId: "" });
+                    // Auto-cargar árbitros del caso
+                    try {
+                      const res = await fetch(`/api/cases/${v}`);
+                      if (res.ok) {
+                        const { case: c } = await res.json();
+                        const caseArbs = (c.members || [])
+                          .filter((m: any) => m.role === "ARBITRO")
+                          .map((m: any) => ({ id: m.userId || m.id, user: { name: m.displayName, email: m.email } }));
+                        if (caseArbs.length > 0) {
+                          setCaseArbitrators(caseArbs);
+                          // Auto-seleccionar primero si solo hay uno
+                          if (caseArbs.length === 1) {
+                            setFormData(f => ({ ...f, caseId: v, arbitratorId: caseArbs[0].id }));
+                          }
+                        } else {
+                          setCaseArbitrators([]);
+                        }
+                      }
+                    } catch {}
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccione un caso" />
@@ -504,20 +539,40 @@ export function ArbitratorPaymentsClient({
               </div>
 
               <div className="space-y-2">
-                <Label>Árbitro *</Label>
+                <Label>
+                  Árbitro * {caseArbitrators.length > 0 && <span className="text-xs text-green-600">({caseArbitrators.length} del caso)</span>}
+                </Label>
                 <Select
                   value={formData.arbitratorId}
                   onValueChange={(v) => setFormData({ ...formData, arbitratorId: v })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccione un árbitro" />
+                    <SelectValue placeholder={caseArbitrators.length > 0 ? "Elegir árbitro del caso" : "Seleccione un árbitro"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {arbitrators.map((a) => (
+                    {(caseArbitrators.length > 0 ? caseArbitrators : arbitrators).map((a) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.user.name || a.user.email}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Método de pago *</Label>
+                <Select
+                  value={formData.paymentMethod}
+                  onValueChange={(v: any) => {
+                    setFormData({ ...formData, paymentMethod: v });
+                    calculateTaxPreview(formData.grossAmount, formData.taxpayerType, undefined, v);
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TRANSFERENCIA">Transferencia bancaria</SelectItem>
+                    <SelectItem value="TARJETA">Tarjeta (recargo 5%)</SelectItem>
+                    <SelectItem value="CHEQUE">Cheque</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -610,12 +665,12 @@ export function ArbitratorPaymentsClient({
                       {formData.taxpayerType === "PERSONA_JURIDICA" ? (
                         <>
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Base imponible:</span>
+                            <span className="text-muted-foreground">Base (recibe el árbitro):</span>
                             <span className="font-medium">S/. {formData.grossAmount.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">IGV (18%):</span>
-                            <span className="text-blue-600">+ S/. {taxPreview.igv.toFixed(2)}</span>
+                            <span className="text-muted-foreground">+ IGV 18%:</span>
+                            <span className="text-blue-600">S/. {taxPreview.igv.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-sm font-semibold border-t pt-1">
                             <span>Total Factura:</span>
@@ -623,19 +678,20 @@ export function ArbitratorPaymentsClient({
                           </div>
                         </>
                       ) : (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Monto honorarios:</span>
-                          <span className="font-medium">S/. {formData.grossAmount.toFixed(2)}</span>
-                        </div>
-                      )}
-
-                      {taxPreview.retencion4ta > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Retención {formData.taxpayerType === "NO_DOMICILIADO" ? "no domiciliado (30%)" : "4ta categoría (8%)"}:
-                          </span>
-                          <span className="text-red-600">- S/. {taxPreview.retencion4ta.toFixed(2)}</span>
-                        </div>
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Recibe el árbitro:</span>
+                            <span className="font-medium">S/. {formData.grossAmount.toFixed(2)}</span>
+                          </div>
+                          {taxPreview.retencion4ta > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                + Retención {formData.taxpayerType === "NO_DOMICILIADO" ? "30%" : "8%"} (CAARD paga a SUNAT):
+                              </span>
+                              <span className="text-red-600">S/. {taxPreview.retencion4ta.toFixed(2)}</span>
+                            </div>
+                          )}
+                        </>
                       )}
 
                       {taxPreview.detraction > 0 && (
@@ -645,14 +701,17 @@ export function ArbitratorPaymentsClient({
                         </div>
                       )}
 
+                      {taxPreview.cardSurcharge && taxPreview.cardSurcharge > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">+ Recargo tarjeta 5%:</span>
+                          <span className="text-purple-600">S/. {taxPreview.cardSurcharge.toFixed(2)}</span>
+                        </div>
+                      )}
+
                       <hr />
 
                       <div className="flex justify-between text-lg font-bold">
-                        <span>
-                          {formData.taxpayerType === "PERSONA_JURIDICA"
-                            ? "CAARD paga al árbitro:"
-                            : "CAARD paga al árbitro (neto):"}
-                        </span>
+                        <span>CAARD desembolsa:</span>
                         <span className="text-green-600">S/. {taxPreview.netPayment.toFixed(2)}</span>
                       </div>
 
