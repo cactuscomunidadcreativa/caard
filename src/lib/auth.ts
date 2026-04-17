@@ -224,10 +224,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account, profile }) {
       // For OAuth providers, check if user exists and is active
       if (account?.provider !== "credentials" && user.email) {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email },
-          select: { id: true, isActive: true, name: true, image: true },
+        const normalizedEmail = user.email.toLowerCase().trim();
+
+        // Buscar case-insensitive (Google puede devolver mayúsculas mixtas)
+        let existingUser = await prisma.user.findUnique({
+          where: { email: normalizedEmail },
+          select: { id: true, isActive: true, name: true, image: true, email: true },
         });
+
+        if (!existingUser) {
+          existingUser = await prisma.user.findFirst({
+            where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+            select: { id: true, isActive: true, name: true, image: true, email: true },
+          });
+        }
 
         if (existingUser) {
           if (!existingUser.isActive) {
@@ -243,11 +253,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (Object.keys(updates).length > 0) {
             await prisma.user.update({ where: { id: existingUser.id }, data: updates });
           }
-        } else {
-          // Usuario no existe en nuestra DB → no permitir login con Google
-          // Solo usuarios registrados pueden entrar
-          return false;
+          return true;
         }
+
+        // Usuario no existe. Auto-crear si es del dominio corporativo.
+        const isCorporateEmail = normalizedEmail.endsWith("@caardpe.com");
+        if (isCorporateEmail) {
+          // Rol por defecto: ADMIN para administracion@ y similares de staff,
+          // CENTER_STAFF para el resto. Un SUPER_ADMIN puede promover luego.
+          const isAdminMailbox =
+            normalizedEmail.startsWith("administracion@") ||
+            normalizedEmail.startsWith("admin@");
+          await prisma.user.create({
+            data: {
+              email: normalizedEmail,
+              name: user.name || normalizedEmail.split("@")[0],
+              image: user.image || null,
+              role: isAdminMailbox ? "ADMIN" : "CENTER_STAFF",
+              isActive: true,
+              emailVerified: new Date(),
+            },
+          });
+          return true;
+        }
+
+        // Otros dominios no pueden auto-registrarse
+        return false;
       }
       return true;
     },
