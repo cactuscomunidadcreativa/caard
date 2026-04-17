@@ -161,7 +161,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       // Initial sign in - add custom fields to token
       if (user) {
         // Para OAuth (Google), cargar rol y centerId desde la DB
@@ -174,6 +174,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.id = dbUser.id;
             token.role = dbUser.role;
             token.centerId = dbUser.centerId || null;
+            // Usar siempre el nombre/imagen de la DB (fuente de verdad)
+            token.name = dbUser.name || user.name || null;
+            token.picture = dbUser.image || user.image || null;
           } else {
             token.id = user.id;
             token.role = "DEMANDANTE";
@@ -183,8 +186,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.id = user.id;
           token.role = user.role || "DEMANDANTE";
           token.centerId = user.centerId || null;
+          token.name = user.name || null;
+          token.picture = user.image || null;
         }
       }
+
+      // Si se actualiza sesión manualmente (useSession().update()), refrescar desde DB
+      if (trigger === "update" && token?.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { name: true, image: true, role: true, centerId: true },
+        });
+        if (dbUser) {
+          token.name = dbUser.name || token.name;
+          token.picture = dbUser.image || token.picture;
+          token.role = dbUser.role;
+          token.centerId = dbUser.centerId || null;
+        }
+      }
+
       return token;
     },
 
@@ -194,6 +214,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
         session.user.centerId = token.centerId as string | null;
+        // Asegurar que name/image reflejan la DB
+        if (token.name) session.user.name = token.name as string;
+        if (token.picture) session.user.image = token.picture as string;
       }
       return session;
     },
@@ -210,10 +233,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (!existingUser.isActive) {
             return false;
           }
-          // Actualizar nombre e imagen desde Google (siempre, es la fuente de verdad para @caardpe.com)
+          // Solo llenar name/image en el PRIMER login (si están vacíos).
+          // No sobreescribir en logins subsiguientes: cuentas compartidas
+          // (p.ej. administracion@caardpe.com) pueden ser usadas por varias
+          // personas vía Google y el perfil cambiaría constantemente.
           const updates: any = {};
-          if (user.name && user.name !== existingUser.name) updates.name = user.name;
-          if (user.image && user.image !== existingUser.image) updates.image = user.image;
+          if (!existingUser.name && user.name) updates.name = user.name;
+          if (!existingUser.image && user.image) updates.image = user.image;
           if (Object.keys(updates).length > 0) {
             await prisma.user.update({ where: { id: existingUser.id }, data: updates });
           }
