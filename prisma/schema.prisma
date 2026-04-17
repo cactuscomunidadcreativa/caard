@@ -745,6 +745,9 @@ model CaseFolder {
   // Control de acceso: quién puede ver esta carpeta y sus documentos
   visibility CaseFolderVisibility @default(ALL)
 
+  // Orden tal como aparece en Drive (respeta la jerarquía original)
+  sortOrder Int @default(0)
+
   documents CaseDocument[]
 
   createdAt DateTime @default(now())
@@ -753,6 +756,7 @@ model CaseFolder {
   @@index([caseId])
   @@index([parentId])
   @@index([visibility])
+  @@index([sortOrder])
 }
 
 enum DocumentAccessLevel {
@@ -804,6 +808,23 @@ model CaseDocument {
   replacedBy   CaseDocument? @relation("DocReplace", fields: [replacedById], references: [id], onDelete: SetNull)
   replaces     CaseDocument[] @relation("DocReplace")
 
+  // ESCRITOS / PRESENTACIONES DE PARTES
+  // Flujo: SUBMITTED (solo tribunal+centro) → PROVEIDO (tribunal resuelve)
+  //     → NOTIFIED (centro notifica a partes, se inician plazos).
+  // Cuando isEscrito=true Y status != NOTIFIED, el documento NO es visible
+  // a las partes ni abogados (solo tribunal + centro). El que lo presentó
+  // siempre ve su propio escrito + el cargo de recibido.
+  isEscrito         Boolean       @default(false)
+  escritoStatus     EscritoStatus?
+  escritoCargoUrl   String?       // URL del cargo de recibido (PDF con sello)
+  proveidoAt        DateTime?
+  proveidoById      String?
+  proveidoText      String?       // resolución del tribunal
+  notifiedAt        DateTime?
+  notifiedById      String?
+  notificationText  String?       // texto de notificación del centro
+  deadlineStartsAt  DateTime?     // fecha desde la que se cuentan plazos (= notifiedAt)
+
   // Historial completo de acciones sobre este documento (solo SUPER_ADMIN)
   auditLogs CaseDocumentAudit[]
 
@@ -819,6 +840,14 @@ model CaseDocument {
   @@index([driveFileId])
   @@index([caseId, documentType])
   @@index([documentDate])
+  @@index([isEscrito, escritoStatus])
+}
+
+enum EscritoStatus {
+  SUBMITTED // Recién presentado: solo tribunal + centro lo ven
+  PROVEIDO  // Tribunal emitió resolución: centro puede notificar
+  NOTIFIED  // Centro notificó a partes, plazos corren, todos lo ven
+  REJECTED  // Rechazado por tribunal
 }
 
 //

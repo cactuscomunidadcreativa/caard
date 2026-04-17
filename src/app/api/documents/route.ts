@@ -64,6 +64,21 @@ export async function GET(request: NextRequest) {
       whereClause.caseId = caseId;
     }
 
+    // Filtrar escritos no notificados: partes y abogados NO deben ver escritos
+    // en estado SUBMITTED/PROVEIDO (solo tribunal + centro), excepto los suyos.
+    const isTribunalOrStaff =
+      isFullAccess || ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(
+        userRole
+      );
+    if (!isTribunalOrStaff) {
+      // Aplicar visibilidad: excluir escritos en estado SUBMITTED/PROVEIDO que no sean propios
+      whereClause.OR = [
+        { isEscrito: false },
+        { isEscrito: true, escritoStatus: "NOTIFIED" },
+        { isEscrito: true, uploadedById: userId }, // propios siempre visibles
+      ];
+    }
+
     const [documents, total] = await Promise.all([
       prisma.caseDocument.findMany({
         where: whereClause,

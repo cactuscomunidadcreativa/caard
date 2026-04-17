@@ -129,15 +129,19 @@ async function indexCaseFolder(
   caseId: string,
   stats: { filesIndexed: number; filesSkipped: number; errors: string[] }
 ) {
-  // Walk the folder up to 2 sub-levels (escritos / resoluciones / etc.)
-  type J = { id: string; subKey: string | null; subName: string | null };
-  const q: J[] = [{ id: folderId, subKey: null, subName: null }];
+  // BFS preservando jerarquía (parentId) y orden de Drive (sortOrder incremental).
+  // j.parentDbId = CaseFolder.id del padre en la BD (null si es la raíz del caso).
+  type J = { id: string; parentDbId: string | null; parentName: string | null };
+  const q: J[] = [{ id: folderId, parentDbId: null, parentName: null }];
+  let folderOrderCounter = 0;
   while (q.length > 0) {
     const j = q.shift()!;
     let pageToken: string | undefined;
     do {
       const r = await drive.files.list({
         q: `'${j.id}' in parents and trashed=false`,
+        // orderBy: folder primero, luego por nombre — mismo orden que la UI de Drive
+        orderBy: "folder,name",
         fields: "nextPageToken, files(id,name,mimeType,size,webViewLink,modifiedTime,createdTime)",
         pageSize: 1000,
         pageToken,
@@ -147,14 +151,31 @@ async function indexCaseFolder(
       pageToken = r.data.nextPageToken || undefined;
       for (const f of r.data.files || []) {
         if (f.mimeType === "application/vnd.google-apps.folder") {
-          // Folder = create or reuse CaseFolder
-          const key = (f.name || "").toLowerCase().replace(/\s+/g, "_").slice(0, 50);
+          // Folder = create or reuse CaseFolder con parentId + sortOrder
+          // Key debe ser único por caso: si una subcarpeta se llama igual que otra
+          // subcarpeta bajo otro padre, incluimos el path del padre.
+          const baseKey = (f.name || "").toLowerCase().replace(/\s+/g, "_").slice(0, 50);
+          const key = j.parentDbId
+            ? `${j.parentDbId.slice(0, 8)}_${baseKey}`.slice(0, 60)
+            : baseKey;
           const cf = await prisma.caseFolder.upsert({
             where: { caseId_key: { caseId, key } },
-            update: { driveFolderId: f.id!, name: f.name || key },
-            create: { caseId, key, name: f.name || key, driveFolderId: f.id! },
+            update: {
+              driveFolderId: f.id!,
+              name: f.name || key,
+              parentId: j.parentDbId,
+              sortOrder: folderOrderCounter++,
+            },
+            create: {
+              caseId,
+              key,
+              name: f.name || key,
+              driveFolderId: f.id!,
+              parentId: j.parentDbId,
+              sortOrder: folderOrderCounter++,
+            },
           });
-          q.push({ id: f.id!, subKey: cf.id, subName: f.name ?? null });
+          q.push({ id: f.id!, parentDbId: cf.id, parentName: f.name ?? null });
         } else {
           // File = upsert CaseDocument by driveFileId
           try {
@@ -163,12 +184,12 @@ async function indexCaseFolder(
               select: { id: true },
             });
             const isPdf = (f.mimeType || "").includes("pdf");
-            const docType = j.subName
-              ? /escrit/i.test(j.subName)
+            const docType = j.parentName
+              ? /escrit/i.test(j.parentName)
                 ? "Escrito"
-                : /resol/i.test(j.subName)
+                : /resol/i.test(j.parentName)
                 ? "Resolución"
-                : j.subName
+                : j.parentName
               : "Documento";
             const driveDate = (f as any).modifiedTime || (f as any).createdTime;
             if (existing) {
@@ -176,7 +197,7 @@ async function indexCaseFolder(
                 where: { id: existing.id },
                 data: {
                   caseId,
-                  folderId: j.subKey,
+                  folderId: j.parentDbId,
                   driveWebViewLink: f.webViewLink || null,
                   originalFileName: f.name || "",
                   mimeType: f.mimeType || "application/octet-stream",
@@ -188,7 +209,7 @@ async function indexCaseFolder(
               await prisma.caseDocument.create({
                 data: {
                   caseId,
-                  folderId: j.subKey,
+                  folderId: j.parentDbId,
                   documentType: docType,
                   originalFileName: f.name || "",
                   mimeType: f.mimeType || "application/octet-stream",

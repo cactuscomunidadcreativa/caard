@@ -49,12 +49,14 @@ async function getDocumentsData(userId: string, userRole: Role, centerId?: strin
           id: true,
           key: true,
           name: true,
+          parentId: true,
           driveFolderId: true,
+          sortOrder: true,
           _count: {
             select: { documents: true },
           },
         },
-        orderBy: { key: "asc" },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       },
       _count: {
         select: { documents: true },

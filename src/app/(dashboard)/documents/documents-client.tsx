@@ -104,19 +104,23 @@ interface Document {
   } | null;
 }
 
+interface CaseFolderNode {
+  id: string;
+  key: string;
+  name: string;
+  parentId: string | null;
+  driveFolderId: string | null;
+  sortOrder: number;
+  _count: { documents: number };
+}
+
 interface Case {
   id: string;
   code: string;
   title: string | null;
   status: string;
   driveFolderId: string | null;
-  folders: {
-    id: string;
-    key: string;
-    name: string;
-    driveFolderId: string | null;
-    _count: { documents: number };
-  }[];
+  folders: CaseFolderNode[];
   _count: { documents: number };
 }
 
@@ -426,7 +430,7 @@ export function DocumentsClient({
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="documents" className="space-y-4">
+      <Tabs defaultValue="cases" className="space-y-4">
         <TabsList>
           <TabsTrigger value="documents">Documentos</TabsTrigger>
           <TabsTrigger value="cases">Por Expediente</TabsTrigger>
@@ -677,26 +681,7 @@ export function DocumentsClient({
                   {caseItem.folders.length === 0 ? (
                     <p className="text-xs text-muted-foreground px-8 py-3 italic">Sin carpetas</p>
                   ) : (
-                    <div className="divide-y divide-slate-100">
-                      {caseItem.folders.map((folder) => (
-                        <details key={folder.id} className="group/folder">
-                          <summary className="cursor-pointer list-none flex items-center gap-3 px-8 py-2.5 hover:bg-white transition-colors">
-                            <svg
-                              className="h-3.5 w-3.5 text-slate-400 transition-transform group-open/folder:rotate-90 flex-shrink-0"
-                              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                            <FolderOpen className="h-4 w-4 text-[#0B2A5B]/70 flex-shrink-0" />
-                            <span className="text-sm font-medium text-[#0B2A5B] flex-1 truncate">
-                              {folder.name}
-                            </span>
-                            <Badge variant="secondary" className="text-xs">{folder._count.documents}</Badge>
-                          </summary>
-                          <FolderDocuments caseId={caseItem.id} folderId={folder.id} />
-                        </details>
-                      ))}
-                    </div>
+                    <FolderTree folders={caseItem.folders} caseId={caseItem.id} />
                   )}
                   <div className="px-8 py-2 border-t bg-white">
                     <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => window.location.href = `/cases/${caseItem.id}`}>
@@ -1065,8 +1050,142 @@ export function DocumentsClient({
   );
 }
 
+// Árbol de carpetas (respetando jerarquía parentId + orden sortOrder).
+// Todas las carpetas se muestran contraídas por defecto.
+function FolderTree({
+  folders,
+  caseId,
+}: {
+  folders: CaseFolderNode[];
+  caseId: string;
+}) {
+  // Construir tree por parentId
+  const byParent = new Map<string | null, CaseFolderNode[]>();
+  for (const f of folders) {
+    const key = f.parentId ?? null;
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key)!.push(f);
+  }
+  // Ordenar cada grupo por sortOrder (ya vienen ordenadas del server, pero doble check)
+  for (const arr of byParent.values()) {
+    arr.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+  }
+
+  const roots = byParent.get(null) || [];
+  if (roots.length === 0) {
+    // Si no hay raíces (todas las carpetas tienen parentId), considerar todas como raíces
+    return (
+      <div className="divide-y divide-slate-100">
+        {folders.map((f) => (
+          <FolderNode
+            key={f.id}
+            folder={f}
+            caseId={caseId}
+            depth={0}
+            byParent={byParent}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-slate-100">
+      {roots.map((f) => (
+        <FolderNode
+          key={f.id}
+          folder={f}
+          caseId={caseId}
+          depth={0}
+          byParent={byParent}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FolderNode({
+  folder,
+  caseId,
+  depth,
+  byParent,
+}: {
+  folder: CaseFolderNode;
+  caseId: string;
+  depth: number;
+  byParent: Map<string | null, CaseFolderNode[]>;
+}) {
+  const children = byParent.get(folder.id) || [];
+  const hasChildren = children.length > 0;
+  // Padding izquierdo escala con la profundidad (como Drive)
+  const paddingLeft = 2 + depth * 1.5; // rem
+
+  return (
+    <details className="group/folder">
+      <summary
+        className="cursor-pointer list-none flex items-center gap-3 py-2.5 pr-3 hover:bg-white transition-colors"
+        style={{ paddingLeft: `${paddingLeft}rem` }}
+      >
+        <svg
+          className="h-3.5 w-3.5 text-slate-400 transition-transform group-open/folder:rotate-90 flex-shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5l7 7-7 7"
+          />
+        </svg>
+        <FolderOpen className="h-4 w-4 text-[#0B2A5B]/70 flex-shrink-0" />
+        <span className="text-sm font-medium text-[#0B2A5B] flex-1 truncate">
+          {folder.name}
+        </span>
+        {hasChildren && (
+          <Badge variant="outline" className="text-xs">
+            {children.length} sub
+          </Badge>
+        )}
+        <Badge variant="secondary" className="text-xs">
+          {folder._count.documents}
+        </Badge>
+      </summary>
+      <div className="bg-white">
+        {/* Subcarpetas */}
+        {hasChildren && (
+          <div className="divide-y divide-slate-100">
+            {children.map((c) => (
+              <FolderNode
+                key={c.id}
+                folder={c}
+                caseId={caseId}
+                depth={depth + 1}
+                byParent={byParent}
+              />
+            ))}
+          </div>
+        )}
+        {/* Documentos de esta carpeta */}
+        {folder._count.documents > 0 && (
+          <FolderDocuments caseId={caseId} folderId={folder.id} depth={depth} />
+        )}
+      </div>
+    </details>
+  );
+}
+
 // Componente que carga documentos de una carpeta on-demand
-function FolderDocuments({ caseId, folderId }: { caseId: string; folderId: string }) {
+function FolderDocuments({
+  caseId,
+  folderId,
+  depth = 1,
+}: {
+  caseId: string;
+  folderId: string;
+  depth?: number;
+}) {
   const [docs, setDocs] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -1080,8 +1199,20 @@ function FolderDocuments({ caseId, folderId }: { caseId: string; folderId: strin
       .finally(() => setLoading(false));
   }, [caseId, folderId, docs]);
 
-  if (loading) return <p className="text-xs text-muted-foreground px-14 py-2">Cargando...</p>;
-  if (!docs || docs.length === 0) return <p className="text-xs text-muted-foreground px-14 py-2 italic">Sin documentos</p>;
+  const paddingLeft = `${3.5 + depth * 1.5}rem`;
+
+  if (loading)
+    return (
+      <p className="text-xs text-muted-foreground py-2" style={{ paddingLeft }}>
+        Cargando...
+      </p>
+    );
+  if (!docs || docs.length === 0)
+    return (
+      <p className="text-xs text-muted-foreground py-2 italic" style={{ paddingLeft }}>
+        Sin documentos
+      </p>
+    );
 
   return (
     <ul className="bg-white">
@@ -1091,7 +1222,8 @@ function FolderDocuments({ caseId, folderId }: { caseId: string; folderId: strin
             href={`/api/documents/${d.id}/view`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-14 py-2 hover:bg-[#D66829]/5 border-b border-slate-100 last:border-0 transition-colors"
+            className="flex items-center gap-2 py-2 pr-3 hover:bg-[#D66829]/5 border-b border-slate-100 last:border-0 transition-colors"
+            style={{ paddingLeft }}
           >
             <FileText className="h-3.5 w-3.5 text-[#D66829] flex-shrink-0" />
             <span className="text-xs flex-1 truncate">{d.originalFileName || d.title}</span>
