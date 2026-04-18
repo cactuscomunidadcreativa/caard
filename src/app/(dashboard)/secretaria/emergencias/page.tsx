@@ -92,30 +92,100 @@ export default function EmergenciasPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch("/api/emergency");
-        if (res.ok) {
-          const data = await res.json();
-          const items = (data.items || data.emergencies || []).map((e: any) => {
-            const requestDate = new Date(e.requestDate || e.createdAt);
-            const deadlineHours = e.deadlineHours || 24;
-            const deadlineMs = requestDate.getTime() + deadlineHours * 60 * 60 * 1000;
-            const hoursRemaining = Math.max(0, Math.ceil((deadlineMs - Date.now()) / (1000 * 60 * 60)));
-            return {
-              id: e.id,
-              caseCode: e.requestNumber || e.case?.code || e.id.slice(0, 8),
-              requestDate: e.requestDate || e.createdAt,
-              urgencyReason: e.urgencyReason || e.reason || "",
-              requestedMeasure: e.requestedMeasure || "",
-              status: e.status,
-              assignedArbitrator: e.assignedArbitrator?.name || e.arbitratorName || null,
-              deadlineHours,
-              hoursRemaining,
-              requestor: e.requestor || e.case?.claimantName || "—",
-              resolution: e.resolution,
-            };
-          });
-          setEmergencies(items);
-        }
+        const merged: Emergency[] = [];
+
+        // 1. EmergencyRequest rows (flujo formal)
+        try {
+          const res = await fetch("/api/emergency");
+          if (res.ok) {
+            const data = await res.json();
+            const items = (data.items || data.emergencies || data.data || []).map(
+              (e: any) => {
+                const requestDate = new Date(e.requestDate || e.createdAt);
+                const deadlineHours = e.deadlineHours || 24;
+                const deadlineMs =
+                  requestDate.getTime() + deadlineHours * 60 * 60 * 1000;
+                const hoursRemaining = Math.max(
+                  0,
+                  Math.ceil((deadlineMs - Date.now()) / (1000 * 60 * 60))
+                );
+                return {
+                  id: e.id,
+                  caseCode:
+                    e.requestNumber || e.case?.code || e.id.slice(0, 8),
+                  requestDate: e.requestDate || e.createdAt,
+                  urgencyReason: e.urgencyReason || e.reason || "",
+                  requestedMeasure: e.requestedMeasure || "",
+                  status: e.status,
+                  assignedArbitrator:
+                    e.assignedArbitrator?.name || e.arbitratorName || null,
+                  deadlineHours,
+                  hoursRemaining,
+                  requestor: e.requestor || e.case?.claimantName || "—",
+                  resolution: e.resolution,
+                };
+              }
+            );
+            merged.push(...items);
+          }
+        } catch {}
+
+        // 2. Cases con procedureType=EMERGENCY o código ARBEME
+        try {
+          const res2 = await fetch(
+            "/api/cases?pageSize=200&procedureType=EMERGENCY"
+          );
+          if (res2.ok) {
+            const data = await res2.json();
+            const items = (data.items || []).map((c: any) => {
+              const arbitrator = (c.members || []).find(
+                (m: any) => m.role === "ARBITRO" && m.isPrimary
+              );
+              const requestDate = new Date(c.createdAt || c.submittedAt);
+              const deadlineHours = 96; // 4 días hábiles = ~96 horas
+              const deadlineMs =
+                requestDate.getTime() + deadlineHours * 60 * 60 * 1000;
+              const hoursRemaining = Math.max(
+                0,
+                Math.ceil((deadlineMs - Date.now()) / (1000 * 60 * 60))
+              );
+              return {
+                id: `case_${c.id}`,
+                caseCode: c.code,
+                requestDate: c.createdAt || c.submittedAt,
+                urgencyReason: c.title || "Solicitud de arbitraje de emergencia",
+                requestedMeasure: "Ver expediente para detalles",
+                status:
+                  c.status === "CLOSED"
+                    ? "RESOLVED"
+                    : c.status === "IN_PROCESS"
+                    ? "IN_PROGRESS"
+                    : c.status === "ADMITTED"
+                    ? "VERIFIED"
+                    : c.status === "REJECTED"
+                    ? "REJECTED"
+                    : "PENDING_VERIFICATION",
+                assignedArbitrator: arbitrator?.displayName || null,
+                deadlineHours,
+                hoursRemaining,
+                requestor: c.claimantName || "—",
+              };
+            });
+            // Evitar duplicar si ya está como EmergencyRequest.case
+            const existingCodes = new Set(merged.map((m) => m.caseCode));
+            for (const it of items) {
+              if (!existingCodes.has(it.caseCode)) merged.push(it);
+            }
+          }
+        } catch {}
+
+        // Ordenar por fecha desc
+        merged.sort(
+          (a, b) =>
+            new Date(b.requestDate).getTime() -
+            new Date(a.requestDate).getTime()
+        );
+        setEmergencies(merged);
 
         // Fetch arbitrators for assignment
         const arbRes = await fetch("/api/cms/arbitrators?status=ACTIVE&limit=50");

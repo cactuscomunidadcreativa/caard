@@ -16,13 +16,13 @@ export async function GET(request: NextRequest) {
     }
 
     const userRole = (session.user as any).role;
-    if (!["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"].includes(userRole)) {
+    if (!["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"].includes(userRole)) {
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const limit = parseInt(searchParams.get("limit") || "200");
     const search = searchParams.get("search") || "";
     const status = searchParams.get("status") || "";
 
@@ -62,14 +62,55 @@ export async function GET(request: NextRequest) {
             image: true,
           },
         },
+        profile: {
+          select: {
+            id: true,
+            slug: true,
+            displayName: true,
+            colegiatura: true,
+            colegio: true,
+            rnaNumber: true,
+            especialidad: true,
+            availableForCases: true,
+            isPublished: true,
+          },
+        },
       },
-      orderBy: [{ status: "asc" }, { approvalDate: "desc" }],
+      orderBy: [{ status: "asc" }, { applicationDate: "desc" }],
       skip: (page - 1) * limit,
       take: limit,
     });
 
+    // Agregar conteo de casos asignados (CaseMember role=ARBITRO) + casos activos
+    const arbitratorsWithCounts = await Promise.all(
+      arbitrators.map(async (a) => {
+        const allCases = await prisma.caseMember.count({
+          where: {
+            userId: a.userId,
+            role: "ARBITRO",
+          },
+        });
+        const activeCases = await prisma.caseMember.count({
+          where: {
+            userId: a.userId,
+            role: "ARBITRO",
+            case: {
+              status: {
+                in: ["IN_PROCESS", "ADMITTED", "SUBMITTED", "UNDER_REVIEW"],
+              },
+            },
+          },
+        });
+        return {
+          ...a,
+          assignedCasesTotal: allCases,
+          assignedCasesActive: activeCases,
+        };
+      })
+    );
+
     return NextResponse.json({
-      arbitrators,
+      arbitrators: arbitratorsWithCounts,
       pagination: {
         total,
         page,

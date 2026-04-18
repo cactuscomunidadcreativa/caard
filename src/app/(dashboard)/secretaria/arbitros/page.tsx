@@ -94,23 +94,29 @@ export default function ArbitrosRegistroPage() {
   useEffect(() => {
     async function fetchArbitrators() {
       try {
-        const res = await fetch("/api/cms/arbitrators?limit=100");
+        const res = await fetch("/api/cms/arbitrators?limit=500");
         if (res.ok) {
           const data = await res.json();
           const items = (data.arbitrators || []).map((a: any) => ({
             id: a.id,
-            name: a.user?.name || "—",
+            name: a.profile?.displayName || a.user?.name || "—",
             email: a.user?.email || "—",
             phone: "",
             specialty: a.specializations || [],
             status: a.status || "ACTIVE",
             category: a.acceptsEmergency ? "EMERGENCIA" : "PRINCIPAL",
-            caseCount: a.casesCompleted || 0,
+            // Total casos asignados (activos + cerrados)
+            caseCount: a.assignedCasesTotal || 0,
+            // Casos activos
+            activeCaseCount: a.assignedCasesActive || 0,
             avgResolutionDays: 0,
             rating: 0,
-            admissionDate: a.approvalDate ? new Date(a.approvalDate).toISOString().split("T")[0] : "",
-            education: "",
-            experience: a.availabilityNotes || "",
+            admissionDate: a.applicationDate
+              ? new Date(a.applicationDate).toISOString().split("T")[0]
+              : "",
+            education: a.profile?.colegio || "",
+            experience: a.notes || "",
+            colegiatura: a.profile?.colegiatura || a.barNumber || "",
           }));
           setArbitratorsList(items);
         }

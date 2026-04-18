@@ -45,12 +45,15 @@ export async function GET(request: NextRequest) {
       search: searchParams.get("search") || undefined,
       status: searchParams.get("status") || undefined,
       arbitrationTypeId: searchParams.get("arbitrationTypeId") || undefined,
+      procedureType: searchParams.get("procedureType") || undefined,
+      scope: searchParams.get("scope") || undefined,
+      codeContains: searchParams.get("codeContains") || undefined,
       year: searchParams.get("year") ? parseInt(searchParams.get("year")!) : undefined,
       page: searchParams.get("page") ? parseInt(searchParams.get("page")!) : 1,
       pageSize: searchParams.get("pageSize") ? parseInt(searchParams.get("pageSize")!) : 20,
     });
 
-    const { search, status, arbitrationTypeId, year } = filters;
+    const { search, status, arbitrationTypeId, procedureType, scope, codeContains, year } = filters;
     const page = filters.page ?? 1;
     const pageSize = filters.pageSize ?? 20;
     const skip = (page - 1) * pageSize;
@@ -83,6 +86,18 @@ export async function GET(request: NextRequest) {
       whereClause.year = year;
     }
 
+    if (procedureType) {
+      whereClause.procedureType = procedureType;
+    }
+
+    if (scope) {
+      whereClause.scope = scope;
+    }
+
+    if (codeContains) {
+      whereClause.code = { contains: codeContains, mode: "insensitive" };
+    }
+
     if (search) {
       whereClause.OR = [
         { code: { contains: search, mode: "insensitive" } },
@@ -103,10 +118,21 @@ export async function GET(request: NextRequest) {
               name: true,
             },
           },
+          members: {
+            select: {
+              id: true,
+              role: true,
+              displayName: true,
+              email: true,
+              isPrimary: true,
+              userId: true,
+            },
+          },
           _count: {
             select: {
               documents: true,
               payments: true,
+              paymentOrders: true,
             },
           },
         },
