@@ -1152,139 +1152,17 @@ export default function CaseDetailClient({ caseData, userId, userRole }: CaseDet
                 <EmptyState text="No hay documentos cargados." />
               </CardContent>
             </Card>
-          ) : (() => {
-            // Agrupar documentos por carpeta (folderId → array)
-            const byFolder = new Map<string | null, typeof caseData.documents>();
-            for (const d of caseData.documents) {
-              const key = d.folder?.id ?? null;
-              if (!byFolder.has(key)) byFolder.set(key, []);
-              byFolder.get(key)!.push(d);
-            }
-
-            // Listar carpetas en orden: primero las que tienen docs, ordenadas por nombre
-            const foldersWithDocs = caseData.folders
-              .filter((f) => byFolder.has(f.id))
-              .sort((a, b) => a.name.localeCompare(b.name));
-            const sinCarpeta = byFolder.get(null) || [];
-
-            const DocList = ({ items }: { items: typeof caseData.documents }) => (
-              <ul className="divide-y">
-                {items.length === 0 ? (
-                  <li className="py-4 text-sm text-muted-foreground italic px-2">
-                    Sin documentos en esta carpeta
-                  </li>
-                ) : (
-                  items.map((doc) => (
-                    <li key={doc.id} className="flex items-center gap-1">
-                      <Link
-                        href={`/api/documents/${doc.id}/view`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex items-start gap-2 rounded-md px-3 py-2.5 hover:bg-[#D66829]/10 transition-colors flex-1 min-w-0"
-                      >
-                        <FileText className="h-4 w-4 mt-0.5 flex-shrink-0 text-[#D66829]" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#0B2A5B] group-hover:underline line-clamp-2">
-                            {doc.originalFileName}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {formatDate(doc.documentDate || doc.createdAt)}
-                            {doc.sizeBytes ? ` · ${formatFileSize(doc.sizeBytes)}` : ""}
-                            {doc.accessLevel && doc.accessLevel !== "ALL" && (
-                              <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-medium">
-                                {doc.accessLevel === "STAFF_ONLY" ? "🔒 Solo centro" : "👥 Staff + árbitros"}
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground mt-1" />
-                      </Link>
-                      <button
-                        onClick={() => setInfoDocId(doc.id)}
-                        className="flex-shrink-0 p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
-                        title="Información del documento"
-                      >
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </button>
-                    </li>
-                  ))
-                )}
-              </ul>
-            );
-
-            const FolderSection = ({
-              name,
-              icon,
-              items,
-              defaultOpen = true,
-            }: {
-              name: string;
-              icon?: React.ReactNode;
-              items: typeof caseData.documents;
-              defaultOpen?: boolean;
-            }) => (
-              <details
-                open={defaultOpen}
-                className="group/folder rounded-lg border border-slate-200 bg-white overflow-hidden"
-              >
-                <summary className="cursor-pointer list-none flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-[#0B2A5B] to-[#1a4185] text-white hover:from-[#0a2654] hover:to-[#163875] transition-colors">
-                  <svg
-                    className="h-4 w-4 transition-transform group-open/folder:rotate-90"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                  {icon}
-                  <span className="font-semibold tracking-wide uppercase text-sm flex-1">
-                    {name}
-                  </span>
-                  <span className="text-xs opacity-80 bg-white/10 px-2 py-0.5 rounded-full">
-                    {items.length}
-                  </span>
-                </summary>
-                <div className="p-2">
-                  <DocList items={items} />
-                </div>
-              </details>
-            );
-
-            return (
-              <div className="space-y-3">
-                {foldersWithDocs.map((folder) => (
-                  <FolderSection
-                    key={folder.id}
-                    name={folder.name}
-                    icon={
-                      <svg
-                        className="h-4 w-4"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-                      </svg>
-                    }
-                    items={byFolder.get(folder.id)!}
-                  />
-                ))}
-                {sinCarpeta.length > 0 && (
-                  <FolderSection
-                    name="Sin carpeta asignada"
-                    items={sinCarpeta}
-                    defaultOpen={false}
-                  />
-                )}
-              </div>
-            );
-          })()}
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <CaseFolderTree
+                  folders={caseData.folders as any}
+                  documents={caseData.documents as any}
+                  onOpenInfo={(id) => setInfoDocId(id)}
+                />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* ---- Tab: Escritos ---- */}
@@ -2381,4 +2259,227 @@ function EmptyState({ text }: { text: string }) {
       <p className="text-sm">{text}</p>
     </div>
   );
+}
+
+// ============== CASE FOLDER TREE ==============
+// Árbol de carpetas respetando jerarquía parentId + orden sortOrder.
+// Todo CONTRAÍDO por defecto. Carga perezosa de documentos.
+interface CaseFolderNodeData {
+  id: string;
+  name: string;
+  key?: string;
+  parentId?: string | null;
+  sortOrder?: number;
+}
+
+interface CaseDocumentData {
+  id: string;
+  originalFileName: string;
+  documentDate?: string | null;
+  createdAt: string;
+  sizeBytes?: any;
+  mimeType?: string;
+  folder?: { id: string; name: string } | null;
+  accessLevel?: string;
+  driveWebViewLink?: string | null;
+}
+
+function CaseFolderTree({
+  folders,
+  documents,
+  onOpenInfo,
+}: {
+  folders: CaseFolderNodeData[];
+  documents: CaseDocumentData[];
+  onOpenInfo: (id: string) => void;
+}) {
+  // Agrupar docs por folderId
+  const docsByFolder = new Map<string | null, CaseDocumentData[]>();
+  for (const d of documents) {
+    const k = d.folder?.id ?? null;
+    if (!docsByFolder.has(k)) docsByFolder.set(k, []);
+    docsByFolder.get(k)!.push(d);
+  }
+
+  // Agrupar folders por parentId
+  const foldersByParent = new Map<string | null, CaseFolderNodeData[]>();
+  for (const f of folders) {
+    const k = f.parentId ?? null;
+    if (!foldersByParent.has(k)) foldersByParent.set(k, []);
+    foldersByParent.get(k)!.push(f);
+  }
+  for (const arr of foldersByParent.values()) {
+    arr.sort(
+      (a, b) =>
+        ((a.sortOrder ?? 0) as number) - ((b.sortOrder ?? 0) as number) ||
+        a.name.localeCompare(b.name)
+    );
+  }
+
+  const roots = foldersByParent.get(null) || [];
+  const docsSinCarpeta = docsByFolder.get(null) || [];
+
+  return (
+    <div className="space-y-2">
+      {roots.map((f) => (
+        <CaseFolderNode
+          key={f.id}
+          folder={f}
+          depth={0}
+          foldersByParent={foldersByParent}
+          docsByFolder={docsByFolder}
+          onOpenInfo={onOpenInfo}
+        />
+      ))}
+      {docsSinCarpeta.length > 0 && (
+        <details className="rounded-lg border bg-white">
+          <summary className="cursor-pointer list-none flex items-center gap-2 px-4 py-2.5 hover:bg-slate-50">
+            <svg className="h-3.5 w-3.5 text-slate-400 transition-transform [details[open]>&]:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <svg className="h-4 w-4 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+            </svg>
+            <span className="text-sm font-medium flex-1">Sin carpeta asignada</span>
+            <Badge variant="secondary" className="text-xs">
+              {docsSinCarpeta.length}
+            </Badge>
+          </summary>
+          <div className="border-t bg-slate-50/30">
+            <CaseDocList items={docsSinCarpeta} depth={1} onOpenInfo={onOpenInfo} />
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function CaseFolderNode({
+  folder,
+  depth,
+  foldersByParent,
+  docsByFolder,
+  onOpenInfo,
+}: {
+  folder: CaseFolderNodeData;
+  depth: number;
+  foldersByParent: Map<string | null, CaseFolderNodeData[]>;
+  docsByFolder: Map<string | null, CaseDocumentData[]>;
+  onOpenInfo: (id: string) => void;
+}) {
+  const children = foldersByParent.get(folder.id) || [];
+  const docs = docsByFolder.get(folder.id) || [];
+  const hasChildren = children.length > 0;
+  const hasDocs = docs.length > 0;
+
+  // Carpeta vacía (sin children y sin docs): no renderizar
+  if (!hasChildren && !hasDocs) return null;
+
+  const paddingLeft = 0.75 + depth * 1.25; // rem
+  return (
+    <details className="rounded-lg border bg-white overflow-hidden">
+      <summary
+        className="cursor-pointer list-none flex items-center gap-2 py-2.5 pr-3 hover:bg-slate-50 transition-colors"
+        style={{ paddingLeft: `${paddingLeft}rem` }}
+      >
+        <svg
+          className="h-3.5 w-3.5 text-slate-400 flex-shrink-0 transition-transform group-open:rotate-90"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        <svg className="h-4 w-4 text-[#D66829] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+        </svg>
+        <span className="text-sm font-medium text-[#0B2A5B] flex-1 truncate">{folder.name}</span>
+        {hasChildren && (
+          <Badge variant="outline" className="text-xs">
+            {children.length} sub
+          </Badge>
+        )}
+        {hasDocs && (
+          <Badge variant="secondary" className="text-xs">
+            {docs.length}
+          </Badge>
+        )}
+      </summary>
+      <div className="border-t bg-slate-50/30">
+        {/* Subcarpetas */}
+        {children.map((c) => (
+          <CaseFolderNode
+            key={c.id}
+            folder={c}
+            depth={depth + 1}
+            foldersByParent={foldersByParent}
+            docsByFolder={docsByFolder}
+            onOpenInfo={onOpenInfo}
+          />
+        ))}
+        {/* Documentos */}
+        {hasDocs && <CaseDocList items={docs} depth={depth + 1} onOpenInfo={onOpenInfo} />}
+      </div>
+    </details>
+  );
+}
+
+function CaseDocList({
+  items,
+  depth,
+  onOpenInfo,
+}: {
+  items: CaseDocumentData[];
+  depth: number;
+  onOpenInfo: (id: string) => void;
+}) {
+  const paddingLeft = 2 + depth * 1.25; // rem
+  return (
+    <ul className="divide-y divide-slate-100">
+      {items.map((doc) => (
+        <li key={doc.id} className="flex items-center gap-1 hover:bg-[#D66829]/5 transition-colors">
+          <Link
+            href={`/api/documents/${doc.id}/view`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-start gap-2 py-2 pr-3 flex-1 min-w-0"
+            style={{ paddingLeft: `${paddingLeft}rem` }}
+          >
+            <FileText className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-[#D66829]" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-[#0B2A5B] line-clamp-1">{doc.originalFileName}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {new Date((doc.documentDate as any) || doc.createdAt).toLocaleDateString("es-PE")}
+                {doc.sizeBytes ? ` · ${formatFileSizeInline(doc.sizeBytes)}` : ""}
+                {doc.accessLevel && doc.accessLevel !== "ALL" && (
+                  <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-medium">
+                    {doc.accessLevel === "STAFF_ONLY" ? "🔒 Solo centro" : "👥 Staff + árbitros"}
+                  </span>
+                )}
+              </p>
+            </div>
+            <ExternalLink className="h-3 w-3 flex-shrink-0 text-slate-400 mt-1" />
+          </Link>
+          <button
+            onClick={() => onOpenInfo(doc.id)}
+            className="flex-shrink-0 p-1.5 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors mr-2"
+            title="Información del documento"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function formatFileSizeInline(bytes: any): string {
+  const size = Number(bytes);
+  if (isNaN(size) || size === 0) return "";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }

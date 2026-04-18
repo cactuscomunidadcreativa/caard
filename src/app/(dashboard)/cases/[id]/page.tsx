@@ -86,7 +86,7 @@ export default async function CaseDetailPage({
         },
       },
       folders: {
-        orderBy: { key: "asc" },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       },
       documents: {
         where: { status: "ACTIVE" },

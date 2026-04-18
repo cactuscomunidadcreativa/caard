@@ -120,8 +120,14 @@ export async function GET(request: NextRequest) {
       prisma.caseDocument.count({ where: whereClause }),
     ]);
 
+    // Serializar BigInt (sizeBytes) a string para que NextResponse.json no falle
+    const safeDocs = documents.map((d: any) => ({
+      ...d,
+      sizeBytes: d.sizeBytes != null ? d.sizeBytes.toString() : null,
+    }));
+
     return NextResponse.json({
-      documents,
+      documents: safeDocs,
       total,
       page,
       pageSize,

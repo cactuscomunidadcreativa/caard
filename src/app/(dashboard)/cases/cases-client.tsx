@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Plus, Search, Filter, MoreHorizontal, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -112,12 +113,23 @@ function TableSkeleton() {
 
 export function CasesClient() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParamsHook = useSearchParams();
 
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  const [arbitrationTypeId, setArbitrationTypeId] = useState("all");
-  const [page, setPage] = useState(1);
+  // Inicializar estado desde URL params (para preservar al volver atrás)
+  const [search, setSearch] = useState(() => searchParamsHook?.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(
+    () => searchParamsHook?.get("q") || ""
+  );
+  const [status, setStatus] = useState(() => searchParamsHook?.get("status") || "all");
+  const [arbitrationTypeId, setArbitrationTypeId] = useState(
+    () => searchParamsHook?.get("type") || "all"
+  );
+  const [page, setPage] = useState(() => {
+    const p = searchParamsHook?.get("page");
+    return p ? Math.max(1, parseInt(p, 10)) : 1;
+  });
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     if (typeof window === "undefined") return "grid";
     return (localStorage.getItem("cases-view") as "grid" | "list") || "grid";
@@ -125,6 +137,22 @@ export function CasesClient() {
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem("cases-view", viewMode);
   }, [viewMode]);
+
+  // Sincronizar estado → URL (shallow replace, no scroll reset)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set("q", debouncedSearch);
+    if (status !== "all") params.set("status", status);
+    if (arbitrationTypeId !== "all") params.set("type", arbitrationTypeId);
+    if (page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    const url = qs ? `${pathname}?${qs}` : pathname;
+    // Evitar replaces redundantes
+    const current = searchParamsHook?.toString() || "";
+    if (current !== qs) {
+      router.replace(url, { scroll: false });
+    }
+  }, [debouncedSearch, status, arbitrationTypeId, page, pathname, router, searchParamsHook]);
 
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [totalPages, setTotalPages] = useState(0);

@@ -244,9 +244,10 @@ export function DocumentsClient({
         setSyncProgress((prev) => {
           if (prev >= 95) {
             clearInterval(interval);
-            return prev;
+            return 95;
           }
-          return prev + Math.random() * 15;
+          // Capar en 95 para que la barra no pase de ahí hasta respuesta real
+          return Math.min(95, prev + Math.random() * 10);
         });
       }, 500);
 
@@ -302,9 +303,9 @@ export function DocumentsClient({
         setBackupProgress((prev) => {
           if (prev >= 95) {
             clearInterval(interval);
-            return prev;
+            return 95;
           }
-          return prev + Math.random() * 10;
+          return Math.min(95, prev + Math.random() * 8);
         });
       }, 500);
 
