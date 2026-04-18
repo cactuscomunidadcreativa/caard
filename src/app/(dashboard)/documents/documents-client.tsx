@@ -1190,14 +1190,25 @@ function FolderDocuments({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (docs !== null) return;
+    let cancelled = false;
+    setDocs(null);
     setLoading(true);
-    fetch(`/api/documents?caseId=${caseId}&folderId=${folderId}`)
+    fetch(`/api/documents?caseId=${caseId}&folderId=${folderId}&pageSize=500`)
       .then((r) => r.json())
-      .then((d) => setDocs(d.documents || d.items || []))
-      .catch(() => setDocs([]))
-      .finally(() => setLoading(false));
-  }, [caseId, folderId, docs]);
+      .then((d) => {
+        if (cancelled) return;
+        setDocs(d.documents || d.items || []);
+      })
+      .catch(() => {
+        if (!cancelled) setDocs([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId, folderId]);
 
   const paddingLeft = `${3.5 + depth * 1.5}rem`;
 
