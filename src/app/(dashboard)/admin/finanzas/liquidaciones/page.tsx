@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   description: "Gestión de liquidaciones de casos arbitrales",
 };
 
+// Forzar render dinámico en cada request para ver siempre la data
+// actualizada de la DB (no caché de Next).
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 async function getLiquidaciones() {
   const liquidaciones = await prisma.caseLiquidation.findMany({
     include: {
