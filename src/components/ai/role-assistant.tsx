@@ -222,6 +222,7 @@ export function RoleAssistant({
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomAnchorRef = useRef<HTMLDivElement>(null);
 
   const userRole = (session?.user as any)?.role || "DEMANDANTE";
   const config = roleConfigs[userRole] || roleConfigs.DEMANDANTE;
@@ -239,12 +240,26 @@ export function RoleAssistant({
     }
   }, [config.welcomeMessage, messages.length]);
 
-  // Scroll al final cuando hay nuevos mensajes
+  // Scroll al final cuando hay nuevos mensajes.
+  // Radix ScrollArea tiene un viewport interno con data-radix-scroll-area-viewport,
+  // no basta con setear scrollTop del wrapper.
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    // Usar un anclaje al final como target confiable
+    if (bottomAnchorRef.current) {
+      bottomAnchorRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+      return;
     }
-  }, [messages]);
+    // Fallback: buscar el viewport de Radix dentro del ScrollArea
+    const viewport = scrollRef.current?.querySelector(
+      "[data-radix-scroll-area-viewport]"
+    ) as HTMLElement | null;
+    if (viewport) {
+      viewport.scrollTop = viewport.scrollHeight;
+    }
+  }, [messages, isLoading]);
 
   // Enviar mensaje
   const handleSend = async () => {
@@ -326,7 +341,7 @@ export function RoleAssistant({
   };
 
   return (
-    <Card className="flex flex-col h-[600px]">
+    <Card className="flex flex-col h-full min-h-[500px] max-h-[calc(100vh-180px)]">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div>
@@ -420,6 +435,8 @@ export function RoleAssistant({
                 </div>
               </div>
             )}
+            {/* Anclaje para auto-scroll al final */}
+            <div ref={bottomAnchorRef} aria-hidden="true" />
           </div>
         </ScrollArea>
 
