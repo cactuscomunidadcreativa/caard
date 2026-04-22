@@ -77,7 +77,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Trash2 } from "lucide-react";
 
 // Status configuration
 const STATUS_CONFIG = {
@@ -212,6 +212,42 @@ export function FraccionamientosClient({
   const [extendDays, setExtendDays] = useState(30);
   const [extendReason, setExtendReason] = useState("");
   const [extendInstallmentId, setExtendInstallmentId] = useState<string>("ALL");
+
+  // Eliminar fraccionamiento
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<InstallmentPlan | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [forceDelete, setForceDelete] = useState(false);
+
+  const handleDelete = async () => {
+    if (!planToDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const url = `/api/payments/installments/${planToDelete.id}${
+        forceDelete ? "?force=true" : ""
+      }`;
+      const r = await fetch(url, { method: "DELETE" });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        if (d.requiresForce) {
+          setDeleteError(d.error);
+          setForceDelete(true); // habilita checkbox para confirmar
+          return;
+        }
+        throw new Error(d.error || "Error al eliminar");
+      }
+      setShowDeleteDialog(false);
+      setPlanToDelete(null);
+      setForceDelete(false);
+      router.refresh();
+    } catch (e: any) {
+      setDeleteError(e.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // Estadísticas
   const stats = {
@@ -613,6 +649,20 @@ export function FraccionamientosClient({
                                 Prorrogar
                               </Button>
                             )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 border-red-600 hover:bg-red-50"
+                              onClick={() => {
+                                setPlanToDelete(plan);
+                                setDeleteError(null);
+                                setForceDelete(false);
+                                setShowDeleteDialog(true);
+                              }}
+                              title="Eliminar fraccionamiento"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"
@@ -1178,6 +1228,103 @@ export function FraccionamientosClient({
               onClick={() => setShowSettingsDialog(false)}
             >
               Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Eliminar Fraccionamiento */}
+      <Dialog
+        open={showDeleteDialog}
+        onOpenChange={(open) => {
+          setShowDeleteDialog(open);
+          if (!open) {
+            setPlanToDelete(null);
+            setDeleteError(null);
+            setForceDelete(false);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Eliminar Fraccionamiento
+            </DialogTitle>
+            <DialogDescription>
+              Esta acción es <strong>irreversible</strong>. Se eliminarán
+              también todas las cuotas asociadas.
+            </DialogDescription>
+          </DialogHeader>
+
+          {planToDelete && (
+            <div className="space-y-2 rounded-lg border p-3 bg-muted/30 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Expediente:</span>
+                <span className="font-medium">{planToDelete.case.code}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Solicitante:</span>
+                <span className="font-medium">
+                  {planToDelete.requestedBy.name || planToDelete.requestedBy.email}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Cuotas:</span>
+                <span className="font-medium">{planToDelete.numberOfInstallments}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Monto total:</span>
+                <span className="font-medium">
+                  S/ {(planToDelete.totalAmountCents / 100).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Estado:</span>
+                <Badge variant="secondary">{planToDelete.status}</Badge>
+              </div>
+            </div>
+          )}
+
+          {deleteError && (
+            <div className="rounded bg-red-50 border border-red-200 text-red-700 p-3 text-sm">
+              {deleteError}
+            </div>
+          )}
+
+          {forceDelete && (
+            <div className="rounded bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+              <AlertTriangle className="h-4 w-4 inline mr-1" />
+              Este fraccionamiento tiene cuotas pagadas. Al eliminarlo se
+              borrarán también los registros de cuotas pagadas. Confirma
+              solo si estás seguro.
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {forceDelete ? "Eliminar igual" : "Eliminar"}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
