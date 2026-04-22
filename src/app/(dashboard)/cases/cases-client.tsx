@@ -154,6 +154,24 @@ export function CasesClient() {
     }
   }, [debouncedSearch, status, arbitrationTypeId, page, pathname, router, searchParamsHook]);
 
+  // Sincronizar URL → estado. Necesario cuando el usuario vuelve atrás con el
+  // navegador desde /cases/[id]: la URL cambia pero el componente cliente se
+  // mantiene montado (Router Cache de Next 15), entonces hay que re-leer los
+  // params y restaurar la página/filtros que el usuario tenía antes.
+  useEffect(() => {
+    const urlQ = searchParamsHook?.get("q") || "";
+    const urlStatus = searchParamsHook?.get("status") || "all";
+    const urlType = searchParamsHook?.get("type") || "all";
+    const urlPageRaw = searchParamsHook?.get("page");
+    const urlPage = urlPageRaw ? Math.max(1, parseInt(urlPageRaw, 10)) : 1;
+    if (urlQ !== search) setSearch(urlQ);
+    if (urlQ !== debouncedSearch) setDebouncedSearch(urlQ);
+    if (urlStatus !== status) setStatus(urlStatus);
+    if (urlType !== arbitrationTypeId) setArbitrationTypeId(urlType);
+    if (urlPage !== page) setPage(urlPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParamsHook]);
+
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
