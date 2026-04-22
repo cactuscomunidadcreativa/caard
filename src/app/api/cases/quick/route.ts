@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { quickCreateCaseSchema } from "@/lib/validations/case";
 import { generateCaseCode, isEmergencyArbitrationType } from "@/lib/case-code";
 import { CASE_FOLDER_STRUCTURE } from "@/config/constants";
+import { ensureCaseDriveFolders } from "@/lib/drive-case-folders";
 
 export async function POST(request: NextRequest) {
   try {
@@ -132,6 +133,9 @@ export async function POST(request: NextRequest) {
 
       return createdCase;
     });
+
+    // Crear estructura de carpetas en Google Drive (fuera de la transacción, tolerante a fallos)
+    await ensureCaseDriveFolders(newCase.id);
 
     return NextResponse.json(
       { success: true, data: newCase, message: `Expediente ${newCase.code} creado exitosamente` },

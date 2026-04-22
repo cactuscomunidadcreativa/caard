@@ -9,6 +9,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canAccessCase, hasFullAccess, requireCenterAccess } from "@/lib/case-authorization";
 import { Role } from "@prisma/client";
+import { ensureCaseDriveFolders } from "@/lib/drive-case-folders";
 
 /**
  * GET /api/cases/[id] - Obtener expediente con verificación de acceso
@@ -388,6 +389,15 @@ export async function PATCH(
       where: { id },
       data: updateData,
     });
+
+    // Si el caso entra a ADMITTED por primera vez, asegurar estructura en Drive
+    // (idempotente: si ya existe la carpeta del caso no la duplica).
+    if (
+      body.status === "ADMITTED" &&
+      (existingCase as any).status !== "ADMITTED"
+    ) {
+      await ensureCaseDriveFolders(id);
+    }
 
     // Ejecutar triggers automáticos por cambio de etapa/status
     try {

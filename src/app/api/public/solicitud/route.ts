@@ -10,6 +10,7 @@ import { createCharge, isCulqiConfigured } from "@/lib/culqi/client";
 import { CASE_FOLDER_STRUCTURE } from "@/config/constants";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 import { generateCaseCode } from "@/lib/case-code";
+import { ensureCaseDriveFolders } from "@/lib/drive-case-folders";
 
 /**
  * POST /api/public/solicitud
@@ -269,6 +270,9 @@ ${data.mediosProbatorios || "No especificados"}
 
       return createdCase;
     });
+
+    // Crear estructura de carpetas en Google Drive (fuera de la transacción, tolerante a fallos)
+    await ensureCaseDriveFolders(newCase.id);
 
     // Respuesta exitosa
     return NextResponse.json(
