@@ -297,6 +297,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             meta: { timestamp: new Date().toISOString() },
           },
         });
+
+        // Backfill: enlazar CaseMember (y cualquier otro registro con email)
+        // que aún no tengan userId pero compartan el email del usuario.
+        // Esto garantiza que casos antiguos importados de la plantilla donde
+        // la parte/árbitro figuraba solo con email aparezcan en su panel
+        // apenas el usuario se autentica por primera vez.
+        if (user.email) {
+          try {
+            const email = user.email.toLowerCase().trim();
+            await prisma.caseMember.updateMany({
+              where: { email, userId: null },
+              data: { userId: user.id },
+            });
+          } catch (e: any) {
+            console.error("backfill CaseMember.userId:", e?.message);
+          }
+        }
       }
     },
   },
