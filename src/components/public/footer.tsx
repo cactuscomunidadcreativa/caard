@@ -176,23 +176,23 @@ export function PublicFooter() {
 
       {/* Certificaciones ISO */}
       <div className="border-t border-white/10 bg-white/[0.02]">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-10">
-            <div className="text-center sm:text-right">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col items-center justify-center gap-4 text-center">
+            <div>
               <h4 className="text-sm font-semibold text-[#D66829]">
                 Certificaciones
               </h4>
-              <p className="text-xs text-white/70 mt-1 max-w-xs">
+              <p className="text-xs text-white/70 mt-1">
                 Haz clic en cada logo para descargar el certificado.
               </p>
             </div>
-            <div className="flex items-center gap-4 md:gap-6">
+            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
               <a
                 href="/iso/certificado-iso-9001-caard.pdf"
                 download="Certificado-ISO-9001-CAARD.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block bg-white rounded-lg p-2 hover:scale-105 transition-transform shadow-md"
+                className="block bg-white rounded-lg p-2 hover:scale-105 transition-transform shadow-md"
                 aria-label="Descargar Certificado ISO 9001:2015"
                 title="Descargar Certificado ISO 9001:2015"
               >
@@ -208,7 +208,7 @@ export function PublicFooter() {
                 download="Certificado-ISO-37001-CAARD.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block bg-white rounded-lg p-2 hover:scale-105 transition-transform shadow-md"
+                className="block bg-white rounded-lg p-2 hover:scale-105 transition-transform shadow-md"
                 aria-label="Descargar Certificado ISO 37001:2016"
                 title="Descargar Certificado ISO 37001:2016"
               >
