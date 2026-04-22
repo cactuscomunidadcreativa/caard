@@ -220,7 +220,7 @@ function useNavigationItems() {
       title: t.sidebar.myCase,
       href: "/parte",
       icon: UserCircle,
-      roles: ["DEMANDANTE", "DEMANDADO"],
+      roles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA", "DEMANDANTE", "DEMANDADO"],
     },
     {
       title: t.sidebar.aiAssistant,

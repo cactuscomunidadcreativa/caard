@@ -420,7 +420,7 @@ export default async function PartePage() {
 
   if (
     !user ||
-    !["SUPER_ADMIN", "ADMIN", "DEMANDANTE", "DEMANDADO"].includes(user.role)
+    !["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA", "DEMANDANTE", "DEMANDADO"].includes(user.role)
   ) {
     redirect("/dashboard");
   }
