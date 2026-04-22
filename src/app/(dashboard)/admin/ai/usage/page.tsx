@@ -135,7 +135,7 @@ export default async function AIUsagePage() {
     redirect("/login");
   }
 
-  if (session.user.role !== "SUPER_ADMIN") {
+  if (!["SUPER_ADMIN", "ADMIN"].includes(session.user.role)) {
     redirect("/dashboard");
   }
 
