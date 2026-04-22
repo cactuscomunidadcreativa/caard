@@ -8,6 +8,9 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+
+// Usa searchParams → requiere render dinámico por request.
+export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import {
   Card,
@@ -406,7 +409,11 @@ async function PartyDeadlines({ caseIds }: { caseIds: string[] }) {
   );
 }
 
-export default async function PartePage() {
+export default async function PartePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ caseId?: string }>;
+}) {
   const session = await auth();
 
   if (!session?.user) {
@@ -415,7 +422,7 @@ export default async function PartePage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true, name: true, email: true },
+    select: { role: true, name: true, email: true, centerId: true },
   });
 
   if (
@@ -425,7 +432,11 @@ export default async function PartePage() {
     redirect("/dashboard");
   }
 
-  // Obtener casos donde es parte
+  const sp = await searchParams;
+  const staffRoles = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"];
+  const isStaffPreview = staffRoles.includes(user.role);
+
+  // Obtener casos donde es parte (vista normal de demandante/demandado)
   const memberCases = await prisma.caseMember.findMany({
     where: {
       userId: session.user.id,
@@ -436,8 +447,33 @@ export default async function PartePage() {
     },
   });
 
-  const cases = memberCases.map((m) => m.case);
-  const caseIds = cases.map((c) => c.id);
+  let cases = memberCases.map((m) => m.case);
+  let caseIds = cases.map((c) => c.id);
+  let previewCaseCode: string | null = null;
+
+  // MODO PREVIEW: si es staff/admin y no tiene casos propios (o pasa ?caseId=X),
+  // mostrar un caso específico como si fuera parte (para soporte/QA).
+  if (isStaffPreview && sp.caseId) {
+    const previewed = await prisma.case.findUnique({
+      where: { id: sp.caseId },
+      select: { id: true, code: true, title: true, status: true, currentStage: true },
+    });
+    if (previewed) {
+      cases = [previewed as any];
+      caseIds = [previewed.id];
+      previewCaseCode = previewed.code;
+    }
+  }
+
+  // Lista de casos disponibles para que el staff elija (solo en preview mode)
+  const availableCases = isStaffPreview
+    ? await prisma.case.findMany({
+        where: user.centerId ? { centerId: user.centerId } : {},
+        select: { id: true, code: true, title: true, status: true },
+        orderBy: [{ year: "desc" }, { sequence: "desc" }],
+        take: 50,
+      })
+    : [];
 
   // Contar pagos pendientes
   const pendingPaymentsCount = await prisma.paymentOrder.count({
@@ -447,10 +483,67 @@ export default async function PartePage() {
     },
   });
 
-  const roleLabel = user.role === "DEMANDANTE" ? "Demandante" : "Demandado";
+  const roleLabel =
+    user.role === "DEMANDANTE"
+      ? "Demandante"
+      : user.role === "DEMANDADO"
+        ? "Demandado"
+        : "Modo Admin (vista de parte)";
 
   return (
     <div className="space-y-8">
+      {/* Banner de preview para staff */}
+      {isStaffPreview && (
+        <Card className="border-blue-300 bg-blue-50 dark:bg-blue-950/20">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-4 flex-wrap">
+              <div className="flex-1 min-w-[240px]">
+                <p className="font-semibold text-blue-900 dark:text-blue-300">
+                  Vista de parte (modo admin)
+                </p>
+                <p className="text-sm text-blue-800 dark:text-blue-400">
+                  {previewCaseCode
+                    ? <>Previsualizando el panel del expediente <strong>{previewCaseCode}</strong> como lo vería una parte.</>
+                    : "Selecciona un expediente para previsualizar su panel como lo vería una parte. Útil para soporte, QA o acompañamiento."}
+                </p>
+              </div>
+              <form action="/parte" method="get" className="flex items-center gap-2 flex-wrap">
+                <label className="text-sm text-blue-900 dark:text-blue-300">
+                  Caso:
+                </label>
+                <select
+                  name="caseId"
+                  defaultValue={sp.caseId || ""}
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm min-w-[260px]"
+                >
+                  <option value="">— Selecciona expediente —</option>
+                  {availableCases.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code}
+                      {c.title ? ` — ${c.title.slice(0, 60)}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="h-9 px-4 rounded-md bg-[#D66829] text-white text-sm hover:bg-[#c45a22]"
+                >
+                  Previsualizar
+                </button>
+                {sp.caseId && (
+                  <a
+                    href="/parte"
+                    className="h-9 inline-flex items-center px-3 rounded-md border text-sm"
+                  >
+                    Limpiar
+                  </a>
+                )}
+              </form>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Bienvenido a CAARD</h1>
