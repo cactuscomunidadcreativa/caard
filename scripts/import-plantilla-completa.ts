@@ -512,8 +512,22 @@ async function main() {
         const driveId = normStr(r.carpeta_drive_id);
 
         const isEmergency = tipoProc === "EMERGENCY" || /ARBEME/i.test(code);
-        const typeId = isEmergency ? emergencyType.id : defaultType.id;
-        const currency = isEmergency ? defaultType.currency : moneda;
+        const isIntl = ambito === "INTERNACIONAL";
+        // Elegir el tipo correcto según emergencia + ámbito
+        const intlDefault =
+          arbTypes.find((t) => t.code === "SOLICITUD_INTERNACIONAL") ||
+          defaultType;
+        const intlEmergency =
+          arbTypes.find((t) => t.code === "EMERGENCIA_INTERNACIONAL") ||
+          emergencyType;
+        const typeId = isEmergency
+          ? isIntl
+            ? intlEmergency.id
+            : emergencyType.id
+          : isIntl
+            ? intlDefault.id
+            : defaultType.id;
+        const currency = moneda;
 
         const data: any = {
           title: title || code,
@@ -551,7 +565,12 @@ async function main() {
         try {
           const existingId = caseByCode.get(key);
           if (existingId) {
-            await prisma.case.update({ where: { id: existingId }, data });
+            // En UPDATE también corregir arbitrationTypeId para que
+            // no queden casos con tipo incorrecto de migraciones previas.
+            await prisma.case.update({
+              where: { id: existingId },
+              data: { ...data, arbitrationTypeId: typeId },
+            });
             caseByCode.set(key, existingId);
             updated++;
           } else {
