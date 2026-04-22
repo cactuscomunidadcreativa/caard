@@ -337,6 +337,56 @@ export function WebsiteFooter({ config }: WebsiteFooterProps) {
           </div>
         </div>
 
+        {/* Certificaciones ISO */}
+        <div className="border-t border-white/10 bg-white/[0.02]">
+          <div className="container mx-auto px-4 py-6">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 md:gap-10">
+              <div className="text-center sm:text-right">
+                <h4 className="text-sm font-semibold text-[#D66829]">
+                  Certificaciones
+                </h4>
+                <p className="text-xs text-white/70 mt-1 max-w-xs">
+                  Haz clic en cada logo para descargar el certificado.
+                </p>
+              </div>
+              <div className="flex items-center gap-4 md:gap-6">
+                <a
+                  href="/iso/certificado-iso-9001-caard.pdf"
+                  download="Certificado-ISO-9001-CAARD.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-white rounded-lg p-2 hover:scale-105 transition-transform shadow-md"
+                  aria-label="Descargar Certificado ISO 9001:2015"
+                  title="Descargar Certificado ISO 9001:2015"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/iso/iso-9001.jpg"
+                    alt="Certificación ISO 9001:2015 - QFS Management Systems"
+                    className="h-20 md:h-24 w-auto object-contain"
+                  />
+                </a>
+                <a
+                  href="/iso/certificado-iso-37001-caard.pdf"
+                  download="Certificado-ISO-37001-CAARD.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-white rounded-lg p-2 hover:scale-105 transition-transform shadow-md"
+                  aria-label="Descargar Certificado ISO 37001:2016"
+                  title="Descargar Certificado ISO 37001:2016"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/iso/iso-37001.jpg"
+                    alt="Certificación ISO 37001:2016 - QFS Management Systems"
+                    className="h-20 md:h-24 w-auto object-contain"
+                  />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Bottom Bar */}
         <div className="border-t border-white/10">
           <div className="container mx-auto px-4">
