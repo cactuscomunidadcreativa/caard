@@ -19,6 +19,7 @@ declare module "next-auth" {
       id: string;
       role: Role;
       centerId: string | null;
+      perms?: string[];
     } & DefaultSession["user"];
   }
 
@@ -205,6 +206,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
 
+      // Calcular permisos efectivos (defaults del rol + overrides del usuario).
+      // Se refresca en el primer login y en cada update manual de sesión.
+      if (token?.id && (user || trigger === "update" || !token.perms)) {
+        try {
+          const { computeEffectivePermissions } = await import("./permissions");
+          token.perms = await computeEffectivePermissions(
+            token.id as string,
+            token.role as Role
+          );
+        } catch (e) {
+          // Si falla el cálculo, dejar sin perms — los helpers caen a defaults del rol
+          console.error("computeEffectivePermissions failed:", e);
+        }
+      }
+
       return token;
     },
 
@@ -214,6 +230,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
         session.user.centerId = token.centerId as string | null;
+        // Permisos efectivos (suma defaults del rol + overrides del usuario)
+        (session.user as any).perms = (token.perms as string[] | undefined) || [];
         // Asegurar que name/image reflejan la DB
         if (token.name) session.user.name = token.name as string;
         if (token.picture) session.user.image = token.picture as string;

@@ -386,11 +386,40 @@ model User {
   emailVerified        DateTime?  // Fecha de verificación del email
   emailVerificationToken String?  // Token temporal para verificación
 
+  // Permisos otorgados/revocados específicamente a este usuario
+  // (suma o resta al default del rol).
+  permissionOverrides UserPermissionOverride[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([centerId])
   @@index([role])
+}
+
+//
+// PERMISOS GRANULARES — overrides por usuario
+// La matriz de defaults por rol vive en src/lib/permissions.ts.
+// Este modelo sólo guarda las excepciones: otorgar un permiso extra,
+// revocar uno que vendría por default, con vencimiento opcional y auditoría.
+//
+model UserPermissionOverride {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  permission String    // ej. "cases.delete"
+  granted    Boolean   // true = suma; false = revoca
+  reason     String?
+  expiresAt  DateTime? // null = permanente
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, permission])
+  @@index([userId])
+  @@index([permission])
 }
 
 model Account {

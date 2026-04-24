@@ -6,27 +6,27 @@
  *   para confirmar (evita borrar accidentalmente pagos ya realizados).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PERMISSIONS } from "@/lib/permissions";
+import {
+  requireAuthWithPermission,
+  authErrorResponse,
+} from "@/lib/require-permission";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
 export async function DELETE(request: NextRequest, { params }: Props) {
+  let session;
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    const allowedRoles = ["SUPER_ADMIN", "ADMIN", "SECRETARIA"];
-    if (!allowedRoles.includes(session.user.role)) {
-      return NextResponse.json(
-        { error: "Sin permisos para eliminar fraccionamientos" },
-        { status: 403 }
-      );
-    }
+    session = await requireAuthWithPermission(PERMISSIONS.INSTALLMENTS_DELETE);
+  } catch (e) {
+    const r = authErrorResponse(e);
+    if (r) return r;
+    throw e;
+  }
+  try {
 
     const { id } = await params;
     const { searchParams } = new URL(request.url);
