@@ -6,7 +6,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { getCmsPage } from "@/lib/cms";
-import { SectionRenderer } from "@/components/cms/section-renderer";
 import {
   Users,
   Award,
@@ -83,20 +82,33 @@ const funciones = [
 ];
 
 export default async function ConsejoSuperiorPage() {
-  const { page, hasCmsContent } = await getCmsPage("consejo-superior");
+  const { page } = await getCmsPage("consejo-superior");
 
-  // Si hay contenido CMS, renderizarlo
-  if (hasCmsContent && page) {
-    return (
-      <>
-        {page.sections.map((section) => (
-          <SectionRenderer key={section.id} section={section} />
-        ))}
-      </>
-    );
-  }
+  // Leer miembros del CMS (editable desde /admin/cms/team). Sección TEAM
+  // con content.members[]. Si no hay CMS, usa fallback.
+  const teamSection = page?.sections?.find(
+    (s: any) => s.type === "TEAM"
+  ) as any;
+  const cmsMembers = (teamSection?.content?.members || []) as any[];
+  const miembrosList =
+    cmsMembers.length > 0
+      ? cmsMembers.map((m, i) => ({
+          id: i + 1,
+          name: m.name,
+          role: m.role,
+          description: m.bio || m.description || "",
+          initials:
+            m.name
+              ?.split(" ")
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((p: string) => p[0])
+              .join("")
+              .toUpperCase() || "—",
+          photoUrl: m.photoUrl,
+        }))
+      : miembros;
 
-  // Fallback: Contenido estático
   return (
     <>
       {/* Hero */}
@@ -132,7 +144,7 @@ export default async function ConsejoSuperiorPage() {
           </div>
 
           <div className="max-w-5xl mx-auto space-y-8">
-            {miembros.map((miembro, index) => (
+            {miembrosList.map((miembro: any, index: number) => (
               <Card key={index} className="border-0 shadow-xl overflow-hidden">
                 <div className="grid md:grid-cols-4">
                   {/* Imagen placeholder */}

@@ -6,7 +6,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { getCmsPage } from "@/lib/cms";
-import { SectionRenderer } from "@/components/cms/section-renderer";
 import {
   MapPin,
   Phone,
@@ -28,7 +27,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const sedes = [
+// Fallback por si CMS no tiene datos todavía
+const SEDES_FALLBACK = [
   {
     id: "lima-principal",
     name: "Sede Principal - Lima",
@@ -40,7 +40,8 @@ const sedes = [
     email: "administracion@caardpe.com",
     hours: "Lun - Vie: 9:00 AM - 6:00 PM",
     isPrincipal: true,
-    mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3900.994881693088!2d-77.00280508561677!3d-12.116899991418692!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x9105c7e21e1eef5b%3A0x8d59d36d8ff7eb3!2sJr.%20Paramonga%20311%2C%20Santiago%20de%20Surco%2015039!5e0!3m2!1sen!2spe!4v1706800000000!5m2!1sen!2spe",
+    mapUrl:
+      "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3900.994881693088!2d-77.00280508561677!3d-12.116899991418692!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x9105c7e21e1eef5b%3A0x8d59d36d8ff7eb3!2sJr.%20Paramonga%20311%2C%20Santiago%20de%20Surco%2015039!5e0!3m2!1sen!2spe!4v1706800000000!5m2!1sen!2spe",
     googleMapsLink: "https://goo.gl/maps/xxxxx",
     services: [
       "Recepción de solicitudes de arbitraje",
@@ -53,20 +54,18 @@ const sedes = [
 ];
 
 export default async function SedesPage() {
-  const { page, hasCmsContent } = await getCmsPage("sedes");
+  const { page } = await getCmsPage("sedes");
 
-  // Si hay contenido CMS, renderizarlo
-  if (hasCmsContent && page) {
-    return (
-      <>
-        {page.sections.map((section) => (
-          <SectionRenderer key={section.id} section={section} />
-        ))}
-      </>
-    );
-  }
+  // Leer CARDS del CMS (gestionado desde /admin/cms/locations).
+  // Cada card puede traer: name, address, district, city, country, phone,
+  // email, hours, isPrincipal, services[], mapUrl, googleMapsLink.
+  const cmsCards = page?.sections
+    ?.filter((s: any) => s.type === "CARDS")
+    .flatMap((s: any) => (s.content?.cards || []) as any[]);
 
-  // Fallback: Contenido estático
+  const sedes =
+    cmsCards && cmsCards.length > 0 ? cmsCards : SEDES_FALLBACK;
+
   return (
     <>
         {/* Hero */}
@@ -194,7 +193,7 @@ export default async function SedesPage() {
                         Servicios Disponibles
                       </h3>
                       <ul className="space-y-3">
-                        {sede.services.map((service, idx) => (
+                        {sede.services.map((service: string, idx: number) => (
                           <li key={idx} className="flex items-start gap-3">
                             <div className="w-6 h-6 rounded-full bg-[#D66829] flex items-center justify-center shrink-0 mt-0.5">
                               <span className="text-white text-xs font-bold">{idx + 1}</span>

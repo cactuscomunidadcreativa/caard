@@ -6,7 +6,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { getCmsPage } from "@/lib/cms";
-import { SectionRenderer } from "@/components/cms/section-renderer";
 import {
   Users,
   Briefcase,
@@ -125,20 +124,20 @@ const procesoContratacion = [
 ];
 
 export default async function ServiciosAdHocPage() {
-  const { page, hasCmsContent } = await getCmsPage("servicios-ad-hoc");
+  const { page } = await getCmsPage("servicios-ad-hoc");
 
-  // Si hay contenido CMS, renderizarlo
-  if (hasCmsContent && page) {
-    return (
-      <>
-        {page.sections.map((section) => (
-          <SectionRenderer key={section.id} section={section} />
-        ))}
-      </>
-    );
-  }
+  // Leer CARDS del CMS (editable desde /admin/cms/services). Si la sección
+  // "Nuestros servicios" tiene cards, sobreescriben el hardcoded.
+  const cmsServiciosSection = page?.sections?.find(
+    (s: any) => s.type === "CARDS"
+  ) as any;
+  const cmsServicios = cmsServiciosSection?.content?.cards as any[] | undefined;
 
-  // Fallback: Contenido estático
+  // Mantenemos los otros dos arrays (ventajas, proceso) hardcodeados por
+  // ahora: son contenido poco volátil. Se pueden migrar al CMS si se
+  // requiere. Si el CMS provee servicios, usamos esos; sino el fallback.
+  const serviciosList = cmsServicios && cmsServicios.length > 0 ? cmsServicios : servicios;
+
   return (
     <>
       {/* Hero */}
@@ -237,7 +236,7 @@ export default async function ServiciosAdHocPage() {
           </div>
 
           <div className="grid gap-8 md:grid-cols-2 max-w-5xl mx-auto">
-            {servicios.map((servicio, index) => (
+            {serviciosList.map((servicio: any, index: number) => (
               <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
                 <CardHeader>
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#D66829] to-[#c45a22] flex items-center justify-center mb-4">
@@ -250,7 +249,7 @@ export default async function ServiciosAdHocPage() {
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
-                    {servicio.features.map((feature, idx) => (
+                    {servicio.features.map((feature: string, idx: number) => (
                       <li key={idx} className="flex items-start gap-2 text-sm text-slate-600">
                         <CheckCircle className="h-4 w-4 text-[#D66829] shrink-0 mt-0.5" />
                         {feature}
