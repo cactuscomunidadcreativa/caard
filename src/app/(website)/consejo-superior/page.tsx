@@ -6,6 +6,8 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import { getCmsPage } from "@/lib/cms";
+
+export const dynamic = "force-dynamic";
 import {
   Users,
   Award,

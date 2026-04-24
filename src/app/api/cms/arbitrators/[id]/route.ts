@@ -59,8 +59,14 @@ export async function PUT(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const userRole = (session.user as any).role;
-    if (!["SUPER_ADMIN", "ADMIN"].includes(userRole)) {
+    // Se permite a quien tenga arbitrators.update o arbitrators.approve
+    const { hasAnyPermission } = await import("@/lib/permissions");
+    if (
+      !hasAnyPermission(session.user as any, [
+        "arbitrators.update",
+        "arbitrators.approve",
+      ])
+    ) {
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
     }
 

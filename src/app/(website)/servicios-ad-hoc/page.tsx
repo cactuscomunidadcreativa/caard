@@ -22,6 +22,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+// Render dinámico: depende del contenido CMS que cambia desde admin.
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const { page } = await getCmsPage("servicios-ad-hoc");
   return {
@@ -240,7 +243,12 @@ export default async function ServiciosAdHocPage() {
               <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
                 <CardHeader>
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#D66829] to-[#c45a22] flex items-center justify-center mb-4">
-                    <servicio.icon className="h-7 w-7 text-white" />
+                    {/* Soporta iconos de lucide como componente (fallback) o no-icon desde CMS */}
+                    {typeof servicio.icon === "function" ? (
+                      <servicio.icon className="h-7 w-7 text-white" />
+                    ) : (
+                      <Briefcase className="h-7 w-7 text-white" />
+                    )}
                   </div>
                   <CardTitle className="text-xl">{servicio.title}</CardTitle>
                   <CardDescription className="text-base">
@@ -249,7 +257,7 @@ export default async function ServiciosAdHocPage() {
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
-                    {servicio.features.map((feature: string, idx: number) => (
+                    {(servicio.features || []).map((feature: string, idx: number) => (
                       <li key={idx} className="flex items-start gap-2 text-sm text-slate-600">
                         <CheckCircle className="h-4 w-4 text-[#D66829] shrink-0 mt-0.5" />
                         {feature}

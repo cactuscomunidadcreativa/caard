@@ -71,8 +71,12 @@ interface ArbitratorItem {
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   ACTIVE: { label: "Activo", variant: "default" },
   SUSPENDED: { label: "Suspendido", variant: "destructive" },
+  SANCTIONED: { label: "Sancionado", variant: "destructive" },
+  RETIRED: { label: "Retirado", variant: "outline" },
+  REJECTED: { label: "Rechazado", variant: "destructive" },
   INACTIVE: { label: "Inactivo", variant: "outline" },
   PENDING: { label: "Pendiente", variant: "secondary" },
+  PENDING_APPROVAL: { label: "Pendiente aprobación", variant: "secondary" },
 };
 
 const categoryConfig: Record<string, { label: string; color: string }> = {
@@ -329,7 +333,7 @@ export default function ArbitrosRegistroPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-wrap">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -340,9 +344,77 @@ export default function ArbitrosRegistroPage() {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      {arbitrator.status === "PENDING_APPROVAL" && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-green-700 border-green-600 hover:bg-green-50"
+                            onClick={async () => {
+                              await fetch(`/api/cms/arbitrators/${arbitrator.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ status: "ACTIVE" }),
+                              });
+                              location.reload();
+                            }}
+                          >
+                            Aprobar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-700 border-red-600 hover:bg-red-50"
+                            onClick={async () => {
+                              if (!confirm(`¿Rechazar a ${arbitrator.name}?`)) return;
+                              await fetch(`/api/cms/arbitrators/${arbitrator.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ status: "REJECTED" }),
+                              });
+                              location.reload();
+                            }}
+                          >
+                            Rechazar
+                          </Button>
+                        </>
+                      )}
+                      {arbitrator.status === "ACTIVE" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-orange-600"
+                          title="Suspender"
+                          onClick={async () => {
+                            if (!confirm(`¿Suspender a ${arbitrator.name}?`)) return;
+                            await fetch(`/api/cms/arbitrators/${arbitrator.id}`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ status: "SUSPENDED" }),
+                            });
+                            location.reload();
+                          }}
+                        >
+                          Suspender
+                        </Button>
+                      )}
+                      {arbitrator.status === "SUSPENDED" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-green-700"
+                          onClick={async () => {
+                            await fetch(`/api/cms/arbitrators/${arbitrator.id}`, {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ status: "ACTIVE" }),
+                            });
+                            location.reload();
+                          }}
+                        >
+                          Reactivar
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
