@@ -137,8 +137,17 @@ export async function POST(request: NextRequest) {
     // Crear estructura de carpetas en Google Drive (fuera de la transacción, tolerante a fallos)
     await ensureCaseDriveFolders(newCase.id);
 
+    // Serializar BigInt antes de responder para que JSON.stringify no falle
+    const safeCase = {
+      ...newCase,
+      disputeAmountCents: (newCase as any).disputeAmountCents?.toString() ?? null,
+      centerFeeCents: (newCase as any).centerFeeCents?.toString() ?? null,
+      taxCents: (newCase as any).taxCents?.toString() ?? null,
+      totalAdminFeeCents: (newCase as any).totalAdminFeeCents?.toString() ?? null,
+    };
+
     return NextResponse.json(
-      { success: true, data: newCase, message: `Expediente ${newCase.code} creado exitosamente` },
+      { success: true, data: safeCase, message: `Expediente ${newCase.code} creado exitosamente` },
       { status: 201 }
     );
   } catch (error: any) {

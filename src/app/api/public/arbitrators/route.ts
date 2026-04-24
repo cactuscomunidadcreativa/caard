@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true,
-            email: true,
+            // email omitido: era un PII leak en endpoint público
             image: true,
           },
         },

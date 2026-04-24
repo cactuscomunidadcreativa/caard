@@ -48,6 +48,7 @@ import { Label } from "@/components/ui/label";
 import { Carousel, CarouselSlide } from "./carousel";
 import { CmsButton, ButtonConfig } from "./button-editor";
 import { DynamicForm, FormConfig } from "./form-builder";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 interface CmsSection {
   id: string;
@@ -256,7 +257,7 @@ function TextSection({ section, paddingClass, bgStyle }: any) {
         {content.html && (
           <div
             className={`prose prose-lg max-w-none ${isDark ? "prose-invert" : "prose-slate"} prose-headings:text-[#D66829] prose-a:text-[#D66829] prose-strong:text-[#0B2A5B]`}
-            dangerouslySetInnerHTML={{ __html: content.html }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.html) }}
           />
         )}
       </div>
@@ -1614,7 +1615,7 @@ function SplitContentSection({ section, paddingClass, bgStyle }: any) {
             {content.text && (
               <div
                 className={`prose prose-lg max-w-none mb-8 ${isDark ? "prose-invert" : "prose-slate"}`}
-                dangerouslySetInnerHTML={{ __html: content.text }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.text) }}
               />
             )}
 

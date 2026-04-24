@@ -78,12 +78,13 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Redirigir con mensaje de exito
+    // Redirigir con mensaje de éxito. No incluimos ningún detalle del token
+    // en la URL — antes había un `token=received|missing` que quedaba en
+    // logs de servidor, historial del navegador y cabecera Referer. Si el
+    // refresh token falta, lo exponemos como flag semántico sin PII.
+    const statusFlag = tokens.refreshToken ? "connected" : "connected_no_refresh";
     return NextResponse.redirect(
-      new URL(
-        `/admin/integrations?success=connected&token=${tokens.refreshToken ? "received" : "missing"}`,
-        request.url
-      )
+      new URL(`/admin/integrations?success=${statusFlag}`, request.url)
     );
   } catch (error) {
     console.error("Error in Google callback:", error);

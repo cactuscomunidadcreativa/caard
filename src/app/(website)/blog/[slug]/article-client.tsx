@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface Article {
@@ -283,7 +284,7 @@ export function ArticleClient({ data }: ArticleClientProps) {
                       prose-ul:my-4 prose-li:text-slate-600
                       prose-blockquote:border-l-[#D66829] prose-blockquote:bg-slate-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:italic
                       prose-img:rounded-lg prose-img:shadow-lg"
-                    dangerouslySetInnerHTML={{ __html: article.content }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.content) }}
                   />
 
                   {/* Tags */}

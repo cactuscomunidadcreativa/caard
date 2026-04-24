@@ -35,6 +35,27 @@ export async function GET(
     if (!rec) {
       return NextResponse.json({ error: "Recusación no encontrada" }, { status: 404 });
     }
+
+    // Chequeo de acceso: solo personal del centro, el árbitro recusado,
+    // el solicitante o miembros del caso pueden ver la recusación.
+    const role = session.user.role;
+    const isStaff = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(role);
+    const isSameCenter = session.user.centerId === rec.case.centerId;
+    const isAffectedArbitrator = rec.arbitrator.user?.id === session.user.id;
+    const isRequester = rec.requesterId === session.user.id;
+    let isCaseMember = false;
+    if (!isStaff && !isAffectedArbitrator && !isRequester) {
+      const member = await prisma.caseMember.findFirst({
+        where: { caseId: rec.caseId, userId: session.user.id },
+      });
+      isCaseMember = !!member;
+    }
+    if (!((isStaff && isSameCenter) || isAffectedArbitrator || isRequester || isCaseMember)) {
+      return NextResponse.json(
+        { error: "Sin permiso para ver esta recusación" },
+        { status: 403 }
+      );
+    }
     return NextResponse.json({ recusation: rec });
   } catch (e: any) {
     return NextResponse.json(

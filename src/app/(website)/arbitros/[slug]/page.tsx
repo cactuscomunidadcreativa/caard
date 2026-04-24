@@ -8,6 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import {
   ArrowLeft,
   Briefcase,
@@ -217,7 +218,7 @@ export default async function ArbitratorProfilePage({ params }: PageProps) {
                     </h2>
                     <div
                       className="prose prose-sm max-w-none text-muted-foreground"
-                      dangerouslySetInnerHTML={{ __html: profile.biography }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(profile.biography) }}
                     />
                   </CardContent>
                 </Card>
