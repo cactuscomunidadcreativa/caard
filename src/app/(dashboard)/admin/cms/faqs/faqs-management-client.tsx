@@ -389,7 +389,16 @@ export function FAQsManagementClient({
                         </div>
                       ) : (
                         <Accordion type="single" collapsible className="w-full">
-                          {items.map((faq, index) => (
+                          {items.map((rawFaq: any, index) => {
+                            // Normalizar: algunas secciones antiguas guardaron
+                            // {title, content} en vez de {question, answer}.
+                            const faq: FAQ = {
+                              question: rawFaq.question || rawFaq.title || "",
+                              answer: rawFaq.answer || rawFaq.content || "",
+                              category: rawFaq.category,
+                              order: rawFaq.order,
+                            };
+                            return (
                             <AccordionItem
                               key={index}
                               value={`faq-${index}`}
@@ -399,7 +408,7 @@ export function FAQsManagementClient({
                                 <AccordionTrigger className="flex-1 text-left hover:no-underline">
                                   <div className="flex items-center gap-2">
                                     <span className="text-sm font-medium">
-                                      {faq.question}
+                                      {faq.question || "(sin pregunta)"}
                                     </span>
                                     {faq.category && (
                                       <Badge
@@ -472,7 +481,7 @@ export function FAQsManagementClient({
                                         </AlertDialogTitle>
                                         <AlertDialogDescription>
                                           Esta acción eliminará la pregunta "
-                                          {faq.question.slice(0, 50)}..."
+                                          {(faq.question || "").slice(0, 50)}..."
                                         </AlertDialogDescription>
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
@@ -498,11 +507,12 @@ export function FAQsManagementClient({
                               </div>
                               <AccordionContent>
                                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                  {faq.answer}
+                                  {faq.answer || "(sin respuesta)"}
                                 </p>
                               </AccordionContent>
                             </AccordionItem>
-                          ))}
+                            );
+                          })}
                         </Accordion>
                       )}
                     </CardContent>

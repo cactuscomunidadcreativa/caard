@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 async function getLocationsSections() {
   // Buscar la página de sedes y páginas con secciones de tipo CARDS para ubicaciones
-  const pages = await prisma.cmsPage.findMany({
+  let pages = await prisma.cmsPage.findMany({
     where: {
       OR: [
         { slug: "sedes" },
@@ -47,6 +47,52 @@ async function getLocationsSections() {
     },
     orderBy: { title: "asc" },
   });
+
+  // Auto-seed: si la página "sedes" existe pero no tiene ninguna sección
+  // CARDS, creamos una vacía para que el admin pueda empezar a agregar sedes
+  // desde esta pantalla sin tener que ir a /admin/cms/pages primero.
+  const sedesPage = pages.find((p) => p.slug === "sedes");
+  if (sedesPage && !sedesPage.sections.some((s) => s.type === "CARDS")) {
+    try {
+      await prisma.cmsSection.create({
+        data: {
+          pageId: sedesPage.id,
+          type: "CARDS",
+          title: "Sedes",
+          subtitle: "Nuestras oficinas",
+          content: { cards: [] },
+          sortOrder: sedesPage.sections.length,
+          isVisible: true,
+        },
+      });
+      // Re-consultar después del insert
+      pages = await prisma.cmsPage.findMany({
+        where: {
+          OR: [
+            { slug: "sedes" },
+            { slug: "contacto" },
+            {
+              sections: {
+                some: {
+                  type: "CARDS",
+                  title: { contains: "sede", mode: "insensitive" },
+                },
+              },
+            },
+          ],
+        },
+        include: {
+          sections: {
+            where: { OR: [{ type: "CARDS" }, { type: "EMBED" }] },
+            orderBy: { sortOrder: "asc" },
+          },
+        },
+        orderBy: { title: "asc" },
+      });
+    } catch (e) {
+      console.error("Auto-seed sedes CARDS failed:", e);
+    }
+  }
 
   return pages;
 }

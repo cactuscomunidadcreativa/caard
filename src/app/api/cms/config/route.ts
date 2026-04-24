@@ -86,7 +86,12 @@ function mapToDbFields(data: z.infer<typeof configSchema>) {
     whatsappNumber: data.whatsapp,
     contactEmail: data.email,
     contactPhone: data.phone,
-    contactAddress: data.address ? `${data.address}, ${data.city}, ${data.country}` : undefined,
+    // Guardar address tal cual (city y country quedan en extendedConfig).
+    // Antes concatenábamos "address, city, country" y al releer el valor
+    // volvía a meterse en el campo address del form, provocando
+    // duplicaciones "Lima, Lima, Perú, Lima, Perú" cada vez que se
+    // guardaba y el texto parecía no cambiar.
+    contactAddress: data.address,
     defaultMetaTitle: data.metaTitle,
     defaultMetaDescription: data.metaDescription,
     footerText: data.footerText,
