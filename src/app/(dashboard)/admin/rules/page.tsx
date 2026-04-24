@@ -71,9 +71,22 @@ const categoryConfig: Record<string, { label: string; color: string; icon: any }
 };
 
 export default function RulesConfigPage() {
+  // IMPORTANTE: TODOS los hooks deben declararse antes de cualquier return
+  // condicional, de lo contrario React Hooks Rules se rompen y tiramos
+  // un client-side exception en producción.
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRule, setSelectedRule] = useState<Rule | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Edición inline de plazos
+  const [editingPlazo, setEditingPlazo] = useState<string | null>(null);
+  const [editDias, setEditDias] = useState("");
+  const [editAccion, setEditAccion] = useState("");
+  const [savingPlazo, setSavingPlazo] = useState(false);
 
   useEffect(() => {
     async function fetchRules() {
@@ -102,10 +115,6 @@ export default function RulesConfigPage() {
     }
     fetchRules();
   }, []);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showNewDialog, setShowNewDialog] = useState(false);
-  const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState("");
 
   const filteredRules = rules.filter(rule => {
     const matchesCategory = filterCategory === "all" || rule.category === filterCategory;
@@ -134,12 +143,6 @@ export default function RulesConfigPage() {
       </div>
     );
   }
-
-  // Edición inline de plazos
-  const [editingPlazo, setEditingPlazo] = useState<string | null>(null);
-  const [editDias, setEditDias] = useState("");
-  const [editAccion, setEditAccion] = useState("");
-  const [savingPlazo, setSavingPlazo] = useState(false);
 
   async function handleSavePlazo(key: string, dias: number, accion: string) {
     setSavingPlazo(true);
