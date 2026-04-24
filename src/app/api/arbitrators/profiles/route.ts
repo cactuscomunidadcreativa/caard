@@ -63,19 +63,35 @@ export async function GET(request: NextRequest) {
       include: {
         registry: {
           select: {
+            id: true,
             status: true,
             specializations: true,
-            casesCompleted: true,
-            casesAssigned: true,
             acceptsEmergency: true,
-            user: { select: { name: true, image: true } },
+            user: { select: { id: true, name: true, image: true } },
           },
         },
       },
       orderBy: { displayName: "asc" },
     });
 
-    return NextResponse.json({ items: profiles });
+    // Inyectar stats reales (no usamos los campos manuales del registry)
+    const { getArbitratorStats } = await import("@/lib/arbitrator-stats");
+    const items = await Promise.all(
+      profiles.map(async (pr) => {
+        const stats = await getArbitratorStats({ registryId: pr.registry.id });
+        return {
+          ...pr,
+          registry: {
+            ...pr.registry,
+            casesCompleted: stats.closedCases,
+            casesAssigned: stats.totalCases,
+            casesInProgress: stats.activeCases,
+          },
+        };
+      })
+    );
+
+    return NextResponse.json({ items });
   } catch (error) {
     console.error("Error fetching profiles:", error);
     return NextResponse.json({ error: "Error al obtener perfiles" }, { status: 500 });

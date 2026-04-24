@@ -66,26 +66,31 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: [
-        { casesCompleted: "desc" },
         { approvalDate: "asc" },
       ],
       skip: (page - 1) * limit,
       take: limit,
     });
 
-    // Formatear respuesta (ocultar información sensible)
-    const publicArbitrators = arbitrators.map((arb) => ({
-      id: arb.id,
-      name: arb.user.name,
-      image: arb.user.image,
-      specializations: arb.specializations,
-      barAssociation: arb.barAssociation,
-      // Estadísticas públicas
-      casesCompleted: arb.casesCompleted,
-      acceptsEmergency: arb.acceptsEmergency,
-      // Fecha de incorporación
-      memberSince: arb.approvalDate,
-    }));
+    // Stats reales desde CaseMember (no desde el campo manual del registry)
+    const { getArbitratorStats } = await import("@/lib/arbitrator-stats");
+    const publicArbitrators = await Promise.all(
+      arbitrators.map(async (arb) => {
+        const stats = await getArbitratorStats({ registryId: arb.id });
+        return {
+          id: arb.id,
+          name: arb.user.name,
+          image: arb.user.image,
+          specializations: arb.specializations,
+          barAssociation: arb.barAssociation,
+          // Estadísticas públicas REALES (no el campo manual)
+          casesCompleted: stats.closedCases,
+          casesActive: stats.activeCases,
+          acceptsEmergency: arb.acceptsEmergency,
+          memberSince: arb.approvalDate,
+        };
+      })
+    );
 
     return NextResponse.json({
       arbitrators: publicArbitrators,

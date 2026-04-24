@@ -54,10 +54,9 @@ async function getArbitratorProfile(slug: string) {
     include: {
       registry: {
         select: {
+          id: true,
+          userId: true,
           specializations: true,
-          casesAssigned: true,
-          casesCompleted: true,
-          casesInProgress: true,
           status: true,
           approvalDate: true,
         },
@@ -66,7 +65,23 @@ async function getArbitratorProfile(slug: string) {
   });
 
   if (!profile || !profile.isPublished) return null;
-  return profile;
+
+  // Stats calculadas en tiempo real desde CaseMember/EmergencyRequest —
+  // reemplaza los campos manuales casesAssigned/Completed/InProgress
+  const { getArbitratorStats, mergeCaardAndManualProcesses } = await import(
+    "@/lib/arbitrator-stats"
+  );
+  const stats = await getArbitratorStats({ registryId: profile.registry.id });
+  const processesHistory = await mergeCaardAndManualProcesses(
+    profile.registry.userId,
+    profile.processesHistory
+  );
+
+  return {
+    ...profile,
+    stats,
+    processesHistory,
+  };
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -149,10 +164,10 @@ export default async function ArbitratorProfilePage({ params }: PageProps) {
                       <span>{profile.yearsExperience} años de experiencia</span>
                     </div>
                   )}
-                  {profile.registry.casesCompleted > 0 && (
+                  {profile.stats.closedCases > 0 && (
                     <div className="flex items-center gap-2 bg-white/10 rounded-full px-4 py-2 text-sm">
                       <Scale className="h-4 w-4" />
-                      <span>{profile.registry.casesCompleted} casos resueltos</span>
+                      <span>{profile.stats.closedCases} casos resueltos</span>
                     </div>
                   )}
                   {profile.laudosCount > 0 && (
@@ -382,7 +397,7 @@ export default async function ArbitratorProfilePage({ params }: PageProps) {
                         Casos completados
                       </span>
                       <span className="font-bold text-[#0B2A5B]">
-                        {profile.registry.casesCompleted}
+                        {profile.stats.closedCases}
                       </span>
                     </div>
                     {profile.laudosCount > 0 && (

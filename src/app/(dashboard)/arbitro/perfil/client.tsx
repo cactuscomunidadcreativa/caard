@@ -748,15 +748,35 @@ function ProcessesEditor({
         <p className="text-sm text-muted-foreground italic">Sin procesos registrados</p>
       )}
       {list.map((p, i) => (
-        <div key={i} className="rounded-lg border p-3 bg-muted/20 space-y-2">
+        <div
+          key={i}
+          className={`rounded-lg border p-3 space-y-2 ${
+            p.isCaardCase ? "bg-blue-50 border-blue-200" : "bg-muted/20"
+          }`}
+        >
+          {p.isCaardCase && (
+            <div className="flex items-center gap-2 text-xs font-medium text-blue-700 mb-1">
+              <Badge className="bg-blue-100 text-blue-800">CAARD</Badge>
+              Proceso auto-sincronizado desde el sistema (no editable).
+            </div>
+          )}
           <div className="grid md:grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">N° Expediente</Label>
-              <Input value={p.expedienteNumber || ""} onChange={(e) => update(i, "expedienteNumber", e.target.value)} />
+              <Input
+                value={p.expedienteNumber || ""}
+                onChange={(e) => update(i, "expedienteNumber", e.target.value)}
+                disabled={!!p.isCaardCase}
+              />
             </div>
             <div>
               <Label className="text-xs">Centro / Institución</Label>
-              <Input value={p.centerName || ""} onChange={(e) => update(i, "centerName", e.target.value)} placeholder="CAARD, OSCE, CCL..." />
+              <Input
+                value={p.centerName || ""}
+                onChange={(e) => update(i, "centerName", e.target.value)}
+                placeholder="CAARD, OSCE, CCL..."
+                disabled={!!p.isCaardCase}
+              />
             </div>
             <div>
               <Label className="text-xs">Rol</Label>
@@ -809,10 +829,12 @@ function ProcessesEditor({
               <Input value={p.lawyers || ""} onChange={(e) => update(i, "lawyers", e.target.value)} placeholder="Separados por coma" />
             </div>
           </div>
-          <Button size="sm" variant="ghost" onClick={() => remove(i)} className="text-red-600">
-            <Trash2 className="h-3 w-3 mr-1" />
-            Quitar proceso
-          </Button>
+          {!p.isCaardCase && (
+            <Button size="sm" variant="ghost" onClick={() => remove(i)} className="text-red-600">
+              <Trash2 className="h-3 w-3 mr-1" />
+              Quitar proceso
+            </Button>
+          )}
         </div>
       ))}
       <Button variant="outline" onClick={add}>

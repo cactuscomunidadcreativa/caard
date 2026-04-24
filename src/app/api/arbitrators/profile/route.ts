@@ -32,11 +32,14 @@ async function getOrCreateProfile(userId: string) {
 
   if (!registry) {
     if (!user.centerId) return null;
+    // NUEVO: los nuevos registros entran como PENDING_APPROVAL y requieren
+    // que secretaría/admin los active. Antes quedaban ACTIVE automáticamente
+    // lo que saltaba el flujo de validación del Consejo Superior.
     registry = await prisma.arbitratorRegistry.create({
       data: {
         userId,
         centerId: user.centerId,
-        status: "ACTIVE",
+        status: "PENDING_APPROVAL",
       },
       include: { profile: true },
     });
@@ -81,13 +84,30 @@ export async function GET(_req: NextRequest) {
       );
     }
 
+    // Fusionar processesHistory con los casos reales de CAARD.
+    // Los casos de CAARD son autoritativos (no editables); los externos se
+    // añaden debajo y el árbitro puede gestionarlos libremente.
+    const { mergeCaardAndManualProcesses, getArbitratorStats } = await import(
+      "@/lib/arbitrator-stats"
+    );
+    const mergedHistory = await mergeCaardAndManualProcesses(
+      session.user.id,
+      result.profile.processesHistory
+    );
+    const stats = await getArbitratorStats({ registryId: result.registry.id });
+
     return NextResponse.json({
-      profile: result.profile,
+      profile: {
+        ...result.profile,
+        processesHistory: mergedHistory,
+      },
       registry: {
         id: result.registry.id,
         status: result.registry.status,
         barNumber: result.registry.barNumber,
         barAssociation: result.registry.barAssociation,
+        // Stats reales (sirven al árbitro para ver su volumen sin contar manualmente)
+        stats,
       },
     });
   } catch (e: any) {
@@ -148,6 +168,14 @@ export async function PATCH(req: NextRequest) {
     const data: any = {};
     for (const key of Object.keys(body)) {
       if (allowed[key]) data[key] = body[key];
+    }
+
+    // Al persistir processesHistory, filtrar los casos de CAARD (se calculan
+    // en tiempo real). Sólo guardamos los externos que el árbitro agregó manualmente.
+    if (Array.isArray(data.processesHistory)) {
+      data.processesHistory = data.processesHistory.filter(
+        (p: any) => !p?.isCaardCase
+      );
     }
 
     const updated = await prisma.arbitratorProfile.update({
