@@ -31,11 +31,31 @@ const PROTECTED_SUPER_ADMINS = new Set([
 
 function normEmail(e: any): string | null {
   if (!e) return null;
-  const s = String(e).trim().toLowerCase();
+  // Limpiar comillas envolventes (Excel a veces encierra celdas multilínea
+  // con " que terminan pegadas al primer email).
+  let s = String(e).trim().toLowerCase();
+  s = s.replace(/^["'\s]+|["'\s]+$/g, "");
   if (!s) return null;
-  // Si viene con varios emails separados por espacio/coma, tomar el primero
-  const first = s.split(/[\s,;]+/).filter(Boolean)[0] || null;
-  return first && first.includes("@") ? first : null;
+  // Partir por cualquier separador de emails múltiples: espacios, \n, \r, coma,
+  // punto y coma, pipe. Luego filtrar los que tengan @ y devolver el primero.
+  const candidates = s
+    .split(/[\s,;|]+/)
+    .map((c) => c.replace(/^["'<>]+|["'<>]+$/g, ""))
+    .filter((c) => c && c.includes("@") && /^[^@]+@[^@]+\.[^@]+$/.test(c));
+  return candidates[0] || null;
+}
+
+// Retorna TODOS los emails válidos presentes en una celda (útil para registrar
+// el primario como principal y archivar los secundarios en notas).
+function allEmails(e: any): string[] {
+  if (!e) return [];
+  let s = String(e).trim().toLowerCase();
+  s = s.replace(/^["'\s]+|["'\s]+$/g, "");
+  if (!s) return [];
+  return s
+    .split(/[\s,;|]+/)
+    .map((c) => c.replace(/^["'<>]+|["'<>]+$/g, ""))
+    .filter((c) => c && c.includes("@") && /^[^@]+@[^@]+\.[^@]+$/.test(c));
 }
 
 function normStr(s: any): string | null {
