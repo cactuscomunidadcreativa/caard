@@ -9,6 +9,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { AIProvider } from "@prisma/client";
+import { hasPermission } from "@/lib/permissions";
 
 const providers = ["OPENAI", "ANTHROPIC", "GOOGLE", "AZURE_OPENAI", "CUSTOM"] as const;
 
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    if (session.user.role !== "SUPER_ADMIN") {
+    if (!hasPermission(session.user as any, "ai.admin")) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 

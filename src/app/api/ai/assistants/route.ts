@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { hasPermission } from "@/lib/permissions";
 
 const createAssistantSchema = z.object({
   name: z.string().min(1).max(100),
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Solo SUPER_ADMIN puede crear asistentes
-    if (session.user.role !== "SUPER_ADMIN") {
+    if (!hasPermission(session.user as any, "ai.admin")) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 

@@ -10,6 +10,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { Role } from "@prisma/client";
+import { hasPermission } from "@/lib/permissions";
 
 const updateAssistantSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -95,7 +96,7 @@ export async function PUT(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    if (session.user.role !== "SUPER_ADMIN") {
+    if (!hasPermission(session.user as any, "ai.admin")) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
@@ -212,7 +213,7 @@ export async function DELETE(
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    if (session.user.role !== "SUPER_ADMIN") {
+    if (!hasPermission(session.user as any, "ai.admin")) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
