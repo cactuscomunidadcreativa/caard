@@ -20,7 +20,17 @@ import {
   Shield,
   Building2,
   Loader2,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Role } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
@@ -151,6 +161,50 @@ export function UsersTable({ initialUsers, initialTotal, centers, isSuperAdmin }
     e.preventDefault();
     setPage(1);
     fetchUsers();
+  };
+
+  // Estado para el dialog de eliminación permanente
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [forceDelete, setForceDelete] = useState(false);
+  const [deleteRelations, setDeleteRelations] = useState<{
+    caseMemberships?: number;
+    lawyerCases?: number;
+    documents?: number;
+    arbitratorRegistry?: number;
+  } | null>(null);
+
+  const handleHardDelete = async () => {
+    if (!userToDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const url = `/api/admin/users/${userToDelete.id}?hard=true${forceDelete ? "&force=true" : ""}`;
+      const r = await fetch(url, { method: "DELETE" });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        if (d.requiresForce && d.relations) {
+          setDeleteRelations(d.relations);
+          setForceDelete(true);
+          setDeleteError(d.error);
+          return;
+        }
+        throw new Error(d.error || "Error al eliminar");
+      }
+      toast({
+        title: "Usuario eliminado permanentemente",
+        description: `${userToDelete.name || userToDelete.email} fue removido del sistema.`,
+      });
+      setUserToDelete(null);
+      setForceDelete(false);
+      setDeleteRelations(null);
+      fetchUsers();
+    } catch (e: any) {
+      setDeleteError(e.message);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleToggleStatus = async (user: User) => {
@@ -343,6 +397,19 @@ export function UsersTable({ initialUsers, initialTotal, centers, isSuperAdmin }
                               </>
                             )}
                           </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setUserToDelete(user);
+                              setDeleteError(null);
+                              setForceDelete(false);
+                              setDeleteRelations(null);
+                            }}
+                            className="text-red-600 focus:text-red-700 focus:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar permanentemente
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -394,6 +461,101 @@ export function UsersTable({ initialUsers, initialTotal, centers, isSuperAdmin }
           }}
         />
       )}
+
+      {/* Dialog de eliminación permanente */}
+      <Dialog
+        open={!!userToDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            setUserToDelete(null);
+            setDeleteError(null);
+            setForceDelete(false);
+            setDeleteRelations(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Eliminar usuario permanentemente
+            </DialogTitle>
+            <DialogDescription>
+              Esta acción es <strong>irreversible</strong>. El usuario será
+              removido del sistema y no podrá iniciar sesión.
+            </DialogDescription>
+          </DialogHeader>
+
+          {userToDelete && (
+            <div className="space-y-2 rounded-lg border p-3 bg-muted/30 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Nombre:</span>
+                <span className="font-medium">{userToDelete.name || "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Email:</span>
+                <span className="font-medium">{userToDelete.email}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Rol:</span>
+                <Badge variant="secondary">{userToDelete.role}</Badge>
+              </div>
+            </div>
+          )}
+
+          {deleteRelations && (
+            <div className="rounded bg-yellow-50 border border-yellow-300 p-3 text-sm text-yellow-900">
+              <p className="font-semibold flex items-center gap-1 mb-2">
+                <AlertTriangle className="h-4 w-4" />
+                Tiene datos asociados
+              </p>
+              <ul className="list-disc ml-5 space-y-0.5 text-xs">
+                {deleteRelations.caseMemberships ? (
+                  <li>{deleteRelations.caseMemberships} membresías de caso</li>
+                ) : null}
+                {deleteRelations.lawyerCases ? (
+                  <li>{deleteRelations.lawyerCases} representaciones como abogado</li>
+                ) : null}
+                {deleteRelations.documents ? (
+                  <li>{deleteRelations.documents} documentos subidos</li>
+                ) : null}
+                {deleteRelations.arbitratorRegistry ? (
+                  <li>Registro de árbitro</li>
+                ) : null}
+              </ul>
+              <p className="mt-2 text-xs">
+                El historial de los casos se conserva sin nombre. Confirma que
+                quieres eliminar igual.
+              </p>
+            </div>
+          )}
+
+          {deleteError && !deleteRelations && (
+            <div className="rounded bg-red-50 border border-red-200 text-red-700 p-3 text-sm">
+              {deleteError}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUserToDelete(null)} disabled={deleting}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleHardDelete} disabled={deleting}>
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {forceDelete ? "Eliminar igual" : "Eliminar"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

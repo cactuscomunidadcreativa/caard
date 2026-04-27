@@ -209,24 +209,119 @@ export async function DELETE(
 
     // No permitir eliminar el propio usuario
     if (id === session.user.id) {
-      return NextResponse.json({ error: "No puedes desactivar tu propia cuenta" }, { status: 400 });
+      return NextResponse.json({ error: "No puedes eliminar tu propia cuenta" }, { status: 400 });
     }
 
     const existingUser = await prisma.user.findUnique({
       where: { id },
+      include: {
+        _count: {
+          select: {
+            caseMemberships: true,
+            lawyerCases: true,
+            documents: true,
+          },
+        },
+        arbitratorRegistry: { select: { id: true } },
+      },
     });
 
     if (!existingUser) {
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
-    // Soft delete: desactivar usuario
+    // Modo HARD delete: ?hard=true → borrado permanente
+    const url = new URL(request.url);
+    const hardDelete = url.searchParams.get("hard") === "true";
+
+    if (hardDelete) {
+      // Verificar que no sea otro SUPER_ADMIN protegido
+      if (
+        existingUser.email === "eduardo@cactuscomunidadcreativa.com" ||
+        existingUser.email === "sis@caardpe.com"
+      ) {
+        return NextResponse.json(
+          { error: "No se pueden eliminar SUPER_ADMINs del sistema" },
+          { status: 400 }
+        );
+      }
+
+      // Si tiene relaciones críticas, exigir ?force=true
+      const force = url.searchParams.get("force") === "true";
+      const hasRelations =
+        existingUser._count.caseMemberships > 0 ||
+        existingUser._count.lawyerCases > 0 ||
+        existingUser._count.documents > 0;
+
+      if (hasRelations && !force) {
+        return NextResponse.json(
+          {
+            error: "Usuario tiene datos asociados (casos, documentos). Usa force=true para eliminar igual.",
+            relations: {
+              ...existingUser._count,
+              arbitratorRegistry: existingUser.arbitratorRegistry ? 1 : 0,
+            },
+            requiresForce: true,
+          },
+          { status: 409 }
+        );
+      }
+
+      // Eliminar referencias en orden (Prisma cascade hace lo suyo en relaciones que tienen onDelete: Cascade,
+      // pero hay que limpiar las que tienen SetNull o no tienen cascade)
+      await prisma.$transaction(
+        async (tx) => {
+          // CaseMember: dejar la fila pero quitar userId (preserva el histórico del caso)
+          await tx.caseMember.updateMany({ where: { userId: id }, data: { userId: null } });
+          // CaseDocument: lo mismo (preserva el documento, quita el autor)
+          await tx.caseDocument.updateMany({ where: { uploadedById: id }, data: { uploadedById: null as any } }).catch(() => {});
+          // AuditLogs: nullable userId
+          await tx.auditLog.updateMany({ where: { userId: id }, data: { userId: null } }).catch(() => {});
+          // Borrar relaciones cascade
+          await tx.account.deleteMany({ where: { userId: id } });
+          await tx.session.deleteMany({ where: { userId: id } });
+          await tx.otpToken.deleteMany({ where: { userId: id } });
+          await tx.notification.deleteMany({ where: { userId: id } });
+          await tx.userPermissionOverride.deleteMany({ where: { userId: id } });
+          // ArbitratorRegistry tiene cascade, pero por seguridad:
+          await tx.arbitratorRegistry.deleteMany({ where: { userId: id } });
+          // CaseLawyer tiene cascade
+          await tx.caseLawyer.deleteMany({ where: { lawyerId: id } });
+          // Borrar el user
+          await tx.user.delete({ where: { id } });
+
+          // Audit (sin userId porque ya no existe; dejamos solo entityId + meta)
+          await tx.auditLog.create({
+            data: {
+              userId: session.user.id,
+              action: "DELETE",
+              entity: "User",
+              entityId: id,
+              meta: {
+                operation: "HARD_DELETE",
+                email: existingUser.email,
+                name: existingUser.name,
+                forced: force,
+                relationsHadAtTime: {
+                  ...existingUser._count,
+                  arbitratorRegistry: existingUser.arbitratorRegistry ? 1 : 0,
+                },
+              },
+            },
+          });
+        },
+        { timeout: 30000, maxWait: 5000 }
+      );
+
+      return NextResponse.json({ success: true, mode: "hard", message: "Usuario eliminado permanentemente" });
+    }
+
+    // Soft delete (default): desactivar usuario
     await prisma.user.update({
       where: { id },
       data: { isActive: false },
     });
 
-    // Log de auditoría
     await prisma.auditLog.create({
       data: {
         userId: session.user.id,
@@ -237,9 +332,12 @@ export async function DELETE(
       },
     });
 
-    return NextResponse.json({ success: true, message: "Usuario desactivado correctamente" });
-  } catch (error) {
-    console.error("Error al desactivar usuario:", error);
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    return NextResponse.json({ success: true, mode: "soft", message: "Usuario desactivado correctamente" });
+  } catch (error: any) {
+    console.error("Error eliminando usuario:", error);
+    return NextResponse.json(
+      { error: error?.message || "Error interno del servidor" },
+      { status: 500 }
+    );
   }
 }
