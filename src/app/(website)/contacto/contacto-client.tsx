@@ -26,6 +26,13 @@ export function ContactoClient() {
 
   const contactInfo = [
     {
+      icon: Building2,
+      title: "Información general",
+      email: "info@caardpe.com",
+      phone: "+51 913 755 003",
+      description: "Consultas generales, información sobre el centro y nuestros servicios.",
+    },
+    {
       icon: Users,
       title: t.website.generalSecretary,
       name: "Anaís Boluarte Oneto",
@@ -147,7 +154,7 @@ export function ContactoClient() {
                 <CardContent className="space-y-4">
                   <div className="rounded-xl overflow-hidden bg-slate-100 aspect-video relative">
                     <iframe
-                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3900.994881693088!2d-77.00280508561677!3d-12.116899991418692!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x9105c7e21e1eef5b%3A0x8d59d36d8ff7eb3!2sJr.%20Paramonga%20311%2C%20Santiago%20de%20Surco%2015039!5e0!3m2!1sen!2spe!4v1706800000000!5m2!1sen!2spe"
+                      src="https://www.google.com/maps?q=Jr.%20Aldebar%C3%A1n%20596%2C%20Santiago%20de%20Surco%2C%20Lima%2C%20Per%C3%BA&output=embed"
                       width="100%"
                       height="100%"
                       style={{ border: 0, position: "absolute", inset: 0 }}
@@ -161,7 +168,8 @@ export function ContactoClient() {
                     <div>
                       <p className="font-medium text-slate-900">Lima</p>
                       <p className="text-slate-600">
-                        Jr. Paramonga 311, Oficina 702<br />
+                        Jr. Aldebarán No. 596, Oficina 1409<br />
+                        Edificio IQ Surco<br />
                         Santiago de Surco, Lima - Perú
                       </p>
                     </div>

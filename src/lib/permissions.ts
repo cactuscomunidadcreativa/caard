@@ -398,8 +398,15 @@ export function hasPermission(
   permission: Permission | string
 ): boolean {
   if (!user) return false;
-  // Si el token trae permisos calculados, usarlos
-  const effective = user.perms ?? defaultsForRole(user.role);
+  // SUPER_ADMIN siempre puede todo, independientemente de los perms calculados.
+  // Esto blinda el sistema contra JWTs antiguos que no tienen perms[] cargado.
+  if (user.role === "SUPER_ADMIN") return true;
+  // Si el token trae permisos calculados (incluso vacío), úsalos.
+  // Si vienen como undefined, caemos al default del rol.
+  const effective =
+    user.perms !== undefined && user.perms.length > 0
+      ? user.perms
+      : defaultsForRole(user.role);
   if (effective.includes("*")) return true;
   return effective.includes(permission);
 }

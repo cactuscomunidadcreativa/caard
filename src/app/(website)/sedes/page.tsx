@@ -34,17 +34,18 @@ const SEDES_FALLBACK = [
   {
     id: "lima-principal",
     name: "Sede Principal - Lima",
-    address: "Jr. Paramonga 311, Oficina 702",
+    address: "Jr. Aldebarán No. 596, Oficina 1409, Edificio IQ Surco",
     district: "Santiago de Surco",
     city: "Lima",
     country: "Perú",
     phone: "+51 913 755 003",
-    email: "administracion@caardpe.com",
+    email: "info@caardpe.com",
     hours: "Lun - Vie: 9:00 AM - 6:00 PM",
     isPrincipal: true,
     mapUrl:
-      "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3900.994881693088!2d-77.00280508561677!3d-12.116899991418692!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x9105c7e21e1eef5b%3A0x8d59d36d8ff7eb3!2sJr.%20Paramonga%20311%2C%20Santiago%20de%20Surco%2015039!5e0!3m2!1sen!2spe!4v1706800000000!5m2!1sen!2spe",
-    googleMapsLink: "https://goo.gl/maps/xxxxx",
+      "https://www.google.com/maps?q=Jr.%20Aldebar%C3%A1n%20596%2C%20Santiago%20de%20Surco%2C%20Lima%2C%20Per%C3%BA&output=embed",
+    googleMapsLink:
+      "https://www.google.com/maps?q=Jr.+Aldebar%C3%A1n+596%2C+Santiago+de+Surco%2C+Lima%2C+Per%C3%BA",
     services: [
       "Recepción de solicitudes de arbitraje",
       "Audiencias presenciales y virtuales",

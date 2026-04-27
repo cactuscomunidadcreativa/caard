@@ -266,7 +266,7 @@ export function PaymentPageClient({ paymentData }: PaymentPageClientProps) {
                 </a>
                 <p className="flex items-start gap-2 text-slate-600">
                   <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
-                  Jr Paramonga 311, oficina 702, Santiago de Surco
+                  Jr. Aldebarán No. 596, Oficina 1409, Edificio IQ Surco, Santiago de Surco
                 </p>
               </div>
             </div>

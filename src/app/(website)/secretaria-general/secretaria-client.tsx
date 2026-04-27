@@ -219,7 +219,8 @@ export function SecretariaGeneralClient() {
                   <div>
                     <h3 className="font-bold text-slate-900 mb-3">{t.website.inPersonFilingOffice}</h3>
                     <p className="text-slate-600 mb-4">
-                      Jr. Paramonga 311, Oficina 702<br />
+                      Jr. Aldebarán No. 596, Oficina 1409<br />
+                      Edificio IQ Surco<br />
                       Santiago de Surco, Lima
                     </p>
                     <p className="text-sm text-slate-500">

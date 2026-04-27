@@ -137,7 +137,8 @@ export function PublicFooter() {
               <li className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-[#D66829] shrink-0 mt-0.5" />
                 <span className="text-sm text-white/80">
-                  Jr. Paramonga 311, Oficina 702<br />
+                  Jr. Aldebarán No. 596, Oficina 1409<br />
+                  Edificio IQ Surco<br />
                   Santiago de Surco, Lima
                 </span>
               </li>
@@ -218,6 +219,26 @@ export function PublicFooter() {
                   alt="Certificación ISO 37001:2016 - QFS Management Systems"
                   className="h-20 md:h-24 w-auto object-contain"
                 />
+              </a>
+              {/* Licencia Municipal de Funcionamiento */}
+              <a
+                href="/iso/licencia-municipal-funcionamiento-caard.pdf"
+                download="Licencia-Municipal-Funcionamiento-CAARD.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center justify-center bg-white rounded-lg p-3 hover:scale-105 transition-transform shadow-md text-center min-w-[160px] h-20 md:h-24 border-2 border-[#D66829]"
+                aria-label="Descargar Licencia Municipal de Funcionamiento"
+                title="Descargar Licencia Municipal de Funcionamiento"
+              >
+                <div className="text-[10px] uppercase tracking-wider text-[#D66829] font-bold leading-tight">
+                  Licencia Municipal
+                </div>
+                <div className="text-xs font-semibold text-[#0B2A5B] leading-tight mt-0.5">
+                  de Funcionamiento
+                </div>
+                <div className="text-[9px] text-slate-600 mt-0.5">
+                  Santiago de Surco
+                </div>
               </a>
             </div>
           </div>
