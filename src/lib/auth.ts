@@ -244,6 +244,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider !== "credentials" && user.email) {
         const normalizedEmail = user.email.toLowerCase().trim();
 
+        // PROTECCIÓN ANTI-CROSS-LINKING:
+        // Si ya existe un Account (provider, providerAccountId) y está
+        // ligado a un User con un email DIFERENTE al que viene en este
+        // OAuth callback, bloqueamos el login para evitar que un usuario
+        // termine entrando como otro (caso real: cuentas que se linkean
+        // accidentalmente cuando un usuario tiene varias sesiones de
+        // Google en el mismo navegador).
+        if (account?.providerAccountId) {
+          const existingAccount = await prisma.account.findUnique({
+            where: {
+              provider_providerAccountId: {
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+              },
+            },
+            include: { user: { select: { email: true, id: true } } },
+          });
+          if (
+            existingAccount?.user?.email &&
+            existingAccount.user.email.toLowerCase().trim() !== normalizedEmail
+          ) {
+            console.error(
+              "[signIn] cross-link detectado:",
+              `OAuth email=${normalizedEmail} pero Account está ligado a User=${existingAccount.user.email}`
+            );
+            return false; // Bloquear login
+          }
+        }
+
         // Buscar case-insensitive (Google puede devolver mayúsculas mixtas)
         let existingUser = await prisma.user.findUnique({
           where: { email: normalizedEmail },
