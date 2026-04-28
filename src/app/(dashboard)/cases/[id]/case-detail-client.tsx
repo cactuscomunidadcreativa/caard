@@ -36,7 +36,7 @@ import {
 import { EscritosSection } from "./escritos-section";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -856,6 +856,32 @@ export default function CaseDetailClient({ caseData, userId, userRole }: CaseDet
             <Send className="h-4 w-4" />
             Escritos
           </TabsTrigger>
+          <TabsTrigger value="ordenes-procesales" className="gap-1.5">
+            <FileText className="h-4 w-4" />
+            Órdenes Procesales
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+              {
+                caseData.documents.filter((d: any) =>
+                  /orden\s*procesal|orden_procesal|providencia/i.test(
+                    d.documentType || ""
+                  )
+                ).length
+              }
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="razon-secretaria" className="gap-1.5">
+            <StickyNote className="h-4 w-4" />
+            Razón de Secretaría
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+              {
+                caseData.documents.filter((d: any) =>
+                  /raz[oó]n\s*de\s*secretar|razon_secretaria/i.test(
+                    d.documentType || ""
+                  )
+                ).length
+              }
+            </Badge>
+          </TabsTrigger>
           <TabsTrigger value="pagos" className="gap-1.5">
             <CreditCard className="h-4 w-4" />
             Pagos
@@ -1185,6 +1211,140 @@ export default function CaseDetailClient({ caseData, userId, userRole }: CaseDet
               )
             }
           />
+        </TabsContent>
+
+        {/* ---- Tab: Órdenes Procesales ---- */}
+        <TabsContent value="ordenes-procesales">
+          <Card>
+            <CardHeader>
+              <CardTitle>Órdenes Procesales</CardTitle>
+              <CardDescription>
+                Documentos del tribunal con resoluciones, providencias y
+                órdenes procesales emitidas en el expediente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const ordenes = caseData.documents.filter((d: any) =>
+                  /orden\s*procesal|orden_procesal|providencia|resoluci/i.test(
+                    d.documentType || ""
+                  )
+                );
+                if (ordenes.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>Sin órdenes procesales registradas en este expediente.</p>
+                      <p className="text-xs mt-2">
+                        Las órdenes se crean al subir un documento marcado como
+                        tipo "Orden Procesal", "Providencia" o "Resolución".
+                      </p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-2">
+                    {ordenes.map((d: any) => (
+                      <div
+                        key={d.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {d.originalFileName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {d.documentType} ·{" "}
+                              {new Date(d.createdAt).toLocaleDateString("es-PE")}
+                            </p>
+                          </div>
+                        </div>
+                        {d.driveWebViewLink && (
+                          <a
+                            href={d.driveWebViewLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#D66829] text-sm hover:underline whitespace-nowrap"
+                          >
+                            Ver →
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ---- Tab: Razón de Secretaría ---- */}
+        <TabsContent value="razon-secretaria">
+          <Card>
+            <CardHeader>
+              <CardTitle>Razón de Secretaría</CardTitle>
+              <CardDescription>
+                Constancias y razones expedidas por la Secretaría Arbitral en
+                el expediente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const razones = caseData.documents.filter((d: any) =>
+                  /raz[oó]n\s*de\s*secretar|razon_secretaria|constancia/i.test(
+                    d.documentType || ""
+                  )
+                );
+                if (razones.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-muted-foreground">
+                      <StickyNote className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>Sin razones de secretaría registradas.</p>
+                      <p className="text-xs mt-2">
+                        Aparecerán aquí los documentos con tipo "Razón de
+                        Secretaría" o "Constancia" subidos al expediente.
+                      </p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-2">
+                    {razones.map((d: any) => (
+                      <div
+                        key={d.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <StickyNote className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {d.originalFileName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {d.documentType} ·{" "}
+                              {new Date(d.createdAt).toLocaleDateString("es-PE")}
+                            </p>
+                          </div>
+                        </div>
+                        {d.driveWebViewLink && (
+                          <a
+                            href={d.driveWebViewLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#D66829] text-sm hover:underline whitespace-nowrap"
+                          >
+                            Ver →
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ---- Tab: Pagos ---- */}
