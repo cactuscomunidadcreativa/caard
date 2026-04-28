@@ -24,7 +24,10 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { LanguageSelector } from "@/components/cms/language-selector";
+// LanguageSelector removido del header del dashboard a pedido del usuario.
+// La infraestructura de i18n se mantiene; si en el futuro se requiere,
+// se puede reactivar restaurando el import + el <LanguageSelector />.
+// import { LanguageSelector } from "@/components/cms/language-selector";
 import {
   FileText,
   DollarSign,
@@ -296,9 +299,6 @@ export function Header({ title, description }: HeaderProps) {
           className="w-64 pl-8"
         />
       </form>
-
-      {/* Language Selector */}
-      <LanguageSelector />
 
       {/* Notifications Panel */}
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
