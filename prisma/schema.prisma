@@ -305,6 +305,7 @@ model Center {
   laudoCategories  LaudoCategory[]
   laudoPackages    LaudoPackage[]
   landingPages     LandingPage[]
+  consumerClaims   ConsumerClaim[]
 }
 
 //
@@ -395,6 +396,84 @@ model User {
 
   @@index([centerId])
   @@index([role])
+}
+
+//
+// LIBRO DE RECLAMACIONES (D.S. 011-2011-PCM)
+// Registro oficial de reclamos y quejas del consumidor.
+//
+model ConsumerClaim {
+  id                String   @id @default(cuid())
+
+  // Número de hoja correlativo: HR-2026-00001
+  claimNumber       String   @unique
+
+  // Tipo de hoja
+  claimType         ConsumerClaimType   // RECLAMO | QUEJA
+
+  // Datos del consumidor
+  consumerName      String
+  consumerDocType   String   // DNI | CE | PASSPORT | RUC
+  consumerDocNumber String
+  consumerAddress   String?
+  consumerPhone     String?
+  consumerEmail     String
+  consumerIsMinor   Boolean  @default(false)
+  guardianName      String?  // si es menor
+  guardianDocType   String?
+  guardianDocNumber String?
+
+  // Identificación del bien/servicio
+  serviceType       String   // PRODUCTO | SERVICIO
+  serviceDescription String  // descripción del servicio reclamado
+  amountCents       Int?     // monto en céntimos si aplica
+  currency          String?  @default("PEN")
+  serviceDate       DateTime? // fecha de la prestación del servicio
+
+  // Detalle
+  claimDetail       String   // descripción del reclamo o queja
+  consumerRequest   String   // pedido del consumidor
+
+  // Estado del seguimiento
+  status            ConsumerClaimStatus @default(RECEIVED)
+  receivedAt        DateTime @default(now())
+  acknowledgedAt    DateTime?  // cuando se envió el cargo de recibido
+  respondedAt       DateTime?
+  responseText      String?
+  respondedById     String?
+
+  // Plazo legal: 30 días calendario para responder
+  responseDueAt     DateTime
+
+  // Centro
+  centerId          String
+  center            Center   @relation(fields: [centerId], references: [id], onDelete: Cascade)
+
+  // Metadata adicional
+  submitterIp       String?
+  userAgent         String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([centerId])
+  @@index([status])
+  @@index([receivedAt])
+  @@index([consumerEmail])
+  @@index([consumerDocNumber])
+}
+
+enum ConsumerClaimType {
+  RECLAMO   // Disconformidad con producto/servicio
+  QUEJA     // Disconformidad con la atención al consumidor
+}
+
+enum ConsumerClaimStatus {
+  RECEIVED            // Recibido (recién enviado)
+  IN_REVIEW           // En revisión
+  RESPONDED           // Respondido al consumidor
+  RESOLVED            // Resuelto / cerrado
+  REJECTED            // Rechazado (no procede)
 }
 
 //

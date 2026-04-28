@@ -415,6 +415,11 @@ export function WebsiteFooter({ config }: WebsiteFooterProps) {
                 © {currentYear} CAARD. {t.website.copyright}
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/50">
+                <Link href="/libro-de-reclamaciones" className="hover:text-[#D66829] transition-colors flex items-center gap-1.5">
+                  <span aria-hidden="true">📕</span>
+                  Libro de Reclamaciones
+                </Link>
+                <span className="hidden sm:inline">•</span>
                 <Link href="/politica-privacidad" className="hover:text-[#D66829] transition-colors">
                   {t.website.privacyPolicy}
                 </Link>

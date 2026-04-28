@@ -862,8 +862,12 @@ export default function CaseDetailClient({ caseData, userId, userRole }: CaseDet
             <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
               {
                 caseData.documents.filter((d: any) =>
-                  /orden\s*procesal|orden_procesal|providencia/i.test(
-                    d.documentType || ""
+                  /orden|providencia|resoluci|decisi[oó]n/i.test(
+                    (d.folder?.key || "") +
+                      " " +
+                      (d.folder?.name || "") +
+                      " " +
+                      (d.documentType || "")
                   )
                 ).length
               }
@@ -875,8 +879,12 @@ export default function CaseDetailClient({ caseData, userId, userRole }: CaseDet
             <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
               {
                 caseData.documents.filter((d: any) =>
-                  /raz[oó]n\s*de\s*secretar|razon_secretaria/i.test(
-                    d.documentType || ""
+                  /raz[oó]n\s*de\s*secretar|razon_secretaria|constancia/i.test(
+                    (d.folder?.key || "") +
+                      " " +
+                      (d.folder?.name || "") +
+                      " " +
+                      (d.documentType || "")
                   )
                 ).length
               }
@@ -1225,9 +1233,17 @@ export default function CaseDetailClient({ caseData, userId, userRole }: CaseDet
             </CardHeader>
             <CardContent>
               {(() => {
+                // Filtra por carpeta del Drive (ej. "ORDENES PROCESALES",
+                // "RESOLUCIONES", "ORDEN PROCESAL", "DECISIÓN CAUTELAR") o
+                // por documentType. Cubre las variaciones de nombre/key que
+                // existen en producción.
                 const ordenes = caseData.documents.filter((d: any) =>
-                  /orden\s*procesal|orden_procesal|providencia|resoluci/i.test(
-                    d.documentType || ""
+                  /orden|providencia|resoluci|decisi[oó]n/i.test(
+                    (d.folder?.key || "") +
+                      " " +
+                      (d.folder?.name || "") +
+                      " " +
+                      (d.documentType || "")
                   )
                 );
                 if (ordenes.length === 0) {
@@ -1292,9 +1308,15 @@ export default function CaseDetailClient({ caseData, userId, userRole }: CaseDet
             </CardHeader>
             <CardContent>
               {(() => {
+                // Filtra por carpeta del Drive ("RAZÓN DE SECRETARÍA",
+                // "RAZON DE SECRETARIA", "CONSTANCIA") o por documentType.
                 const razones = caseData.documents.filter((d: any) =>
                   /raz[oó]n\s*de\s*secretar|razon_secretaria|constancia/i.test(
-                    d.documentType || ""
+                    (d.folder?.key || "") +
+                      " " +
+                      (d.folder?.name || "") +
+                      " " +
+                      (d.documentType || "")
                   )
                 );
                 if (razones.length === 0) {
