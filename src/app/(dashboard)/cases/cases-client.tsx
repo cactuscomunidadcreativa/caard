@@ -52,6 +52,8 @@ interface CaseItem {
   code: string;
   title: string;
   status: CaseStatus;
+  year: number;
+  procedureType?: "REGULAR" | "EMERGENCY";
   claimantName: string;
   respondentName: string;
   createdAt: string;
@@ -270,6 +272,57 @@ export function CasesClient() {
           icon: Plus,
         }}
       />
+
+      {/* Quick category tabs */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground mr-1">
+              Tipo:
+            </span>
+            <button
+              onClick={() => handleStatusChange("all")}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                status === "all"
+                  ? "bg-[#0B2A5B] text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => handleStatusChange("IN_PROCESS")}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                status === "IN_PROCESS"
+                  ? "bg-green-600 text-white"
+                  : "bg-green-50 text-green-700 hover:bg-green-100"
+              }`}
+            >
+              Vigentes (en proceso)
+            </button>
+            <button
+              onClick={() => handleStatusChange("CLOSED")}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                status === "CLOSED"
+                  ? "bg-blue-600 text-white"
+                  : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+              }`}
+            >
+              Laudados
+            </button>
+            <button
+              onClick={() => handleStatusChange("ARCHIVED")}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                status === "ARCHIVED"
+                  ? "bg-slate-700 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Archivados
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <Card>

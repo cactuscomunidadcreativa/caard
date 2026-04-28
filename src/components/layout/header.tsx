@@ -274,15 +274,28 @@ export function Header({ title, description }: HeaderProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Search */}
-      <div className="relative hidden md:block">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      {/* Search expediente */}
+      <form
+        className="relative hidden md:block"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget as HTMLFormElement);
+          const q = (fd.get("q") as string)?.trim();
+          if (q) {
+            // Si parece código directo (ej. 001-2024), va a /cases con búsqueda
+            // pre-poblada; el filtro de cases-client levanta el query param.
+            window.location.href = `/cases?q=${encodeURIComponent(q)}`;
+          }
+        }}
+      >
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
         <Input
+          name="q"
           type="search"
           placeholder="Buscar expediente..."
           className="w-64 pl-8"
         />
-      </div>
+      </form>
 
       {/* Language Selector */}
       <LanguageSelector />

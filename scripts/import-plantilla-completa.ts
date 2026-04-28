@@ -264,21 +264,30 @@ async function main() {
         try {
           const existing = await prisma.user.findUnique({
             where: { email },
-            select: { id: true, role: true },
+            select: { id: true, role: true, name: true, phoneE164: true, isActive: true },
           });
           if (existing) {
+            // PRESERVAR usuarios @caardpe.com existentes (staff actual del centro):
+            // no se les cambia rol, ni nombre, ni teléfono, ni activación.
+            // Solo se asegura que estén ligados al centro.
+            const isCaardStaff = email.endsWith("@caardpe.com");
             // No sobrescribir rol de SUPER_ADMIN existentes (precaución extra)
             const finalRole =
               existing.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : role;
             const u = await prisma.user.update({
               where: { email },
-              data: {
-                name,
-                phoneE164: phone || undefined,
-                role: finalRole as any,
-                isActive: activo,
-                centerId: center.id,
-              },
+              data: isCaardStaff
+                ? {
+                    // Solo asegurar centerId; el resto queda intacto
+                    centerId: center.id,
+                  }
+                : {
+                    name,
+                    phoneE164: phone || undefined,
+                    role: finalRole as any,
+                    isActive: activo,
+                    centerId: center.id,
+                  },
             });
             userByEmail.set(email, u.id);
             updated++;
@@ -1280,13 +1289,27 @@ async function main() {
         const codeRaw = normCaseCode(r.codigo_caso);
         const emailArb = normEmail(r.email_arbitro_recusado);
         const emailSol = normEmail(r.email_solicitante);
-        const rolSol = normStr(r.rol_solicitante) || "DEMANDANTE";
+        const rolSolRaw = (normStr(r.rol_solicitante) || "DEMANDANTE").toUpperCase();
+        // Mapear "Demandado", "Demandante", etc. al enum Role
+        const validRoles = ["DEMANDANTE", "DEMANDADO", "ABOGADO", "ARBITRO"];
+        const rolSol = validRoles.includes(rolSolRaw) ? rolSolRaw : "DEMANDANTE";
         const motivo = normStr(r.motivo);
         const docs = normStr(r.documentos_soporte);
-        const estado = (normStr(r.estado) || "FILED").toUpperCase();
+        const estadoRaw = (normStr(r.estado) || "FILED").toUpperCase();
+        const validEstados = ["FILED","PENDING_RESPONSE","RESPONSE_RECEIVED","PENDING_COUNCIL_DECISION","ACCEPTED","REJECTED"];
+        const estado = validEstados.includes(estadoRaw) ? estadoRaw : "FILED";
         const fPres = excelDate(r.fecha_presentacion) || new Date();
-        const resp = normStr(r.respuesta_arbitro);
-        const dec = normStr(r.decision_consejo);
+        // arbitratorResponse y councilDecision son TEXTO (no fechas).
+        // El Excel a veces los manda como serial de fecha cuando la celda
+        // se autoformateó. Si parece número grande, lo convertimos a string.
+        const respRaw = r.respuesta_arbitro;
+        const resp = typeof respRaw === "number" && respRaw > 1000
+          ? excelDate(respRaw)?.toISOString().slice(0, 10) ?? null
+          : normStr(respRaw);
+        const decRaw = r.decision_consejo;
+        const dec = typeof decRaw === "number" && decRaw > 1000
+          ? excelDate(decRaw)?.toISOString().slice(0, 10) ?? null
+          : normStr(decRaw);
         const fRes = excelDate(r.fecha_resolucion);
         if (!codeRaw || !emailArb || !motivo) { skipped++; continue; }
         const caseId = caseByCode.get(normCodeKey(codeRaw));

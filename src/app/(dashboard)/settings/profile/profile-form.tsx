@@ -130,7 +130,51 @@ export function ProfileForm({ user }: ProfileFormProps) {
                   {getInitials(user.name)}
                 </AvatarFallback>
               </Avatar>
-              <Button variant="outline" size="sm" className="gap-2" disabled>
+              <input
+                ref={(el) => {
+                  // Guardamos referencia para disparar el click desde el botón
+                  if (el) (window as any).__avatarInput = el;
+                }}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const fd = new FormData();
+                  fd.append("file", f);
+                  const r = await fetch("/api/users/profile/avatar", {
+                    method: "POST",
+                    body: fd,
+                  });
+                  const d = await r.json().catch(() => ({}));
+                  if (r.ok) {
+                    toast({
+                      title: locale === "es" ? "Foto actualizada" : "Photo updated",
+                      description: locale === "es"
+                        ? "Recarga la página para verla."
+                        : "Reload to see it.",
+                    });
+                    setTimeout(() => location.reload(), 800);
+                  } else {
+                    toast({
+                      title: "Error",
+                      description: d.error || "No se pudo subir",
+                      variant: "destructive",
+                    });
+                  }
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={(e) => {
+                  e.preventDefault();
+                  (window as any).__avatarInput?.click();
+                }}
+              >
                 <Camera className="h-4 w-4" />
                 {t.settings.changePhoto}
               </Button>
