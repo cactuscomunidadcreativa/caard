@@ -26,13 +26,6 @@ export function ContactoClient() {
 
   const contactInfo = [
     {
-      icon: Building2,
-      title: "Información general",
-      email: "info@caardpe.com",
-      phone: "+51 913 755 003",
-      description: "Consultas generales, información sobre el centro y nuestros servicios.",
-    },
-    {
       icon: Users,
       title: t.website.generalSecretary,
       name: "Anaís Boluarte Oneto",
@@ -42,7 +35,7 @@ export function ContactoClient() {
     {
       icon: Building2,
       title: t.sidebar.admin,
-      email: "administracion@caardpe.com",
+      email: "info@caardpe.com",
       phone: "+51 913 755 003",
       description: "Consultas administrativas, pagos y facturación.",
     },
@@ -153,8 +146,9 @@ export function ContactoClient() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="rounded-xl overflow-hidden bg-slate-100 aspect-video relative">
+                    {/* Edificio IQ Surco — Jr. Aldebarán 596, Santiago de Surco */}
                     <iframe
-                      src="https://www.google.com/maps?q=Jr.%20Aldebar%C3%A1n%20596%2C%20Santiago%20de%20Surco%2C%20Lima%2C%20Per%C3%BA&output=embed"
+                      src="https://maps.google.com/maps?width=100%25&height=600&hl=es&q=Edificio%20IQ%20Surco%2C%20Jr.%20Aldebar%C3%A1n%20596%2C%20Santiago%20de%20Surco%2C%20Lima%2C%20Peru&t=&z=17&ie=UTF8&iwloc=&output=embed"
                       width="100%"
                       height="100%"
                       style={{ border: 0, position: "absolute", inset: 0 }}
