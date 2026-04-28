@@ -31,6 +31,7 @@ import {
   X,
   Check,
   Send,
+  Loader2,
 } from "lucide-react";
 
 import { EscritosSection } from "./escritos-section";
@@ -914,7 +915,16 @@ export default function CaseDetailClient({ caseData, userId, userRole }: CaseDet
         </TabsList>
 
         {/* ---- Tab: General ---- */}
-        <TabsContent value="general">
+        <TabsContent value="general" className="space-y-4">
+          {/* Estado interno (sólo SECRETARIA/ADMIN/SUPER_ADMIN) */}
+          {["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(userRole || "") && (
+            <InternalStatusCard
+              caseId={caseData.id}
+              initialNote={(caseData as any).internalStatusNote || ""}
+              updatedAt={(caseData as any).internalStatusUpdatedAt || null}
+            />
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Informacion General</CardTitle>
@@ -2432,6 +2442,138 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       </p>
       <p className="mt-1 text-sm font-medium">{value}</p>
     </div>
+  );
+}
+
+/**
+ * Card de "Estado interno" — sólo visible para SECRETARIA/ADMIN/SUPER_ADMIN.
+ * Muestra el último movimiento del expediente y permite editarlo en línea.
+ */
+function InternalStatusCard({
+  caseId,
+  initialNote,
+  updatedAt,
+}: {
+  caseId: string;
+  initialNote: string;
+  updatedAt: string | Date | null;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [note, setNote] = useState(initialNote);
+  const [savedAt, setSavedAt] = useState(updatedAt);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const save = async () => {
+    setSaving(true);
+    setErr(null);
+    try {
+      const r = await fetch(`/api/cases/${caseId}/internal-status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Error");
+      setSavedAt(d.internalStatusUpdatedAt);
+      setEditing(false);
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="border-2 border-yellow-300 bg-yellow-50/40">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Clock className="h-4 w-4 text-yellow-700" />
+            Estado interno del expediente
+            <Badge className="bg-yellow-200 text-yellow-900 text-[10px]">
+              Sólo Secretaría
+            </Badge>
+          </CardTitle>
+          {!editing && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditing(true)}
+            >
+              Editar
+            </Button>
+          )}
+        </div>
+        <CardDescription className="text-xs">
+          Visible sólo para Dra. Anaís y Vivian. Marca aquí el último
+          movimiento del proceso para tu seguimiento.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {editing ? (
+          <div className="space-y-2">
+            <Textarea
+              rows={4}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Ej: PENDIENTE REVISIÓN DE OP X A.B — Hacer OP de fijación de puntos controvertidos…"
+              maxLength={2000}
+            />
+            {err && (
+              <p className="text-xs text-red-600">{err}</p>
+            )}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={save}
+                disabled={saving}
+                className="bg-[#D66829] hover:bg-[#c45a22]"
+              >
+                {saving ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : null}
+                Guardar
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setNote(initialNote);
+                  setEditing(false);
+                  setErr(null);
+                }}
+                disabled={saving}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        ) : note ? (
+          <div className="space-y-2">
+            <p className="text-sm whitespace-pre-wrap">{note}</p>
+            {savedAt && (
+              <p className="text-xs text-muted-foreground">
+                Última actualización:{" "}
+                {new Date(savedAt).toLocaleString("es-PE", {
+                  timeZone: "America/Lima",
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground italic">
+            Sin estado registrado. Click "Editar" para agregar el último
+            movimiento.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

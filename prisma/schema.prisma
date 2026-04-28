@@ -713,6 +713,13 @@ model Case {
   admittedAt     DateTime?
   closedAt       DateTime?
 
+  // Estado interno del expediente (último movimiento). Sólo visible a
+  // SECRETARIA / ADMIN / SUPER_ADMIN. Texto libre que la secretaría usa
+  // para marcar dónde está el caso (ej. "PENDIENTE REVISION DE OP X A.B").
+  internalStatusNote   String?
+  internalStatusUpdatedAt DateTime?
+  internalStatusUpdatedById String?
+
   // Relations
   members     CaseMember[]
   lawyers     CaseLawyer[]   // Abogados asignados al caso
