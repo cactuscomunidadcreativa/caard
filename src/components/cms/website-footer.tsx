@@ -402,6 +402,21 @@ export function WebsiteFooter({ config }: WebsiteFooterProps) {
                     Santiago de Surco
                   </div>
                 </a>
+                {/* Libro de Reclamaciones — al lado de Licencia Municipal */}
+                <Link
+                  href="/libro-de-reclamaciones"
+                  className="flex flex-col items-center justify-center bg-white rounded-lg p-3 hover:scale-105 transition-transform shadow-md text-center min-w-[160px] h-20 md:h-24 border-2 border-[#D66829]"
+                  aria-label="Libro de Reclamaciones"
+                  title="Libro de Reclamaciones"
+                >
+                  <div className="text-2xl leading-none">📕</div>
+                  <div className="text-xs font-semibold text-[#0B2A5B] leading-tight mt-1">
+                    Libro de Reclamaciones
+                  </div>
+                  <div className="text-[9px] text-slate-600 mt-0.5">
+                    INDECOPI
+                  </div>
+                </Link>
               </div>
             </div>
           </div>
@@ -415,11 +430,6 @@ export function WebsiteFooter({ config }: WebsiteFooterProps) {
                 © {currentYear} CAARD. {t.website.copyright}
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/50">
-                <Link href="/libro-de-reclamaciones" className="hover:text-[#D66829] transition-colors flex items-center gap-1.5">
-                  <span aria-hidden="true">📕</span>
-                  Libro de Reclamaciones
-                </Link>
-                <span className="hidden sm:inline">•</span>
                 <Link href="/politica-privacidad" className="hover:text-[#D66829] transition-colors">
                   {t.website.privacyPolicy}
                 </Link>

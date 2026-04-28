@@ -74,7 +74,10 @@ const staffRoutes = ["/secretaria", "/staff"];
  * Agrega security headers a cualquier respuesta
  */
 function addSecurityHeaders(response: NextResponse): NextResponse {
-  response.headers.set("X-Frame-Options", "DENY");
+  // SAMEORIGIN para permitir embebido en iframes del propio dominio (visor PDF
+  // de /terminos-condiciones, /libro-de-reclamaciones, etc.) y aún así
+  // protegernos de clickjacking externo.
+  response.headers.set("X-Frame-Options", "SAMEORIGIN");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
