@@ -52,6 +52,8 @@ const publicRoutes = [
   "/transparencia",
   "/politica-privacidad",
   "/terminos-condiciones",
+  "/libro-de-reclamaciones",
+  "/preguntas-frecuentes",
   // Módulos comerciales públicos
   "/cursos",
   "/tienda",
