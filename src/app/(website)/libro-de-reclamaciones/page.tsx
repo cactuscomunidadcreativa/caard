@@ -216,7 +216,7 @@ export default function LibroReclamacionesPage() {
               </div>
               <div>
                 <p className="text-slate-500 text-xs">RUC</p>
-                <p className="font-medium">20603541822</p>
+                <p className="font-medium">20608962621</p>
               </div>
               <div className="sm:col-span-2">
                 <p className="text-slate-500 text-xs">Dirección</p>

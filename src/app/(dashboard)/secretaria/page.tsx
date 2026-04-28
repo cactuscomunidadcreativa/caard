@@ -240,6 +240,87 @@ async function ActiveEmergencies() {
   );
 }
 
+// Componente: Audiencias sugeridas por árbitros (pendientes de programar)
+async function SuggestedHearings() {
+  let suggestions: any[] = [];
+  try {
+    suggestions = await prisma.caseHearing.findMany({
+      where: { status: "SUGGESTED" as any },
+      include: {
+        case: { select: { id: true, code: true, title: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    });
+  } catch {
+    // tabla puede no existir aún
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-blue-600" />
+          Audiencias Sugeridas
+        </CardTitle>
+        <CardDescription>
+          Sugerencias de árbitros pendientes de programar
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {suggestions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No hay audiencias sugeridas pendientes
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {suggestions.map((s) => {
+              const opciones = Array.isArray(s.suggestedDates)
+                ? s.suggestedDates.length
+                : 1;
+              return (
+                <Link
+                  key={s.id}
+                  href={`/secretaria/audiencias/${s.id}/programar`}
+                  className="flex items-center justify-between border-b pb-3 last:border-0 hover:bg-muted/50 -mx-2 px-2 py-1 rounded transition-colors"
+                >
+                  <div className="space-y-1 min-w-0">
+                    <p className="font-medium truncate">
+                      {s.case?.code} — {s.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">
+                      {opciones} opción(es) · primera tentativa:{" "}
+                      {new Date(s.hearingAt).toLocaleString("es-PE", {
+                        timeZone: "America/Lima",
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </p>
+                  </div>
+                  <Badge variant="default" className="bg-blue-600 shrink-0 ml-2">
+                    Programar
+                  </Badge>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <Button variant="outline" className="w-full" asChild>
+            <Link href="/secretaria/audiencias">Ver todas</Link>
+          </Button>
+          <Button className="w-full" asChild>
+            <Link href="/staff/audiencias/programar">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Nueva
+            </Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // Componente de pagos pendientes
 async function PendingPayments() {
   let payments: any[] = [];
@@ -339,6 +420,7 @@ export default async function SecretariaPage() {
   let pendingDeadlines = 0;
   let activeEmergencies = 0;
   let pendingPaymentsCount = 0;
+  let suggestedHearingsCount = 0;
 
   try {
     const threeDaysFromNow = new Date();
@@ -357,6 +439,12 @@ export default async function SecretariaPage() {
   try {
     pendingPaymentsCount = await prisma.paymentOrder.count({
       where: { status: { in: ["PENDING", "OVERDUE"] } },
+    });
+  } catch { /* table may not exist */ }
+
+  try {
+    suggestedHearingsCount = await prisma.caseHearing.count({
+      where: { status: "SUGGESTED" as any },
     });
   } catch { /* table may not exist */ }
 
@@ -430,7 +518,7 @@ export default async function SecretariaPage() {
       </div>
 
       {/* Alertas urgentes */}
-      {(pendingDeadlines > 0 || activeEmergencies > 0) && (
+      {(pendingDeadlines > 0 || activeEmergencies > 0 || suggestedHearingsCount > 0) && (
         <Card className="border-orange-200 bg-orange-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-orange-700">
@@ -439,6 +527,15 @@ export default async function SecretariaPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-4">
+            {suggestedHearingsCount > 0 && (
+              <Link
+                href="/secretaria#audiencias-sugeridas"
+                className="flex items-center gap-2 text-orange-700 hover:underline"
+              >
+                <Calendar className="h-4 w-4" />
+                <span>{suggestedHearingsCount} audiencia(s) sugerida(s) por confirmar</span>
+              </Link>
+            )}
             {pendingDeadlines > 0 && (
               <Link
                 href="/secretaria/plazos"
@@ -461,10 +558,15 @@ export default async function SecretariaPage() {
         </Card>
       )}
 
-      {/* Main Content Grid */}
+      {/* Audiencias sugeridas + Plazos + Emergencias */}
       <div className="grid gap-6 lg:grid-cols-3">
+        <SuggestedHearings />
         <UpcomingDeadlines />
         <ActiveEmergencies />
+      </div>
+
+      {/* Pagos */}
+      <div className="grid gap-6">
         <PendingPayments />
       </div>
 
@@ -474,11 +576,17 @@ export default async function SecretariaPage() {
           <CardTitle>Acciones Rápidas</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <Button variant="outline" className="h-auto py-4" asChild>
               <Link href="/cases/quick-new" className="flex flex-col items-center gap-2">
                 <FileText className="h-6 w-6" />
                 <span>Nuevo Expediente</span>
+              </Link>
+            </Button>
+            <Button variant="outline" className="h-auto py-4" asChild>
+              <Link href="/staff/audiencias/programar" className="flex flex-col items-center gap-2">
+                <Calendar className="h-6 w-6" />
+                <span>Programar Audiencia</span>
               </Link>
             </Button>
             <Button variant="outline" className="h-auto py-4" asChild>
@@ -489,7 +597,7 @@ export default async function SecretariaPage() {
             </Button>
             <Button variant="outline" className="h-auto py-4" asChild>
               <Link href="/secretaria/plazos" className="flex flex-col items-center gap-2">
-                <Calendar className="h-6 w-6" />
+                <Clock className="h-6 w-6" />
                 <span>Gestionar Plazos</span>
               </Link>
             </Button>

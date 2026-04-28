@@ -1027,19 +1027,44 @@ model CaseHearing {
   caseId    String
   case      Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
+  // Tipo de audiencia (PRELIMINARY/EVIDENCE/HEARING/CONCILIATION/AWARD/OTHER)
+  type      String @default("HEARING")
+
   title     String
   hearingAt DateTime
   timezone  String @default("America/Lima")
+  durationMinutes Int @default(60)
+  isOnline  Boolean @default(true)
   location  String?
   meetingUrl String?
 
   notes     String?
+
+  // Flujo: SUGGESTED (árbitro propone fechas) → SCHEDULED (secretaría confirma)
+  // → COMPLETED / CANCELLED
+  status    HearingStatus @default(SCHEDULED)
+
+  // Cuando es SUGGESTED, las múltiples fechas que propone el árbitro,
+  // y la secretaría elige una al programar.
+  suggestedDates Json?  // [{ date: "2026-04-15", time: "10:00", priority: 1 }]
+
+  // Auditoría
+  suggestedById String?
+  scheduledById String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([caseId])
   @@index([hearingAt])
+  @@index([status])
+}
+
+enum HearingStatus {
+  SUGGESTED   // Árbitro propuso fechas, esperando confirmación del Centro
+  SCHEDULED   // Secretaría programó fecha definitiva
+  COMPLETED   // Audiencia ya se realizó
+  CANCELLED   // Cancelada
 }
 
 //
