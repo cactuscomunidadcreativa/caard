@@ -48,3 +48,5 @@ caard/
 # WordPress old /v2 system files - migrated to Drive
 public/v2/
 .claude/worktrees/
+.claude/scheduled_tasks.lock
+.claude/*.lock
