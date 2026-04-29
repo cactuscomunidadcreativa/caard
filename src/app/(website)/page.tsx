@@ -15,6 +15,13 @@ export const metadata: Metadata = {
   description: "Centro de Administración de Arbitrajes y Resolución de Disputas. Impulsar el arbitraje como medio eficaz para la solución de controversias.",
 };
 
+// La home consume hero image, anuncios y secciones del CMS. Render
+// dinámico (sin cache) para que cualquier cambio del admin aparezca
+// inmediatamente. Las queries Prisma son ligeras (findUnique +
+// findMany con un center).
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 async function getHomePageData() {
   try {
     const center = await prisma.center.findFirst({ where: { code: "CAARD" } });
