@@ -1275,7 +1275,19 @@ export default function CaseDetailClient({ caseData, userId, userRole }: CaseDet
         </TabsContent>
 
         {/* ---- Tab: Escritos ---- */}
-        <TabsContent value="escritos">
+        <TabsContent value="escritos" className="space-y-4">
+          {/* Acceso rápido a la carpeta "Escritos" en Drive */}
+          <DriveFolderTab
+            title="Escritos en Drive"
+            description="Archivos en la subcarpeta de Escritos del expediente en Google Drive — acceso directo, además de los presentados vía la plataforma."
+            icon={FileText}
+            patterns={[/ESCRITO/i]}
+            driveFolders={driveFolders}
+            driveLoading={driveLoading}
+            driveError={driveError}
+            findDriveFolder={findDriveFolder}
+          />
+          {/* Workflow original de presentación / proveer / notificar */}
           <EscritosSection
             caseId={caseData.id}
             caseCode={caseData.code}

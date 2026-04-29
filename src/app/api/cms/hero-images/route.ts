@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
 // Páginas que pueden tener hero image
 const HERO_PAGES = [
@@ -105,6 +106,18 @@ export async function PUT(request: NextRequest) {
           folder: "heroes",
         },
       });
+    }
+
+    // Invalidar el cache de Vercel para que la imagen aparezca de
+    // inmediato en el sitio público. "home" mapea a "/", el resto a su
+    // propio slug.
+    try {
+      const path = slug === "home" ? "/" : `/${slug}`;
+      revalidatePath(path);
+      // Layout también, por si el hero image vive en componentes globales
+      revalidatePath(path, "layout");
+    } catch (e) {
+      console.warn("revalidatePath after hero save failed:", e);
     }
 
     return NextResponse.json({ success: true });

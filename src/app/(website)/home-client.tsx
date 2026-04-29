@@ -23,7 +23,11 @@ import {
 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 
-export function HomePageClient() {
+export function HomePageClient({
+  heroImageUrl,
+}: {
+  heroImageUrl?: string | null;
+} = {}) {
   const { t } = useTranslation();
 
   const services = [
@@ -84,6 +88,19 @@ export function HomePageClient() {
     <main>
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-[#0B2A5B] via-[#0d3a7a] to-[#D66829] py-[12vh] md:py-[15vh] overflow-hidden">
+        {/* Imagen de cabecera del CMS (admin/cms/hero-images). Si no hay,
+            se mantiene solo el gradiente azul→naranja. */}
+        {heroImageUrl && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={heroImageUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-[#0B2A5B]/70" />
+          </>
+        )}
         <div className="absolute inset-0 bg-[url('/patterns/grid.svg')] opacity-10" />
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center text-white">

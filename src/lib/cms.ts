@@ -106,3 +106,34 @@ export async function getActiveAnnouncements() {
     return [];
   }
 }
+
+/**
+ * Devuelve la URL del hero image configurado en /admin/cms/hero-images
+ * para un slug de página dado ("home", "arbitraje", "contacto", etc.).
+ *
+ * El admin guarda en cmsMedia un registro con folder="heroes" y
+ * alt="hero-{slug}". La URL ya viene resuelta (proxy /api/cms/media/...
+ * o /uploads/...) lista para usarse directamente como src.
+ *
+ * Devuelve null si no hay imagen configurada.
+ */
+export async function getHeroImage(slug: string): Promise<string | null> {
+  try {
+    const center = await prisma.center.findFirst({ where: { code: "CAARD" } });
+    if (!center) return null;
+
+    const media = await prisma.cmsMedia.findFirst({
+      where: {
+        centerId: center.id,
+        folder: "heroes",
+        alt: `hero-${slug}`,
+      },
+      select: { url: true },
+    });
+
+    return media?.url || null;
+  } catch (error) {
+    console.error(`Error loading hero image (${slug}):`, error);
+    return null;
+  }
+}

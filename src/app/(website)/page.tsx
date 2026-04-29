@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { SectionRenderer } from "@/components/cms/section-renderer";
 import { AlertCircle } from "lucide-react";
 import { HomePageClient } from "./home-client";
+import { getHeroImage } from "@/lib/cms";
 
 export const metadata: Metadata = {
   title: "CAARD | Centro de Arbitraje y Resolución de Disputas",
@@ -60,7 +61,10 @@ function SafeSection({ section }: { section: any }) {
 }
 
 export default async function HomePage() {
-  const { page, announcements } = await getHomePageData();
+  const [{ page, announcements }, heroImage] = await Promise.all([
+    getHomePageData(),
+    getHeroImage("home"),
+  ]);
   const hasCMSContent = page && page.sections.length > 0;
 
   return (
@@ -96,7 +100,7 @@ export default async function HomePage() {
         </>
       ) : (
         /* Contenido estático de fallback con traducciones */
-        <HomePageClient />
+        <HomePageClient heroImageUrl={heroImage} />
       )}
     </>
   );
