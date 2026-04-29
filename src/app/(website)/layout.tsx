@@ -10,6 +10,14 @@ import { WhatsAppButton } from "@/components/cms/whatsapp-button";
 import { PublicChatbot } from "@/components/ai/public-chatbot";
 // AntiCopy ya está en root layout
 
+// El header lee logo, nombre, contacto y menú desde el CMS. Si Vercel
+// cachea estáticamente el layout, los cambios del admin tardan horas en
+// aparecer. Forzamos render dinámico para que siempre se lea la última
+// configuración (la consulta a Prisma es trivial — un único findUnique
+// por centro).
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface SiteConfig {
   siteName?: string | null;
   siteTagline?: string | null;

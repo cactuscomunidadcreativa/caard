@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 const configSchema = z.object({
   // General
@@ -262,6 +263,15 @@ export async function POST(request: NextRequest) {
         ...cleanDbData,
       },
     });
+
+    // Invalidar caché del sitio público para que el nuevo logo / datos
+    // aparezcan inmediatamente sin esperar a que expire el cache de Vercel.
+    try {
+      revalidatePath("/", "layout"); // header/footer del sitio público
+      revalidatePath("/");
+    } catch (e) {
+      console.warn("revalidatePath after config save failed:", e);
+    }
 
     return NextResponse.json(mapFromDbFields(config));
   } catch (error: any) {
