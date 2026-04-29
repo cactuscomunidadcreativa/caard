@@ -22,8 +22,6 @@ interface SiteConfig {
   siteName?: string | null;
   siteTagline?: string | null;
   logoUrl?: string | null;
-  // logoDark vive en extendedConfig (JSON) — lo extraemos en getWebsiteData
-  logoDark?: string | null;
   instagramUrl?: string | null;
   linkedinUrl?: string | null;
   youtubeUrl?: string | null;
@@ -39,7 +37,7 @@ async function getWebsiteData(): Promise<{ menuItems: any[]; config: SiteConfig 
   const center = await prisma.center.findFirst({ where: { code: "CAARD" } });
   if (!center) return { menuItems: [], config: {} };
 
-  const [menuItems, rawConfig] = await Promise.all([
+  const [menuItems, config] = await Promise.all([
     prisma.cmsMenuItem.findMany({
       where: { centerId: center.id, parentId: null, isVisible: true },
       include: {
@@ -53,24 +51,10 @@ async function getWebsiteData(): Promise<{ menuItems: any[]; config: SiteConfig 
     prisma.cmsSiteConfig.findUnique({ where: { centerId: center.id } }),
   ]);
 
-  // logoDark se guarda dentro de extendedConfig (JSON) porque la tabla
-  // cmsSiteConfig no tiene columna específica.
-  let logoDark: string | null = null;
-  if (rawConfig?.extendedConfig) {
-    try {
-      const parsed = JSON.parse(rawConfig.extendedConfig as any);
-      if (parsed?.logoDark) logoDark = parsed.logoDark;
-    } catch {
-      /* JSON inválido — ignorar */
-    }
-  }
-
-  const config: SiteConfig = {
-    ...(rawConfig || {}),
-    logoDark,
-  };
-
-  return { menuItems, config };
+  // logoDark vive en extendedConfig (JSON). El header/footer son client
+  // components y lo cargan ellos mismos vía /api/cms/config para evitar
+  // pasar campos no-serializables (Date) desde el server component.
+  return { menuItems, config: config || {} };
 }
 
 export default async function WebsiteLayout({
@@ -89,7 +73,6 @@ export default async function WebsiteLayout({
         menuItems={menuItems}
         siteName={config.siteName || "CAARD"}
         logoUrl={config.logoUrl || undefined}
-        logoDark={config.logoDark || undefined}
         config={config}
       />
       <main>{children}</main>

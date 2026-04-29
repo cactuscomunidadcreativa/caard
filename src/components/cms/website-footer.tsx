@@ -8,6 +8,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useTranslation } from "@/lib/i18n";
 import {
   Scale,
@@ -30,7 +31,6 @@ interface SiteConfig {
   siteName?: string | null;
   siteTagline?: string | null;
   logoUrl?: string | null;
-  logoDark?: string | null;
   instagramUrl?: string | null;
   linkedinUrl?: string | null;
   youtubeUrl?: string | null;
@@ -48,6 +48,22 @@ interface WebsiteFooterProps {
 export function WebsiteFooter({ config }: WebsiteFooterProps) {
   const currentYear = new Date().getFullYear();
   const { t } = useTranslation();
+
+  // Footer está sobre fondo azul (#0B2A5B) → usar logoDark si existe.
+  const [logoDark, setLogoDark] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/cms/config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.logoDark) setLogoDark(data.logoDark);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const footerLogo = logoDark || config.logoUrl || null;
 
   return (
     <>
@@ -150,9 +166,9 @@ export function WebsiteFooter({ config }: WebsiteFooterProps) {
             {/* Logo y descripción */}
             <div className="lg:col-span-4">
               <Link href="/" className="flex items-center gap-3 group mb-6">
-                {(config.logoDark || config.logoUrl) ? (
+                {footerLogo ? (
                   <img
-                    src={config.logoDark || config.logoUrl || ""}
+                    src={footerLogo}
                     alt={config.siteName || "CAARD"}
                     className="h-12"
                   />

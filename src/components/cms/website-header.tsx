@@ -35,7 +35,6 @@ interface SiteConfig {
   siteName?: string | null;
   siteTagline?: string | null;
   logoUrl?: string | null;
-  logoDark?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
 }
@@ -44,7 +43,6 @@ interface WebsiteHeaderProps {
   menuItems: MenuItem[];
   siteName?: string;
   logoUrl?: string;
-  logoDark?: string;
   config?: SiteConfig;
 }
 
@@ -52,7 +50,6 @@ export function WebsiteHeader({
   menuItems,
   siteName = "CAARD",
   logoUrl,
-  logoDark,
   config
 }: WebsiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -114,13 +111,27 @@ export function WebsiteHeader({
 
   // Usar config si está disponible
   const displayName = config?.siteName || siteName;
-  // El header tiene fondo azul oscuro (#0B2A5B), así que preferimos
-  // el logo "dark" (versión clara). Si no está configurado, caemos al
-  // logo principal.
-  const displayLogo =
-    config?.logoDark || logoDark || config?.logoUrl || logoUrl;
   const phone = config?.contactPhone || "(51) 913 755 003";
   const email = config?.contactEmail || "info@caardpe.com";
+
+  // El header tiene fondo azul oscuro (#0B2A5B), así que preferimos
+  // logoDark (versión clara). Lo extraemos de /api/cms/config porque
+  // vive en extendedConfig (JSON). Si no está configurado, caemos al
+  // logo principal.
+  const [logoDark, setLogoDark] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/cms/config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.logoDark) setLogoDark(data.logoDark);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const displayLogo = logoDark || config?.logoUrl || logoUrl;
 
   // Detectar scroll para cambiar el estilo del header
   useEffect(() => {
