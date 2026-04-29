@@ -35,6 +35,7 @@ interface SiteConfig {
   siteName?: string | null;
   siteTagline?: string | null;
   logoUrl?: string | null;
+  logoDark?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
 }
@@ -43,6 +44,7 @@ interface WebsiteHeaderProps {
   menuItems: MenuItem[];
   siteName?: string;
   logoUrl?: string;
+  logoDark?: string;
   config?: SiteConfig;
 }
 
@@ -50,6 +52,7 @@ export function WebsiteHeader({
   menuItems,
   siteName = "CAARD",
   logoUrl,
+  logoDark,
   config
 }: WebsiteHeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -111,7 +114,11 @@ export function WebsiteHeader({
 
   // Usar config si está disponible
   const displayName = config?.siteName || siteName;
-  const displayLogo = config?.logoUrl || logoUrl;
+  // El header tiene fondo azul oscuro (#0B2A5B), así que preferimos
+  // el logo "dark" (versión clara). Si no está configurado, caemos al
+  // logo principal.
+  const displayLogo =
+    config?.logoDark || logoDark || config?.logoUrl || logoUrl;
   const phone = config?.contactPhone || "(51) 913 755 003";
   const email = config?.contactEmail || "info@caardpe.com";
 

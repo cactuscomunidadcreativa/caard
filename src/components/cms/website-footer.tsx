@@ -30,6 +30,7 @@ interface SiteConfig {
   siteName?: string | null;
   siteTagline?: string | null;
   logoUrl?: string | null;
+  logoDark?: string | null;
   instagramUrl?: string | null;
   linkedinUrl?: string | null;
   youtubeUrl?: string | null;
@@ -149,8 +150,12 @@ export function WebsiteFooter({ config }: WebsiteFooterProps) {
             {/* Logo y descripción */}
             <div className="lg:col-span-4">
               <Link href="/" className="flex items-center gap-3 group mb-6">
-                {config.logoUrl ? (
-                  <img src={config.logoUrl} alt={config.siteName || "CAARD"} className="h-12" />
+                {(config.logoDark || config.logoUrl) ? (
+                  <img
+                    src={config.logoDark || config.logoUrl || ""}
+                    alt={config.siteName || "CAARD"}
+                    className="h-12"
+                  />
                 ) : (
                   <>
                     <div className="relative">
