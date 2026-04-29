@@ -48,6 +48,22 @@ export default function HeroImagesPage() {
   }
 
   async function handleUpload(slug: string, file: File) {
+    // Vercel limita el body de funciones serverless a ~4.5 MB. Si nos
+    // pasamos, la plataforma corta antes de que el handler corra y
+    // responde con "Request Entity Too Large" en HTML, no JSON. Así
+    // que validamos del lado del cliente.
+    const MAX_MB = 4;
+    if (file.size > MAX_MB * 1024 * 1024) {
+      toast.error(
+        `La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)}MB. Máximo ${MAX_MB}MB. Comprimila (ej. tinypng.com) o redimensiónala antes de subir.`
+      );
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Solo se aceptan archivos de imagen");
+      return;
+    }
+
     setUploading(slug);
     try {
       // 1. Subir archivo
@@ -59,9 +75,24 @@ export default function HeroImagesPage() {
         method: "POST",
         body: formData,
       });
-      const uploadData = await uploadRes.json();
 
-      if (!uploadRes.ok) throw new Error(uploadData.error);
+      // Manejo robusto: si Vercel devolvió HTML (413/504/etc.) no
+      // intentamos parsear JSON.
+      const ct = uploadRes.headers.get("content-type") || "";
+      let uploadData: any = null;
+      if (ct.includes("application/json")) {
+        uploadData = await uploadRes.json();
+      } else {
+        const txt = await uploadRes.text();
+        if (uploadRes.status === 413) {
+          throw new Error("La imagen es muy grande. Reducila a menos de 4MB.");
+        }
+        throw new Error(
+          `Error ${uploadRes.status} del servidor: ${txt.slice(0, 120)}`
+        );
+      }
+
+      if (!uploadRes.ok) throw new Error(uploadData?.error || "Error al subir");
 
       // 2. Guardar referencia
       const saveRes = await fetch("/api/cms/hero-images", {
@@ -253,8 +284,19 @@ export default function HeroImagesPage() {
       <Card className="border-[#D66829]/30 bg-[#D66829]/5">
         <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">
-            <strong>Tip:</strong> Las imágenes recomendadas son de al menos 1920x600 píxeles en formato JPG o WebP.
-            Se aplica un overlay oscuro automáticamente para mejorar la legibilidad del texto.
+            <strong>Tip:</strong> Las imágenes recomendadas son de al menos 1920x600
+            píxeles en formato JPG o WebP. <strong>Tamaño máximo: 4 MB</strong> —
+            si tu imagen pesa más, comprimila en{" "}
+            <a
+              href="https://tinypng.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#D66829] underline"
+            >
+              tinypng.com
+            </a>{" "}
+            o redimensionala antes de subir. Se aplica un overlay oscuro
+            automáticamente para mejorar la legibilidad del texto.
           </p>
         </CardContent>
       </Card>
