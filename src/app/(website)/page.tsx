@@ -42,8 +42,20 @@ async function getHomePageData() {
     ]);
 
     return { page, announcements };
-  } catch {
+  } catch (e) {
+    console.error("[home] getHomePageData error:", e);
     return { page: null, announcements: [] };
+  }
+}
+
+// Renderer defensivo: si una sección concreta del CMS revienta el render
+// (por contenido inválido o cambio de schema), no derribamos toda la home.
+function SafeSection({ section }: { section: any }) {
+  try {
+    return <SectionRenderer section={section} />;
+  } catch (e) {
+    console.error("[home] section render error", section?.id, e);
+    return null;
   }
 }
 
@@ -79,7 +91,7 @@ export default async function HomePage() {
       {hasCMSContent ? (
         <>
           {page.sections.map((section) => (
-            <SectionRenderer key={section.id} section={section} />
+            <SafeSection key={section.id} section={section} />
           ))}
         </>
       ) : (
