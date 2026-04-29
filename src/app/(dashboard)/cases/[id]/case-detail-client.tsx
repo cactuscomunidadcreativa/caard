@@ -396,6 +396,71 @@ export default function CaseDetailClient({ caseData, userId, userRole }: CaseDet
       .finally(() => setLoadingInfo(false));
   }, [infoDocId]);
 
+  // -------- Drive files (accesos rápidos a lo que está en Drive) --------
+  // Cada subcarpeta (Escritos, Órdenes Procesales, Razón de Secretaría, ...)
+  // se trae directo desde Drive vía /api/cases/[id]/drive-files. Las
+  // pestañas correspondientes muestran lo que efectivamente existe en
+  // Drive además de lo registrado en CaseDocument.
+  type DriveFile = {
+    id: string;
+    name: string;
+    mimeType: string | null;
+    modifiedTime: string | null;
+    webViewLink: string | null;
+    iconLink: string | null;
+    size: string | null;
+  };
+  type DriveFolder = {
+    key: string;
+    name: string;
+    driveFolderId: string;
+    webViewLink: string | null;
+    files: DriveFile[];
+  };
+  const [driveFolders, setDriveFolders] = useState<DriveFolder[]>([]);
+  const [driveLoading, setDriveLoading] = useState(false);
+  const [driveError, setDriveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!caseData.id) return;
+    let cancelled = false;
+    setDriveLoading(true);
+    setDriveError(null);
+    fetch(`/api/cases/${caseData.id}/drive-files`)
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(data?.error || `Error ${r.status}`);
+        return data;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setDriveFolders(data?.folders || []);
+        if (data?.warning) setDriveError(data.warning);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setDriveError(e?.message || "No se pudo leer Drive");
+      })
+      .finally(() => {
+        if (!cancelled) setDriveLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [caseData.id]);
+
+  // Buscador de carpeta de Drive por keywords (regex). Devuelve la primera
+  // carpeta cuya key o nombre normalizado coincida con cualquier patrón.
+  const findDriveFolder = (patterns: RegExp[]): DriveFolder | null => {
+    for (const p of patterns) {
+      const found = driveFolders.find(
+        (f) => p.test(f.key) || p.test(f.name)
+      );
+      if (found) return found;
+    }
+    return null;
+  };
+
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     title: caseData.title || "",
@@ -1233,81 +1298,36 @@ export default function CaseDetailClient({ caseData, userId, userRole }: CaseDet
 
         {/* ---- Tab: Órdenes Procesales ---- */}
         <TabsContent value="ordenes-procesales">
-          <Card>
-            <CardHeader>
-              <CardTitle>Órdenes Procesales</CardTitle>
-              <CardDescription>
-                Documentos del tribunal con resoluciones, providencias y
-                órdenes procesales emitidas en el expediente.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {(() => {
-                // Filtra por carpeta del Drive (ej. "ORDENES PROCESALES",
-                // "RESOLUCIONES", "ORDEN PROCESAL", "DECISIÓN CAUTELAR") o
-                // por documentType. Cubre las variaciones de nombre/key que
-                // existen en producción.
-                const ordenes = caseData.documents.filter((d: any) =>
-                  /orden|providencia|resoluci|decisi[oó]n/i.test(
-                    (d.folder?.key || "") +
-                      " " +
-                      (d.folder?.name || "") +
-                      " " +
-                      (d.documentType || "")
-                  )
-                );
-                if (ordenes.length === 0) {
-                  return (
-                    <div className="py-12 text-center text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>Sin órdenes procesales registradas en este expediente.</p>
-                      <p className="text-xs mt-2">
-                        Las órdenes se crean al subir un documento marcado como
-                        tipo "Orden Procesal", "Providencia" o "Resolución".
-                      </p>
-                    </div>
-                  );
-                }
-                return (
-                  <div className="space-y-2">
-                    {ordenes.map((d: any) => (
-                      <div
-                        key={d.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border p-3"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {d.originalFileName}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {d.documentType} ·{" "}
-                              {new Date(d.createdAt).toLocaleDateString("es-PE")}
-                            </p>
-                          </div>
-                        </div>
-                        {d.driveWebViewLink && (
-                          <a
-                            href={d.driveWebViewLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[#D66829] text-sm hover:underline whitespace-nowrap"
-                          >
-                            Ver →
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </CardContent>
-          </Card>
+          <DriveFolderTab
+            title="Órdenes Procesales"
+            description="Resoluciones, providencias y órdenes procesales del tribunal — accesos directos a la carpeta de Drive del expediente."
+            icon={FileText}
+            patterns={[/ORDEN|PROVIDENCIA|RESOLUCI|DECISI/i]}
+            driveFolders={driveFolders}
+            driveLoading={driveLoading}
+            driveError={driveError}
+            findDriveFolder={findDriveFolder}
+          />
         </TabsContent>
 
         {/* ---- Tab: Razón de Secretaría ---- */}
         <TabsContent value="razon-secretaria">
+          <DriveFolderTab
+            title="Razón de Secretaría"
+            description="Constancias y razones expedidas por la Secretaría Arbitral — accesos directos a la carpeta de Drive del expediente."
+            icon={StickyNote}
+            patterns={[
+              /RAZ[OÓ]N.*SECRETAR|RAZON_SECRETARIA|CONSTANCIA/i,
+            ]}
+            driveFolders={driveFolders}
+            driveLoading={driveLoading}
+            driveError={driveError}
+            findDriveFolder={findDriveFolder}
+          />
+        </TabsContent>
+
+        {/* ---- (legacy bloque viejo de razón eliminado, reemplazado arriba) ---- */}
+        <TabsContent value="razon-secretaria-legacy" className="hidden">
           <Card>
             <CardHeader>
               <CardTitle>Razón de Secretaría</CardTitle>
@@ -2806,4 +2826,152 @@ function formatFileSizeInline(bytes: any): string {
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+// =====================================================================
+// DriveFolderTab — pestaña que muestra archivos directo desde Drive
+// =====================================================================
+type DriveFileItem = {
+  id: string;
+  name: string;
+  mimeType: string | null;
+  modifiedTime: string | null;
+  webViewLink: string | null;
+  iconLink: string | null;
+  size: string | null;
+};
+type DriveFolderItem = {
+  key: string;
+  name: string;
+  driveFolderId: string;
+  webViewLink: string | null;
+  files: DriveFileItem[];
+};
+
+function DriveFolderTab({
+  title,
+  description,
+  icon: Icon,
+  patterns,
+  driveFolders,
+  driveLoading,
+  driveError,
+  findDriveFolder,
+}: {
+  title: string;
+  description: string;
+  icon: any;
+  patterns: RegExp[];
+  driveFolders: DriveFolderItem[];
+  driveLoading: boolean;
+  driveError: string | null;
+  findDriveFolder: (patterns: RegExp[]) => DriveFolderItem | null;
+}) {
+  const folder = findDriveFolder(patterns);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </div>
+          {folder?.webViewLink && (
+            <a
+              href={folder.webViewLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-[#D66829] hover:underline"
+            >
+              Abrir en Drive <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {driveLoading ? (
+          <div className="py-8 text-center text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+            <p className="text-sm">Cargando archivos de Drive...</p>
+          </div>
+        ) : driveError && driveFolders.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground">
+            <Icon className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p className="text-sm">No pudimos leer Drive: {driveError}</p>
+            <p className="text-xs mt-2">
+              Revisá que el expediente tenga vinculada su carpeta de Drive en
+              "Editar caso" y que la integración de Google esté activa.
+            </p>
+          </div>
+        ) : !folder ? (
+          <div className="py-12 text-center text-muted-foreground">
+            <Icon className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>No encontramos una subcarpeta para "{title}" en Drive.</p>
+            <p className="text-xs mt-2">
+              Si la carpeta existe en Drive con otro nombre, las búsquedas
+              prueban: {patterns.map((p) => p.source).join(" | ")}.
+            </p>
+            {driveFolders.length > 0 && (
+              <p className="text-xs mt-3">
+                Subcarpetas encontradas:{" "}
+                {driveFolders.map((f) => f.name).join(", ")}
+              </p>
+            )}
+          </div>
+        ) : folder.files.length === 0 ? (
+          <div className="py-12 text-center text-muted-foreground">
+            <Icon className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>
+              La carpeta <strong>{folder.name}</strong> de Drive está vacía.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground mb-3">
+              {folder.files.length} archivo(s) en Drive · carpeta:{" "}
+              <strong>{folder.name}</strong>
+            </p>
+            {folder.files.map((f) => (
+              <a
+                key={f.id}
+                href={f.webViewLink || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {f.iconLink ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={f.iconLink}
+                      alt=""
+                      className="h-4 w-4 shrink-0"
+                    />
+                  ) : (
+                    <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{f.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {f.modifiedTime
+                        ? new Date(f.modifiedTime).toLocaleDateString("es-PE", {
+                            timeZone: "America/Lima",
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : ""}
+                      {f.size ? ` · ${formatFileSizeInline(f.size)}` : ""}
+                    </p>
+                  </div>
+                </div>
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              </a>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }

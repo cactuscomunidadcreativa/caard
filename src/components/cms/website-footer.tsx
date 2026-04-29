@@ -8,7 +8,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
 import { useTranslation } from "@/lib/i18n";
 import {
   Scale,
@@ -49,21 +48,9 @@ export function WebsiteFooter({ config }: WebsiteFooterProps) {
   const currentYear = new Date().getFullYear();
   const { t } = useTranslation();
 
-  // Footer está sobre fondo azul (#0B2A5B) → usar logoDark si existe.
-  const [logoDark, setLogoDark] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/cms/config")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.logoDark) setLogoDark(data.logoDark);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  const footerLogo = logoDark || config.logoUrl || null;
+  // El sitio público SIEMPRE usa el logo "principal" (color). El logo
+  // blanco se reserva para la barra del dashboard.
+  const footerLogo = config.logoUrl || null;
 
   return (
     <>

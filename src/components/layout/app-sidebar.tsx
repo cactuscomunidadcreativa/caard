@@ -1078,16 +1078,18 @@ export function AppSidebar() {
   // Determinar si el usuario es admin
   const isAdmin = ["SUPER_ADMIN", "ADMIN"].includes(userRole);
 
-  // Logo del CMS — la sidebar está sobre fondo claro, así que usamos
-  // el logo "principal" (versión a color sobre blanco). Si el admin no
-  // configuró nada, caemos al SVG estático.
+  // Logo del CMS — la barra del dashboard usa el logo BLANCO (logoDark)
+  // según indicación del cliente. Si no está configurado, cae al logo
+  // principal o al SVG estático.
   const [cmsLogo, setCmsLogo] = useState<string>("/images/caard-logo.svg");
   useEffect(() => {
     let cancelled = false;
     fetch("/api/cms/config")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (!cancelled && data?.logo) setCmsLogo(data.logo);
+        if (cancelled) return;
+        if (data?.logoDark) setCmsLogo(data.logoDark);
+        else if (data?.logo) setCmsLogo(data.logo);
       })
       .catch(() => {});
     return () => {

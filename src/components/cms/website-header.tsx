@@ -114,24 +114,10 @@ export function WebsiteHeader({
   const phone = config?.contactPhone || "(51) 913 755 003";
   const email = config?.contactEmail || "info@caardpe.com";
 
-  // El header tiene fondo azul oscuro (#0B2A5B), así que preferimos
-  // logoDark (versión clara). Lo extraemos de /api/cms/config porque
-  // vive en extendedConfig (JSON). Si no está configurado, caemos al
-  // logo principal.
-  const [logoDark, setLogoDark] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/cms/config")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.logoDark) setLogoDark(data.logoDark);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  const displayLogo = logoDark || config?.logoUrl || logoUrl;
+  // El sitio público SIEMPRE muestra el logo "principal" (versión a
+  // color, cmok7fbvy0001) según indicación del cliente — el logo
+  // blanco se reserva exclusivamente para la barra del dashboard.
+  const displayLogo = config?.logoUrl || logoUrl;
 
   // Detectar scroll para cambiar el estilo del header
   useEffect(() => {
