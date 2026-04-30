@@ -15,12 +15,10 @@ export const metadata: Metadata = {
   description: "Centro de Administración de Arbitrajes y Resolución de Disputas. Impulsar el arbitraje como medio eficaz para la solución de controversias.",
 };
 
-// La home consume hero image, anuncios y secciones del CMS. Render
-// dinámico (sin cache) para que cualquier cambio del admin aparezca
-// inmediatamente. Las queries Prisma son ligeras (findUnique +
-// findMany con un center).
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+// Revalidación corta — no force-dynamic (causaba 500 en prod). El
+// PUT de /api/cms/hero-images llama revalidatePath, así los cambios
+// del admin aparecen al instante igual.
+export const revalidate = 30;
 
 async function getHomePageData() {
   try {
@@ -68,10 +66,21 @@ function SafeSection({ section }: { section: any }) {
 }
 
 export default async function HomePage() {
-  const [{ page, announcements }, heroImage] = await Promise.all([
-    getHomePageData(),
-    getHeroImage("home"),
-  ]);
+  // Wrappers defensivos: si Prisma falla, no derribamos la home.
+  let pageData: Awaited<ReturnType<typeof getHomePageData>> = {
+    page: null,
+    announcements: [],
+  };
+  let heroImage: string | null = null;
+  try {
+    [pageData, heroImage] = await Promise.all([
+      getHomePageData(),
+      getHeroImage("home"),
+    ]);
+  } catch (e) {
+    console.error("[home] data fetch failed:", e);
+  }
+  const { page, announcements } = pageData;
   const hasCMSContent = page && page.sections.length > 0;
 
   return (
