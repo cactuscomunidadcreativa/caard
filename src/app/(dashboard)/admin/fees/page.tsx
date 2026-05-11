@@ -1,14 +1,13 @@
-"use client";
-
 /**
- * CAARD - Configuración de Tarifas
- * Muestra las 6 tablas de tarifas oficiales + calculadora inline
+ * CAARD - Configuración de Tarifas (Server Component)
+ *
+ * Las tablas se renderizan server-side: el HTML final llega al navegador
+ * con los valores, pero las tablas/fórmulas como código NO viajan al
+ * bundle del cliente. La calculadora interactiva está en
+ * `FeesCalculator` y consume /api/public/fees/calculate.
  */
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -16,8 +15,6 @@ import {
 } from "@/components/ui/table";
 import { Calculator, DollarSign } from "lucide-react";
 import {
-  calculateCaardFees,
-  formatCurrency,
   TRIBUNAL_NACIONAL,
   ARBITRO_UNICO_NACIONAL,
   GASTOS_CENTRO_NACIONAL,
@@ -25,11 +22,9 @@ import {
   TRIBUNAL_INTERNACIONAL,
   INTERNACIONAL_PERCENT,
 } from "@/lib/fees/caard-tariffs";
+import { FeesCalculator } from "./fees-calculator";
 
 export default function FeesPage() {
-  const [amount, setAmount] = useState("");
-  const parsed = Number((amount || "0").replace(/[^\d.]/g, ""));
-
   const tables = [
     { name: "Tribunal Arbitral Nacional (S/.)", data: TRIBUNAL_NACIONAL, currency: "S/." },
     { name: "Árbitro Único Nacional (S/.)", data: ARBITRO_UNICO_NACIONAL, currency: "S/." },
@@ -37,13 +32,6 @@ export default function FeesPage() {
     { name: "Emergencia Nacional (S/.)", data: EMERGENCIA_NACIONAL, currency: "S/." },
     { name: "Tribunal Arbitral Internacional ($)", data: TRIBUNAL_INTERNACIONAL, currency: "$" },
   ];
-
-  const calcResults = parsed > 0 ? [
-    { label: "Tribunal Nacional", ...calculateCaardFees({ scope: "NACIONAL", mode: "TRIBUNAL_3", amount: parsed }) },
-    { label: "Árbitro Único Nacional", ...calculateCaardFees({ scope: "NACIONAL", mode: "SOLE_ARBITRATOR", amount: parsed }) },
-    { label: "Emergencia Nacional", ...calculateCaardFees({ scope: "NACIONAL", mode: "SOLE_ARBITRATOR", procedureType: "EMERGENCY", amount: parsed }) },
-    { label: "Internacional", ...calculateCaardFees({ scope: "INTERNACIONAL", mode: "TRIBUNAL_3", amount: parsed }) },
-  ] : [];
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -66,64 +54,10 @@ export default function FeesPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Calculadora */}
         <TabsContent value="calculator">
-          <Card>
-            <CardHeader>
-              <CardTitle>Calculadora de Gastos Arbitrales</CardTitle>
-              <CardDescription>
-                Ingrese la cuantía para ver el desglose completo por modalidad.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="max-w-sm">
-                <Label>Cuantía de la controversia</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="Ej: 500000"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="text-lg h-12 mt-1"
-                />
-              </div>
-
-              {calcResults.length > 0 && (
-                <div className="space-y-4">
-                  {calcResults.map((r, i) => (
-                    <div key={i} className="rounded-lg border overflow-hidden">
-                      <div className="bg-[#0B2A5B] text-white px-4 py-2 font-semibold text-sm">
-                        {r.label}
-                      </div>
-                      <div className="grid grid-cols-3 divide-x p-4">
-                        <div className="px-3">
-                          <p className="text-xs text-muted-foreground uppercase">Honorarios</p>
-                          <p className="text-lg font-bold text-[#0B2A5B]">
-                            {formatCurrency(r.arbitratorFee, r.currency)}
-                          </p>
-                        </div>
-                        <div className="px-3">
-                          <p className="text-xs text-muted-foreground uppercase">Gastos Centro</p>
-                          <p className="text-lg font-bold text-[#D66829]">
-                            {formatCurrency(r.centerFee, r.currency)}
-                          </p>
-                        </div>
-                        <div className="px-3">
-                          <p className="text-xs text-muted-foreground uppercase">Total</p>
-                          <p className="text-lg font-bold text-emerald-700">
-                            {formatCurrency(r.total, r.currency)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <FeesCalculator />
         </TabsContent>
 
-        {/* Tablas */}
         <TabsContent value="tables">
           <div className="space-y-4">
             {tables.map((t) => (
@@ -143,7 +77,7 @@ export default function FeesPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {t.data.map((b: any, i: number) => (
+                      {t.data.map((b, i) => (
                         <TableRow key={i}>
                           <TableCell>{t.currency} {b.minAmount.toLocaleString()}</TableCell>
                           <TableCell>{b.maxAmount ? `${t.currency} ${b.maxAmount.toLocaleString()}` : "∞"}</TableCell>

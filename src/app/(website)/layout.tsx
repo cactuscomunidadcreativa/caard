@@ -8,7 +8,6 @@ import { WebsiteHeader } from "@/components/cms/website-header";
 import { WebsiteFooter } from "@/components/cms/website-footer";
 import { WhatsAppButton } from "@/components/cms/whatsapp-button";
 import { PublicChatbot } from "@/components/ai/public-chatbot";
-// AntiCopy ya está en root layout
 
 // Revalidación corta (60s) en vez de force-dynamic — más estable en
 // producción. El POST /api/cms/config llama revalidatePath para

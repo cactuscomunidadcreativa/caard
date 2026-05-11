@@ -1,10 +1,10 @@
 "use client";
 /**
  * CAARD - Calculadora de Gastos Arbitrales
- * Usa el engine central src/lib/fees/caard-tariffs para mantener consistencia
- * con liquidaciones, órdenes de pago y admin.
+ * Las tablas y fórmulas viven server-side. Acá solo se llama al endpoint
+ * /api/public/fees/calculate con los inputs y se muestra el resultado.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Calculator, Info, RefreshCw, Scale, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,29 +25,38 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
-  calculateCaardFees,
   formatCurrency,
   type Scope,
   type TribunalMode,
   type ProcedureType,
-} from "@/lib/fees/caard-tariffs";
+  type FeeBreakdown,
+} from "@/lib/fees/caard-tariffs-shared";
 
 export function ArbitrageCalculator() {
   const [amount, setAmount] = useState<string>("");
   const [scope, setScope] = useState<Scope>("NACIONAL");
   const [mode, setMode] = useState<TribunalMode>("TRIBUNAL_3");
   const [procedureType, setProcedureType] = useState<ProcedureType>("REGULAR");
+  const [result, setResult] = useState<FeeBreakdown | null>(null);
 
   const parsed = Number((amount || "0").replace(/[^\d.]/g, ""));
 
-  const result = useMemo(() => {
-    if (!parsed || parsed <= 0) return null;
-    return calculateCaardFees({
-      scope,
-      mode,
-      procedureType,
-      amount: parsed,
-    });
+  useEffect(() => {
+    if (!parsed || parsed <= 0) {
+      setResult(null);
+      return;
+    }
+    const ctrl = new AbortController();
+    fetch("/api/public/fees/calculate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scope, mode, procedureType, amount: parsed }),
+      signal: ctrl.signal,
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: FeeBreakdown | null) => setResult(data))
+      .catch(() => {});
+    return () => ctrl.abort();
   }, [parsed, scope, mode, procedureType]);
 
   const currency: "PEN" | "USD" = scope === "INTERNACIONAL" ? "USD" : "PEN";

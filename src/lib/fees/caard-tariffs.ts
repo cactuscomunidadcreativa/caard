@@ -1,6 +1,10 @@
 /**
  * CAARD - Tarifas oficiales del Centro
  *
+ * SERVER-ONLY. No importar desde Client Components — las tablas y
+ * fórmulas no deben empaquetarse en el bundle del navegador.
+ * Tipos compartibles y `formatCurrency` están en `caard-tariffs-shared.ts`.
+ *
  * Fuente: Reglamento oficial CAARD (6 tablas de tarifas).
  * Todo en unidades enteras de moneda (S/. o $) — los wrappers *Cents() multiplican por 100.
  *
@@ -12,6 +16,7 @@
  *   - INTERNAC. · Tribunal Arbitral        ($, por tramos con fórmula)
  *   - INTERNAC. · Porcentaje plano         (Honorarios 3.50%, Gastos 1.80%)
  */
+import "server-only";
 
 export type Scope = "NACIONAL" | "INTERNACIONAL";
 export type TribunalMode = "SOLE_ARBITRATOR" | "TRIBUNAL_3";

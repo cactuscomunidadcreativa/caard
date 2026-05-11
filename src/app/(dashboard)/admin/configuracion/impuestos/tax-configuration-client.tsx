@@ -138,6 +138,8 @@ export function TaxConfigurationClient({
     sunatCode: "",
     isActive: true,
   });
+  const [rateInput, setRateInput] = useState("18");
+  const [minimumInput, setMinimumInput] = useState("0");
 
   const resetForm = () => {
     setFormData({
@@ -153,19 +155,25 @@ export function TaxConfigurationClient({
       sunatCode: "",
       isActive: true,
     });
+    setRateInput("18");
+    setMinimumInput("0");
     setError(null);
   };
 
   const handleTaxTypeChange = (type: string) => {
     const info = TAX_TYPE_INFO[type as keyof typeof TAX_TYPE_INFO];
+    const newRate = info?.defaultRate || 0;
+    const newMin = info?.defaultMinimum || 0;
     setFormData({
       ...formData,
       taxType: type,
-      rate: info?.defaultRate || 0,
-      minimumAmountCents: info?.defaultMinimum || 0,
+      rate: newRate,
+      minimumAmountCents: newMin,
       code: type + "_" + (info?.defaultRate ? (info.defaultRate * 100).toFixed(0) : "0"),
       name: info?.label + " " + ((info?.defaultRate || 0) * 100).toFixed(0) + "%",
     });
+    setRateInput((newRate * 100).toString());
+    setMinimumInput((newMin / 100).toString());
   };
 
   const handleCreateConfig = async () => {
@@ -271,6 +279,8 @@ export function TaxConfigurationClient({
       sunatCode: config.sunatCode || "",
       isActive: config.isActive,
     });
+    setRateInput((config.rate * 100).toString());
+    setMinimumInput(((config.minimumAmountCents || 0) / 100).toString());
     setIsEditDialogOpen(true);
   };
 
@@ -494,8 +504,13 @@ export function TaxConfigurationClient({
                   step="0.01"
                   min="0"
                   max="100"
-                  value={(formData.rate * 100).toFixed(2)}
-                  onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) / 100 })}
+                  value={rateInput}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setRateInput(v);
+                    const n = parseFloat(v);
+                    setFormData({ ...formData, rate: isNaN(n) ? 0 : n / 100 });
+                  }}
                 />
               </div>
               <div className="space-y-2">
@@ -504,8 +519,13 @@ export function TaxConfigurationClient({
                   type="number"
                   step="0.01"
                   min="0"
-                  value={(formData.minimumAmountCents / 100).toFixed(2)}
-                  onChange={(e) => setFormData({ ...formData, minimumAmountCents: Math.round(parseFloat(e.target.value) * 100) })}
+                  value={minimumInput}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setMinimumInput(v);
+                    const n = parseFloat(v);
+                    setFormData({ ...formData, minimumAmountCents: isNaN(n) ? 0 : Math.round(n * 100) });
+                  }}
                 />
               </div>
             </div>
@@ -610,8 +630,13 @@ export function TaxConfigurationClient({
                   step="0.01"
                   min="0"
                   max="100"
-                  value={(formData.rate * 100).toFixed(2)}
-                  onChange={(e) => setFormData({ ...formData, rate: parseFloat(e.target.value) / 100 })}
+                  value={rateInput}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setRateInput(v);
+                    const n = parseFloat(v);
+                    setFormData({ ...formData, rate: isNaN(n) ? 0 : n / 100 });
+                  }}
                 />
               </div>
               <div className="space-y-2">
@@ -620,8 +645,13 @@ export function TaxConfigurationClient({
                   type="number"
                   step="0.01"
                   min="0"
-                  value={(formData.minimumAmountCents / 100).toFixed(2)}
-                  onChange={(e) => setFormData({ ...formData, minimumAmountCents: Math.round(parseFloat(e.target.value) * 100) })}
+                  value={minimumInput}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setMinimumInput(v);
+                    const n = parseFloat(v);
+                    setFormData({ ...formData, minimumAmountCents: isNaN(n) ? 0 : Math.round(n * 100) });
+                  }}
                 />
               </div>
             </div>

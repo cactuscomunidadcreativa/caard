@@ -193,6 +193,7 @@ export function LiquidationClient({ caso, liquidation, arbitrators }: Props) {
     netAmount: 0,
     retentionRate: 0.08,
   });
+  const [retentionRateInput, setRetentionRateInput] = useState("8");
 
   const [adminPaymentForm, setAdminPaymentForm] = useState({
     concept: "",
@@ -201,6 +202,7 @@ export function LiquidationClient({ caso, liquidation, arbitrators }: Props) {
     igvRate: 0.18,
     payer: "DTE",
   });
+  const [igvRateInput, setIgvRateInput] = useState("18");
 
   const [selectedPaymentItem, setSelectedPaymentItem] = useState<{
     type: "arbitrator" | "admin";
@@ -273,6 +275,7 @@ export function LiquidationClient({ caso, liquidation, arbitrators }: Props) {
         netAmount: 0,
         retentionRate: 0.08,
       });
+      setRetentionRateInput("8");
       router.refresh();
     } catch (err: any) {
       setError(err.message);
@@ -315,6 +318,7 @@ export function LiquidationClient({ caso, liquidation, arbitrators }: Props) {
         igvRate: 0.18,
         payer: "DTE",
       });
+      setIgvRateInput("18");
       router.refresh();
     } catch (err: any) {
       setError(err.message);
@@ -806,8 +810,13 @@ export function LiquidationClient({ caso, liquidation, arbitrators }: Props) {
               <Input
                 type="number"
                 step="0.01"
-                value={(arbitratorForm.retentionRate * 100).toFixed(2)}
-                onChange={(e) => setArbitratorForm({ ...arbitratorForm, retentionRate: parseFloat(e.target.value) / 100 || 0 })}
+                value={retentionRateInput}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setRetentionRateInput(v);
+                  const n = parseFloat(v);
+                  setArbitratorForm({ ...arbitratorForm, retentionRate: isNaN(n) ? 0 : n / 100 });
+                }}
               />
             </div>
 
@@ -907,8 +916,13 @@ export function LiquidationClient({ caso, liquidation, arbitrators }: Props) {
                 <Input
                   type="number"
                   step="0.01"
-                  value={(adminPaymentForm.igvRate * 100).toFixed(2)}
-                  onChange={(e) => setAdminPaymentForm({ ...adminPaymentForm, igvRate: parseFloat(e.target.value) / 100 || 0 })}
+                  value={igvRateInput}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setIgvRateInput(v);
+                    const n = parseFloat(v);
+                    setAdminPaymentForm({ ...adminPaymentForm, igvRate: isNaN(n) ? 0 : n / 100 });
+                  }}
                 />
               </div>
             </div>

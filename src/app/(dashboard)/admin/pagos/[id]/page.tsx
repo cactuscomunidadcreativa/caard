@@ -46,12 +46,14 @@ export default function PaymentOrderDetailPage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [amountInput, setAmountInput] = useState("");
 
   useEffect(() => {
     fetch(`/api/payment-orders/${id}`)
       .then((r) => r.json())
       .then((d) => {
         setOrder(d);
+        setAmountInput(((d.amountCents || 0) / 100).toString());
         setForm({
           concept: d.concept,
           description: d.description || "",
@@ -245,8 +247,13 @@ export default function PaymentOrderDetailPage() {
                   <Label>Monto base</Label>
                   <Input
                     type="number" step="0.01"
-                    value={(form.amountCents / 100).toFixed(2)}
-                    onChange={(e) => setForm({ ...form, amountCents: Math.round(Number(e.target.value) * 100) })}
+                    value={amountInput}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setAmountInput(v);
+                      const n = parseFloat(v);
+                      setForm({ ...form, amountCents: isNaN(n) ? 0 : Math.round(n * 100) });
+                    }}
                   />
                 </div>
                 <div>

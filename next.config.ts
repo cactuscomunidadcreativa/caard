@@ -1,6 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Sin sourcemaps en producción — evita que el código minificado se pueda
+  // "des-minificar" y leer limpio desde devtools. (Default de Next.js,
+  // explícito acá para que no se active por accidente.)
+  productionBrowserSourceMaps: false,
+
+  // Eliminar console.* del bundle de producción (excepto error/warn).
+  // Los logs a veces filtran nombres internos, rutas o estructuras de datos.
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production"
+      ? { exclude: ["error", "warn"] }
+      : false,
+  },
+
   // Optimizaciones de imagen - compatible con Cloudflare
   images: {
     remotePatterns: [

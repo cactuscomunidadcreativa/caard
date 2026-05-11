@@ -6,12 +6,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-// AntiCopy removido a pedido del usuario: bloquear copia, click derecho,
-// Ctrl+P y devtools en una web institucional rompe UX legítimo (descargar
-// PDFs, copiar emails, imprimir reglamentos, abogados copiando referencias).
-// Si más adelante se requiere protección selectiva, aplicar la clase
-// .no-copy a elementos puntuales (la regla CSS sigue en globals.css).
-// import { AntiCopy } from "@/components/anti-copy";
+import { NoSource } from "@/components/no-source";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,6 +39,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased overflow-x-hidden`}
       >
+        <NoSource />
         <Providers>
           {children}
         </Providers>
