@@ -275,6 +275,12 @@ function useNavigationItems() {
       roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA"],
     },
     {
+      title: "Órdenes Procesales",
+      href: "/staff/ordenes-procesales",
+      icon: Gavel,
+      roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"],
+    },
+    {
       title: t.sidebar.emergencies,
       href: "/secretaria/emergencias",
       icon: Zap,

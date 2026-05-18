@@ -74,6 +74,8 @@ interface Props {
 
 const TIPO_OPTIONS = [
   "Escrito",
+  "Orden Procesal",
+  "Resolución",
   "Demanda",
   "Contestación",
   "Reconvención",
