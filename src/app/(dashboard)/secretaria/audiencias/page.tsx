@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, ArrowLeft, Clock, MapPin, Video } from "lucide-react";
+import { Calendar, Plus, ArrowLeft, Clock, MapPin, Video, Gavel } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -128,15 +128,24 @@ export default async function SecretariaAudienciasPage() {
           </Link>
           <h1 className="text-3xl font-bold">Audiencias</h1>
           <p className="text-muted-foreground">
-            Programa audiencias o confirma las sugeridas por los árbitros
+            Programa audiencias, confirma las sugeridas por los árbitros y emite
+            la Orden Procesal que las fija.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/staff/audiencias/programar">
-            <Plus className="h-4 w-4 mr-2" />
-            Programar nueva
-          </Link>
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button asChild variant="outline" className="border-[#0B2A5B] text-[#0B2A5B]">
+            <Link href="/staff/ordenes-procesales/nueva">
+              <Gavel className="h-4 w-4 mr-2" />
+              Emitir Orden Procesal
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/staff/audiencias/programar">
+              <Plus className="h-4 w-4 mr-2" />
+              Programar nueva
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Sugeridas */}
@@ -167,11 +176,19 @@ export default async function SecretariaAudienciasPage() {
                   key={h.id}
                   h={h}
                   action={
-                    <Button asChild size="sm">
-                      <Link href={`/secretaria/audiencias/${h.id}/programar`}>
-                        Programar
-                      </Link>
-                    </Button>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button asChild size="sm" variant="outline" className="border-[#0B2A5B] text-[#0B2A5B]">
+                        <Link href={`/staff/ordenes-procesales/nueva?caseId=${h.caseId}`}>
+                          <Gavel className="h-3 w-3 mr-1" />
+                          Emitir OP
+                        </Link>
+                      </Button>
+                      <Button asChild size="sm">
+                        <Link href={`/secretaria/audiencias/${h.id}/programar`}>
+                          Programar
+                        </Link>
+                      </Button>
+                    </div>
                   }
                 />
               ))}
@@ -200,9 +217,17 @@ export default async function SecretariaAudienciasPage() {
                   key={h.id}
                   h={h}
                   action={
-                    <Button asChild size="sm" variant="outline">
-                      <Link href={`/cases/${h.caseId}`}>Ver expediente</Link>
-                    </Button>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button asChild size="sm" variant="outline" className="border-[#0B2A5B] text-[#0B2A5B]">
+                        <Link href={`/staff/ordenes-procesales/nueva?caseId=${h.caseId}`}>
+                          <Gavel className="h-3 w-3 mr-1" />
+                          Emitir OP
+                        </Link>
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/cases/${h.caseId}`}>Ver expediente</Link>
+                      </Button>
+                    </div>
                   }
                 />
               ))}

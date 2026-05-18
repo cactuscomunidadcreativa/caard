@@ -11,7 +11,7 @@
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   Card,
@@ -51,10 +51,12 @@ const TIPO_OPTIONS = ["Orden Procesal", "Resolución"];
 
 export default function NuevaOrdenProcesalPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const presetCaseId = searchParams.get("caseId") || "";
   const [cases, setCases] = useState<Case[]>([]);
   const [casesLoading, setCasesLoading] = useState(true);
 
-  const [caseId, setCaseId] = useState<string>("");
+  const [caseId, setCaseId] = useState<string>(presetCaseId);
   const [tipo, setTipo] = useState<string>("Orden Procesal");
   const [mode, setMode] = useState<"ai" | "upload">("ai");
 

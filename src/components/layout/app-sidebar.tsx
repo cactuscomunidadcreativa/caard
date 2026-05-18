@@ -275,6 +275,12 @@ function useNavigationItems() {
       roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA"],
     },
     {
+      title: "Audiencias",
+      href: "/secretaria/audiencias",
+      icon: Calendar,
+      roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"],
+    },
+    {
       title: "Órdenes Procesales",
       href: "/staff/ordenes-procesales",
       icon: Gavel,
