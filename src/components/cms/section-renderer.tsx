@@ -172,9 +172,11 @@ function HeroSection({
   const content = section.content || {};
   const buttons = content.buttons || [];
   const bgColor = section.bgColor || "#D66829";
-  // Si la sección no trae background, usar el hero global del slug
-  // configurado en /admin/cms/hero-images.
-  const bgImage = content.backgroundImage || fallbackHeroImage || null;
+  // Prioridad: la imagen subida por el admin en /admin/cms/hero-images
+  // gana sobre la que pudiera tener la sección del CMS antiguo. Si el
+  // admin no subió nada para este slug, se cae al backgroundImage del
+  // CMS, y si tampoco hay, queda solo el gradiente.
+  const bgImage = fallbackHeroImage || content.backgroundImage || null;
 
   return (
     <section
@@ -185,12 +187,14 @@ function HeroSection({
         backgroundPosition: "center",
       }}
     >
-      {/* Gradient overlay */}
+      {/* Gradient overlay — más sutil cuando hay imagen para que se vea
+          la foto detrás (mismo criterio que HomePageClient: ~60% azul).
+          Sin imagen, el gradiente sólido sirve de fondo. */}
       <div
         className="absolute inset-0"
         style={{
           background: bgImage
-            ? `linear-gradient(135deg, ${bgColor}ee 0%, ${bgColor}cc 50%, #0B2A5Bcc 100%)`
+            ? `linear-gradient(135deg, #0B2A5B99 0%, #0B2A5B66 50%, ${bgColor}80 100%)`
             : `linear-gradient(135deg, ${bgColor} 0%, #c45a22 50%, #0B2A5B 100%)`,
         }}
       />
