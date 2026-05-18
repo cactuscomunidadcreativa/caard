@@ -265,3 +265,16 @@
 .animate-marquee {
   animation: marquee 30s linear infinite;
 }
+
+/* Ocultar flechitas (spinner) en inputs numéricos cuando se aplica la clase
+   `no-spinner`. La práctica común en CAARD es escribir montos directamente,
+   sin que el spinner del navegador robe el foco visual. */
+input.no-spinner::-webkit-outer-spin-button,
+input.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

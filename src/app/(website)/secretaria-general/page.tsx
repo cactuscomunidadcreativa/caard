@@ -4,7 +4,7 @@
  */
 
 import { Metadata } from "next";
-import { getCmsPage } from "@/lib/cms";
+import { getCmsPage, getHeroImage } from "@/lib/cms";
 import { SectionRenderer } from "@/components/cms/section-renderer";
 import { SecretariaGeneralClient } from "./secretaria-client";
 
@@ -18,12 +18,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function SecretariaGeneralPage() {
   const { page, hasCmsContent } = await getCmsPage("secretaria-general");
+  const heroImage = await getHeroImage("secretaria-general");
 
   if (hasCmsContent && page) {
     return (
       <>
         {page.sections.map((section) => (
-          <SectionRenderer key={section.id} section={section} />
+          <SectionRenderer key={section.id} section={section} fallbackHeroImage={heroImage} />
         ))}
       </>
     );

@@ -75,6 +75,7 @@ interface Payment {
 
 interface Props {
   payments: Payment[];
+  userRole: string;
 }
 
 function formatAmount(cents: number): string {
@@ -116,6 +117,16 @@ function StatusBadge({ status }: { status: string }) {
       variant: "outline",
       icon: <CheckCircle className="h-3 w-3 text-green-600" />,
     },
+    VERIFIED: {
+      label: "Pre-verificado (esperando finanzas)",
+      variant: "outline",
+      icon: <CheckCircle className="h-3 w-3 text-amber-600" />,
+    },
+    RECONCILED: {
+      label: "Reconciliado",
+      variant: "outline",
+      icon: <CheckCircle className="h-3 w-3 text-emerald-600" />,
+    },
     REJECTED: {
       label: "Rechazado",
       variant: "destructive",
@@ -137,13 +148,17 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function ConfirmacionesClient({ payments }: Props) {
+export function ConfirmacionesClient({ payments, userRole }: Props) {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [verificationNotes, setVerificationNotes] = useState("");
+  const [accountingRef, setAccountingRef] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isFinanzas = ["SUPER_ADMIN", "ADMIN", "FINANZAS"].includes(userRole);
+  const isStaffPreVerify = ["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(userRole);
 
   const filteredPayments = payments.filter(
     (p) =>
@@ -156,7 +171,39 @@ export function ConfirmacionesClient({ payments }: Props) {
   const handleOpenDialog = (payment: Payment) => {
     setSelectedPayment(payment);
     setVerificationNotes("");
+    setAccountingRef("");
     setIsDialogOpen(true);
+  };
+
+  const handleReconcile = async () => {
+    if (!selectedPayment) return;
+    if (!accountingRef.trim()) {
+      toast.error("La referencia contable es obligatoria");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(
+        `/api/payments/confirmations/${selectedPayment.id}/reconcile`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accountingRef: accountingRef.trim(),
+            notes: verificationNotes,
+          }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Error");
+      toast.success("Pago reconciliado contablemente");
+      setIsDialogOpen(false);
+      window.location.reload();
+    } catch (e: any) {
+      toast.error(e.message || "Error al reconciliar");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleVerify = async (approved: boolean) => {
@@ -170,24 +217,27 @@ export function ConfirmacionesClient({ payments }: Props) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            approved,
+            action: approved ? "VERIFY" : "REJECT",
             notes: verificationNotes,
+            rejectionReason: approved ? undefined : verificationNotes || "Rechazado por revisor",
           }),
         }
       );
 
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error("Error al verificar el pago");
+        throw new Error(data?.error || "Error al verificar el pago");
       }
 
       toast.success(
-        approved ? "Pago aprobado correctamente" : "Pago rechazado"
+        approved
+          ? "Pago pre-verificado — queda pendiente de reconciliación por finanzas"
+          : "Pago rechazado"
       );
       setIsDialogOpen(false);
-      // Recargar la pagina para actualizar la lista
       window.location.reload();
-    } catch (error) {
-      toast.error("Error al procesar la verificacion");
+    } catch (error: any) {
+      toast.error(error?.message || "Error al procesar la verificacion");
     } finally {
       setIsSubmitting(false);
     }
@@ -431,16 +481,52 @@ export function ConfirmacionesClient({ payments }: Props) {
                 </div>
               )}
 
-              {/* Notas de verificacion */}
+              {/* Estado del flujo */}
+              <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                <div className="font-medium mb-1">Flujo de doble verificación</div>
+                <div className="flex items-center gap-2">
+                  <span className={selectedPayment.status === "PENDING_VERIFICATION" || selectedPayment.status === "VERIFIED" || selectedPayment.status === "RECONCILED" ? "" : "text-muted-foreground"}>
+                    1. Pre-verificación staff
+                  </span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className={selectedPayment.status === "VERIFIED" || selectedPayment.status === "RECONCILED" ? "" : "text-muted-foreground"}>
+                    2. Reconciliación finanzas
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <StatusBadge status={selectedPayment.status} />
+                </div>
+              </div>
+
+              {/* Referencia contable (solo si va a reconciliar) */}
+              {selectedPayment.status === "VERIFIED" && isFinanzas && (
+                <div>
+                  <Label htmlFor="accountingRef">
+                    Referencia contable <span className="text-red-600">*</span>
+                  </Label>
+                  <Input
+                    id="accountingRef"
+                    value={accountingRef}
+                    onChange={(e) => setAccountingRef(e.target.value)}
+                    placeholder="Ej. AS-2026-0312 / Asiento contable"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Número de asiento o referencia en el sistema contable que confirma el ingreso.
+                  </p>
+                </div>
+              )}
+
+              {/* Notas */}
               <div>
                 <Label htmlFor="verificationNotes">
-                  Notas de verificacion (opcional)
+                  Notas (opcional)
                 </Label>
                 <Textarea
                   id="verificationNotes"
                   value={verificationNotes}
                   onChange={(e) => setVerificationNotes(e.target.value)}
-                  placeholder="Agrega notas sobre la verificacion..."
+                  placeholder="Agregá notas sobre la revisión..."
                   className="mt-1"
                 />
               </div>
@@ -455,18 +541,36 @@ export function ConfirmacionesClient({ payments }: Props) {
             >
               Cancelar
             </Button>
-            <Button
-              variant="destructive"
-              onClick={() => handleVerify(false)}
-              disabled={isSubmitting}
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              Rechazar
-            </Button>
-            <Button onClick={() => handleVerify(true)} disabled={isSubmitting}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Aprobar
-            </Button>
+
+            {/* Estado PENDING_VERIFICATION → staff puede rechazar o aprobar (pre-verificar) */}
+            {selectedPayment && selectedPayment.status === "PENDING_VERIFICATION" && isStaffPreVerify && (
+              <>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleVerify(false)}
+                  disabled={isSubmitting}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Rechazar
+                </Button>
+                <Button onClick={() => handleVerify(true)} disabled={isSubmitting}>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Pre-verificar
+                </Button>
+              </>
+            )}
+
+            {/* Estado VERIFIED → finanzas reconcilia */}
+            {selectedPayment && selectedPayment.status === "VERIFIED" && isFinanzas && (
+              <Button
+                onClick={handleReconcile}
+                disabled={isSubmitting || !accountingRef.trim()}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Reconciliar contablemente
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -107,6 +107,18 @@ const ROLE_DEFAULTS: Record<Role, {
     canManageCases: true,
     sortOrder: 4,
   },
+  FINANZAS: {
+    displayName: "Finanzas",
+    description: "Verifica vouchers, edita montos y fechas de órdenes de pago",
+    color: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    icon: "DollarSign",
+    canAccessAdmin: false,
+    canAccessCMS: false,
+    canAccessAI: false,
+    canManageUsers: false,
+    canManageCases: false,
+    sortOrder: 5,
+  },
   ARBITRO: {
     displayName: "Árbitro",
     description: "Resolución de casos asignados, emisión de laudos",

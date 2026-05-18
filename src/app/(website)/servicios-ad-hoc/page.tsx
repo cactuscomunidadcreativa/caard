@@ -5,7 +5,8 @@
 
 import { Metadata } from "next";
 import Link from "next/link";
-import { getCmsPage } from "@/lib/cms";
+import { getCmsPage, getHeroImage } from "@/lib/cms";
+import { CmsHeroBackdrop } from "@/components/cms/cms-hero-backdrop";
 import {
   Users,
   Briefcase,
@@ -127,7 +128,10 @@ const procesoContratacion = [
 ];
 
 export default async function ServiciosAdHocPage() {
-  const { page } = await getCmsPage("servicios-ad-hoc");
+  const [{ page }, heroImage] = await Promise.all([
+    getCmsPage("servicios-ad-hoc"),
+    getHeroImage("servicios-ad-hoc"),
+  ]);
 
   // Leer CARDS del CMS (editable desde /admin/cms/services). Si la sección
   // "Nuestros servicios" tiene cards, sobreescriben el hardcoded.
@@ -145,6 +149,7 @@ export default async function ServiciosAdHocPage() {
     <>
       {/* Hero */}
       <section className="relative bg-gradient-to-br from-[#0B2A5B] via-[#0d3a7a] to-[#D66829] py-[10vh] md:py-[12vh] overflow-hidden">
+        <CmsHeroBackdrop imageUrl={heroImage} />
         <div className="absolute inset-0 bg-[url('/patterns/grid.svg')] opacity-10" />
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center text-white">

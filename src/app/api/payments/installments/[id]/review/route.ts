@@ -29,7 +29,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     }
 
     // Solo admins pueden revisar
-    const allowedRoles = ["SUPER_ADMIN", "ADMIN", "SECRETARIA"];
+    const allowedRoles = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "FINANZAS"];
     if (!allowedRoles.includes(session.user.role)) {
       return NextResponse.json(
         { error: "No tiene permisos para esta acción" },

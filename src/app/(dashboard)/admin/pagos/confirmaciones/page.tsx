@@ -14,17 +14,17 @@ export const metadata: Metadata = {
   description: "Verificacion y confirmacion de pagos pendientes",
 };
 
-async function getPendingPayments() {
-  // Obtener confirmaciones de pago pendientes de revision
+async function getPendingPayments(userRole: string) {
+  // Staff de finanzas también necesita ver las VERIFIED (pendientes de
+  // reconciliación contable). Los demás roles solo ven los PENDING.
+  const statusFilter =
+    userRole === "FINANZAS" || userRole === "SUPER_ADMIN" || userRole === "ADMIN"
+      ? ["PENDING_VERIFICATION", "PENDING", "IN_REVIEW", "VERIFIED"]
+      : ["PENDING_VERIFICATION", "PENDING", "IN_REVIEW"];
+
   const confirmations = await prisma.paymentConfirmation.findMany({
-    where: {
-      status: {
-        in: ["PENDING_VERIFICATION", "PENDING", "IN_REVIEW"],
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
+    where: { status: { in: statusFilter } },
+    orderBy: { createdAt: "desc" },
   });
 
   // Obtener los PaymentOrders relacionados si existen
@@ -114,11 +114,11 @@ export default async function ConfirmacionesPage() {
   }
 
   const userRole = (session.user as any).role;
-  if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(userRole)) {
+  if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "FINANZAS"].includes(userRole)) {
     redirect("/dashboard");
   }
 
-  const pendingPayments = await getPendingPayments();
+  const pendingPayments = await getPendingPayments(userRole);
 
-  return <ConfirmacionesClient payments={pendingPayments} />;
+  return <ConfirmacionesClient payments={pendingPayments} userRole={userRole} />;
 }

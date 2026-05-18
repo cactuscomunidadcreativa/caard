@@ -4,7 +4,7 @@
  */
 
 import { Metadata } from "next";
-import { getCmsPage } from "@/lib/cms";
+import { getCmsPage, getHeroImage } from "@/lib/cms";
 import { SectionRenderer } from "@/components/cms/section-renderer";
 import { RegistroArbitrosClient } from "./registro-arbitros-client";
 
@@ -18,13 +18,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RegistroArbitrosPage() {
   const { page, hasCmsContent } = await getCmsPage("registro-arbitros");
+  const heroImage = await getHeroImage("registro-arbitros");
 
   // Si hay contenido CMS, renderizarlo
   if (hasCmsContent && page) {
     return (
       <>
         {page.sections.map((section) => (
-          <SectionRenderer key={section.id} section={section} />
+          <SectionRenderer key={section.id} section={section} fallbackHeroImage={heroImage} />
         ))}
       </>
     );

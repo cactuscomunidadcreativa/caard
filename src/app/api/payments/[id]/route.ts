@@ -12,7 +12,7 @@ import { Role, PaymentStatus } from "@prisma/client";
 import { z } from "zod";
 
 // Roles con acceso total
-const FULL_ACCESS_ROLES: Role[] = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"];
+const FULL_ACCESS_ROLES: Role[] = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA", "FINANZAS"];
 
 // Schema para actualizar pago
 const updatePaymentSchema = z.object({

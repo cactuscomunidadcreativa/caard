@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Solo SUPER_ADMIN, ADMIN, CENTER_STAFF y SECRETARIA pueden ver todas las órdenes
-    if (!["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"].includes(user.role)) {
+    if (!["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA", "FINANZAS"].includes(user.role)) {
       // Otros roles solo ven órdenes de sus casos
       const userCases = await prisma.caseMember.findMany({
         where: { userId: session.user.id },
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Solo roles administrativos pueden crear órdenes
-    if (!["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"].includes(user.role)) {
+    if (!["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA", "FINANZAS"].includes(user.role)) {
       return NextResponse.json(
         { error: "No tiene permisos para crear órdenes de pago" },
         { status: 403 }

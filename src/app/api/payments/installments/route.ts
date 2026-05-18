@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar que el usuario tiene acceso al caso
-    const isAdmin = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(session.user.role);
+    const isAdmin = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF", "FINANZAS"].includes(session.user.role);
     const isCaseMember = paymentOrder.case.members.length > 0;
 
     if (!isAdmin && !isCaseMember) {
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     const admins = await prisma.user.findMany({
       where: {
         centerId: paymentOrder.case.centerId,
-        role: { in: ["SUPER_ADMIN", "ADMIN", "SECRETARIA"] },
+        role: { in: ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "FINANZAS"] },
         isActive: true,
       },
     });
@@ -236,7 +236,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
-    const isAdmin = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(session.user.role);
+    const isAdmin = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF", "FINANZAS"].includes(session.user.role);
 
     // Construir filtros
     const where: any = {};

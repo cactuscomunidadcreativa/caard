@@ -133,7 +133,7 @@ export default async function ArbitratorPaymentsPage() {
     redirect("/auth/login");
   }
 
-  const allowedRoles = ["SUPER_ADMIN", "ADMIN", "SECRETARIA"];
+  const allowedRoles = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "FINANZAS"];
   if (!allowedRoles.includes(session.user.role)) {
     redirect("/dashboard");
   }

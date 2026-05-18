@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const allowedRoles = ["SUPER_ADMIN", "ADMIN", "SECRETARIA"];
+    const allowedRoles = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "FINANZAS"];
     if (!allowedRoles.includes(session.user.role)) {
       return NextResponse.json(
         { error: "No tiene permisos para esta acción" },
@@ -233,7 +233,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(session.user.role)) {
+    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "FINANZAS"].includes(session.user.role)) {
       return NextResponse.json(
         { error: "No tiene permisos para esta acción" },
         { status: 403 }

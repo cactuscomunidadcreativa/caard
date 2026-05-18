@@ -63,7 +63,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     }
 
     // Verificar acceso
-    const isAdmin = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(session.user.role);
+    const isAdmin = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF", "FINANZAS"].includes(session.user.role);
     const isCaseMember = plan.case.members.length > 0;
     const isRequester = plan.requestedById === session.user.id;
 

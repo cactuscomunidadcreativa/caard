@@ -5,7 +5,7 @@
 
 import { Metadata } from "next";
 import Link from "next/link";
-import { getCmsPage } from "@/lib/cms";
+import { getCmsPage, getHeroImage } from "@/lib/cms";
 import { SectionRenderer } from "@/components/cms/section-renderer";
 import {
   Zap,
@@ -99,13 +99,14 @@ const medidasCautelares = [
 
 export default async function ArbitrajeEmergenciaPage() {
   const { page, hasCmsContent } = await getCmsPage("arbitraje-emergencia");
+  const heroImage = await getHeroImage("arbitraje-emergencia");
 
   // Si hay contenido CMS, renderizarlo
   if (hasCmsContent && page) {
     return (
       <>
         {page.sections.map((section) => (
-          <SectionRenderer key={section.id} section={section} />
+          <SectionRenderer key={section.id} section={section} fallbackHeroImage={heroImage} />
         ))}
       </>
     );

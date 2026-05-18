@@ -9,16 +9,33 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-// Schema para actualizar orden de pago
+// Schema para actualizar orden de pago.
+// Aceptamos null en fechas porque el cliente envía null para limpiar el campo
+// (ej. cuando el status pasa de PAID a PENDING). Sin esto, Zod rechaza el
+// payload y la UI veía 400/500 al editar.
 const updatePaymentOrderSchema = z.object({
   status: z
     .enum(["PENDING", "PARTIAL", "PAID", "OVERDUE", "CANCELLED", "REFUNDED"])
     .optional(),
+  concept: z
+    .enum([
+      "TASA_PRESENTACION",
+      "GASTOS_ADMINISTRATIVOS",
+      "HONORARIOS_ARBITRO_UNICO",
+      "HONORARIOS_TRIBUNAL",
+      "TASA_EMERGENCIA",
+      "GASTOS_RECONVENCION",
+      "RELIQUIDACION",
+      "OTROS",
+    ])
+    .optional(),
   description: z.string().optional(),
-  amountCents: z.number().positive().optional(),
-  igvCents: z.number().min(0).optional(),
-  dueAt: z.string().datetime().optional(),
-  paidAt: z.string().datetime().optional(),
+  currency: z.string().min(3).max(3).optional(),
+  amountCents: z.number().int().nonnegative().optional(),
+  igvCents: z.number().int().min(0).optional(),
+  totalCents: z.number().int().nonnegative().optional(),
+  dueAt: z.string().datetime().nullable().optional(),
+  paidAt: z.string().datetime().nullable().optional(),
   blocksCase: z.boolean().optional(),
   paymentId: z.string().optional(),
   refundAmount: z.number().min(0).optional(),
@@ -81,7 +98,7 @@ export async function GET(
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
 
-    const isAdmin = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"].includes(
+    const isAdmin = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA", "FINANZAS"].includes(
       user.role
     );
     const isCaseMember = paymentOrder.case.members.some(
@@ -126,7 +143,7 @@ export async function PATCH(
     }
 
     // Solo roles administrativos pueden actualizar
-    if (!["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"].includes(user.role)) {
+    if (!["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA", "FINANZAS"].includes(user.role)) {
       return NextResponse.json(
         { error: "No tiene permisos para actualizar órdenes de pago" },
         { status: 403 }
@@ -184,8 +201,16 @@ export async function PATCH(
       }
     }
 
+    if (validatedData.concept !== undefined) {
+      updateData.concept = validatedData.concept;
+    }
+
     if (validatedData.description !== undefined) {
       updateData.description = validatedData.description;
+    }
+
+    if (validatedData.currency !== undefined) {
+      updateData.currency = validatedData.currency;
     }
 
     if (validatedData.amountCents !== undefined) {
@@ -200,8 +225,27 @@ export async function PATCH(
       updateData.totalCents = amount + validatedData.igvCents;
     }
 
+    // Cliente puede mandar totalCents calculado; lo respetamos si los otros
+    // dos no se enviaron (modo "override manual").
+    if (
+      validatedData.totalCents !== undefined &&
+      validatedData.amountCents === undefined &&
+      validatedData.igvCents === undefined
+    ) {
+      updateData.totalCents = validatedData.totalCents;
+    }
+
     if (validatedData.dueAt !== undefined) {
-      updateData.dueAt = new Date(validatedData.dueAt);
+      updateData.dueAt = validatedData.dueAt ? new Date(validatedData.dueAt) : null;
+    }
+
+    // paidAt explícito (independiente de status). Permite limpiar fecha
+    // de pago si el status sigue siendo PAID o si se baja a PENDING.
+    if (
+      validatedData.paidAt !== undefined &&
+      validatedData.status !== "PAID"
+    ) {
+      updateData.paidAt = validatedData.paidAt ? new Date(validatedData.paidAt) : null;
     }
 
     if (validatedData.blocksCase !== undefined) {
@@ -313,7 +357,7 @@ export async function DELETE(
     }
 
     // SUPER_ADMIN, ADMIN, SECRETARIA, CENTER_STAFF pueden cancelar
-    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(user.role)) {
+    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF", "FINANZAS"].includes(user.role)) {
       return NextResponse.json(
         { error: "No tiene permisos para cancelar órdenes de pago" },
         { status: 403 }

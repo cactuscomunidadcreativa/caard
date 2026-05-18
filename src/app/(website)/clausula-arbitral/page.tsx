@@ -4,7 +4,7 @@
  */
 
 import { Metadata } from "next";
-import { getCmsPage } from "@/lib/cms";
+import { getCmsPage, getHeroImage } from "@/lib/cms";
 import { SectionRenderer } from "@/components/cms/section-renderer";
 import { ClausulaArbitralClient } from "./clausula-arbitral-client";
 
@@ -18,13 +18,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function ClausulaArbitralPage() {
   const { page, hasCmsContent } = await getCmsPage("clausula-arbitral");
+  const heroImage = await getHeroImage("clausula-arbitral");
 
   // Si hay contenido CMS, renderizarlo
   if (hasCmsContent && page) {
     return (
       <>
         {page.sections.map((section) => (
-          <SectionRenderer key={section.id} section={section} />
+          <SectionRenderer key={section.id} section={section} fallbackHeroImage={heroImage} />
         ))}
       </>
     );

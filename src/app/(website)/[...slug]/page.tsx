@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { SectionRenderer } from "@/components/cms/section-renderer";
+import { getHeroImage } from "@/lib/cms";
 
 interface PageProps {
   params: Promise<{ slug: string[] }>;
@@ -49,7 +50,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function DynamicPage({ params }: PageProps) {
   const { slug } = await params;
-  const page = await getPage(slug);
+  const slugStr = slug.join("/") || "inicio";
+  const [page, heroImage] = await Promise.all([
+    getPage(slug),
+    getHeroImage(slugStr),
+  ]);
 
   if (!page || !page.isPublished) {
     notFound();
@@ -58,7 +63,11 @@ export default async function DynamicPage({ params }: PageProps) {
   return (
     <>
       {page.sections.map((section) => (
-        <SectionRenderer key={section.id} section={section} />
+        <SectionRenderer
+          key={section.id}
+          section={section}
+          fallbackHeroImage={heroImage}
+        />
       ))}
 
       {page.sections.length === 0 && (

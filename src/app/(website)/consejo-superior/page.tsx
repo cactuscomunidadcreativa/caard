@@ -5,7 +5,8 @@
 
 import { Metadata } from "next";
 import Link from "next/link";
-import { getCmsPage } from "@/lib/cms";
+import { getCmsPage, getHeroImage } from "@/lib/cms";
+import { CmsHeroBackdrop } from "@/components/cms/cms-hero-backdrop";
 
 export const dynamic = "force-dynamic";
 import {
@@ -84,7 +85,10 @@ const funciones = [
 ];
 
 export default async function ConsejoSuperiorPage() {
-  const { page } = await getCmsPage("consejo-superior");
+  const [{ page }, heroImage] = await Promise.all([
+    getCmsPage("consejo-superior"),
+    getHeroImage("consejo-superior"),
+  ]);
 
   // Leer miembros del CMS (editable desde /admin/cms/team). Sección TEAM
   // con content.members[]. Si no hay CMS, usa fallback.
@@ -115,6 +119,7 @@ export default async function ConsejoSuperiorPage() {
     <>
       {/* Hero */}
       <section className="relative bg-gradient-to-br from-[#0B2A5B] via-[#0d3a7a] to-[#D66829] py-[10vh] md:py-[12vh] overflow-hidden">
+        <CmsHeroBackdrop imageUrl={heroImage} />
         <div className="absolute inset-0 bg-[url('/patterns/grid.svg')] opacity-10" />
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center text-white">

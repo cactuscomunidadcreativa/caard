@@ -142,7 +142,7 @@ export default function NuevoGastoPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Monto base (sin IGV) *</Label>
-              <Input type="number" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" />
+              <Input type="number" step="0.01" inputMode="decimal" className="no-spinner" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0.00" />
             </div>
             <div className="flex items-end gap-2">
               <label className="flex items-center gap-2 cursor-pointer">

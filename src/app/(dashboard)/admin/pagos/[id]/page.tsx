@@ -246,7 +246,10 @@ export default function PaymentOrderDetailPage() {
                 <div>
                   <Label>Monto base</Label>
                   <Input
-                    type="number" step="0.01"
+                    type="number"
+                    step="0.01"
+                    inputMode="decimal"
+                    className="no-spinner"
                     value={amountInput}
                     onChange={(e) => {
                       const v = e.target.value;

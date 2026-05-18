@@ -187,6 +187,7 @@ const ROLE_LABELS: Record<Role, string> = {
   ADMIN: "Admin",
   CENTER_STAFF: "Staff Centro",
   SECRETARIA: "Secretaría",
+  FINANZAS: "Finanzas",
   ARBITRO: "Árbitro",
   ABOGADO: "Abogado",
   DEMANDANTE: "Demandante",

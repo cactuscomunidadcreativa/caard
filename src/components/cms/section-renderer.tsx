@@ -64,6 +64,11 @@ interface CmsSection {
 
 interface SectionRendererProps {
   section: CmsSection;
+  // Imagen hero configurada en /admin/cms/hero-images para este slug.
+  // Si el HeroSection del CMS no trae backgroundImage propia, usamos esta
+  // como fallback. Así los heros del CMS se integran con el sistema
+  // hero-images sin que el admin tenga que duplicar el upload.
+  fallbackHeroImage?: string | null;
 }
 
 // Mapeo de iconos extendido
@@ -106,14 +111,14 @@ const PADDING_CLASSES: Record<string, string> = {
   xl: "py-[10vh] md:py-[12vh]",
 };
 
-export function SectionRenderer({ section }: SectionRendererProps) {
+export function SectionRenderer({ section, fallbackHeroImage }: SectionRendererProps) {
   const paddingClass = PADDING_CLASSES[section.padding || "md"] || "py-16";
   const bgStyle = section.bgColor ? { backgroundColor: section.bgColor } : {};
   const textStyle = section.textColor ? { color: section.textColor } : {};
 
   switch (section.type) {
     case "HERO":
-      return <HeroSection section={section} />;
+      return <HeroSection section={section} fallbackHeroImage={fallbackHeroImage} />;
     case "SLIDER":
     case "BANNER":
       return <SliderSection section={section} />;
@@ -157,16 +162,25 @@ export function SectionRenderer({ section }: SectionRendererProps) {
 }
 
 // Hero Section - Moderno con gradientes y efectos
-function HeroSection({ section }: { section: CmsSection }) {
+function HeroSection({
+  section,
+  fallbackHeroImage,
+}: {
+  section: CmsSection;
+  fallbackHeroImage?: string | null;
+}) {
   const content = section.content || {};
   const buttons = content.buttons || [];
   const bgColor = section.bgColor || "#D66829";
+  // Si la sección no trae background, usar el hero global del slug
+  // configurado en /admin/cms/hero-images.
+  const bgImage = content.backgroundImage || fallbackHeroImage || null;
 
   return (
     <section
       className="relative min-h-[500px] md:min-h-[600px] lg:min-h-[700px] flex items-center justify-center overflow-hidden"
       style={{
-        backgroundImage: content.backgroundImage ? `url(${content.backgroundImage})` : undefined,
+        backgroundImage: bgImage ? `url(${bgImage})` : undefined,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
@@ -175,7 +189,7 @@ function HeroSection({ section }: { section: CmsSection }) {
       <div
         className="absolute inset-0"
         style={{
-          background: content.backgroundImage
+          background: bgImage
             ? `linear-gradient(135deg, ${bgColor}ee 0%, ${bgColor}cc 50%, #0B2A5Bcc 100%)`
             : `linear-gradient(135deg, ${bgColor} 0%, #c45a22 50%, #0B2A5B 100%)`,
         }}

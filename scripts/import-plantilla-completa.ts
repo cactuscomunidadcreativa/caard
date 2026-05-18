@@ -18,7 +18,7 @@ const XLSX_PATH =
   "/Users/eduardogonzalez/Downloads/CAARD_Plantilla_Completa (5).xlsx";
 
 const DRY = !!process.env.DRY_RUN;
-const STAGE = process.env.STAGE || "all"; // all | users | arbitrators | cases | members | lawyers | deadlines | hearings | notes | orders | payments | holidays | emergencies | recusations | sanctions
+const STAGE = process.env.STAGE || "all"; // all | users | arbitrators | cases | members | lawyers | deadlines | hearings | notes | orders | payments | installments | holidays | emergencies | recusations | sanctions
 
 const PROTECTED_SUPER_ADMINS = new Set([
   "eduardo@cactuscomunidadcreativa.com",
@@ -74,6 +74,23 @@ function normInt(s: any): number | null {
   if (s === null || s === undefined || s === "") return null;
   const n = parseInt(String(s).replace(/[^\d-]/g, ""), 10);
   return isNaN(n) ? null : n;
+}
+
+// Convierte un monto del Excel (en SOLES) a céntimos enteros.
+// El Excel acepta soles como entero (1900) o decimal (5204.69).
+// "1900"     → 190000 céntimos (S/ 1,900.00)
+// "5204.69"  → 520469 céntimos (S/ 5,204.69)
+// "S/ 2,000" → 200000 céntimos (S/ 2,000.00)
+// El nombre histórico de la columna es `monto_centimos`, pero la práctica
+// es que se llena con soles. Mantenemos la columna y normalizamos acá.
+function normCents(s: any): number | null {
+  if (s === null || s === undefined || s === "") return null;
+  // Quitar todo excepto dígitos, punto y signo. Las comas (miles) se eliminan.
+  const cleaned = String(s).replace(/[^\d.-]/g, "");
+  if (!cleaned) return null;
+  const soles = parseFloat(cleaned);
+  if (isNaN(soles)) return null;
+  return Math.round(soles * 100);
 }
 
 function normPhone(s: any): string | null {
@@ -1002,6 +1019,7 @@ async function main() {
       const rows = readSheet(wb, "08_OrdenesPago");
       let created = 0,
         skipped = 0;
+      const skipReasons: string[] = [];
       // numerador correlativo anual
       const year = new Date().getFullYear();
       let seq = 0;
@@ -1019,16 +1037,18 @@ async function main() {
         const concept = normStr(r.concepto) || "OTROS";
         const descr = normStr(r.descripcion) || `Pago por ${concept}`;
         const currency = normStr(r.moneda) || "PEN";
-        const amount = normInt(r.monto_centimos);
+        const amount = normCents(r.monto_centimos);
         const status = (normStr(r.estado) || "PENDING").toUpperCase();
         const due = excelDate(r.fecha_vencimiento);
         const paid = excelDate(r.fecha_pago);
         if (!codeRaw || amount === null) {
+          skipReasons.push(`fila ${rows.indexOf(r) + 1}: codigo_caso o monto vacío (${r.codigo_caso || "?"})`);
           skipped++;
           continue;
         }
         const caseId = caseByCode.get(normCodeKey(codeRaw));
         if (!caseId) {
+          skipReasons.push(`fila ${rows.indexOf(r) + 1}: expediente "${codeRaw}" no existe en BD`);
           skipped++;
           continue;
         }
@@ -1077,11 +1097,15 @@ async function main() {
             created++;
           }
         } catch (e: any) {
-          log(`   ! orden @ ${codeRaw}: ${e.message}`);
+          skipReasons.push(`fila ${rows.indexOf(r) + 1}: ${codeRaw} → ${e.message}`);
           skipped++;
         }
       }
       log(`   órdenes: ${created} creadas/actualizadas, ${skipped} omitidas`);
+      if (skipReasons.length) {
+        log(`   omitidas detalle:`);
+        for (const reason of skipReasons) log(`     · ${reason}`);
+      }
     });
   }
 
@@ -1091,22 +1115,25 @@ async function main() {
       const rows = readSheet(wb, "09_Pagos");
       let created = 0,
         skipped = 0;
+      const skipReasons: string[] = [];
       for (const r of rows) {
         const codeRaw = normCaseCode(r.codigo_caso);
         const provider = (normStr(r.proveedor) || "MANUAL_VOUCHER").toUpperCase();
         const status = (normStr(r.estado) || "PENDING").toUpperCase();
         const currency = normStr(r.moneda) || "PEN";
-        const amount = normInt(r.monto_centimos);
+        const amount = normCents(r.monto_centimos);
         const concept = normStr(r.concepto) || "OTROS";
         const descr = normStr(r.descripcion);
         const due = excelDate(r.fecha_vencimiento);
         const paid = excelDate(r.fecha_pago);
         if (!codeRaw || amount === null) {
+          skipReasons.push(`fila ${rows.indexOf(r) + 1}: codigo_caso o monto vacío (${r.codigo_caso || "?"})`);
           skipped++;
           continue;
         }
         const caseId = caseByCode.get(normCodeKey(codeRaw));
         if (!caseId) {
+          skipReasons.push(`fila ${rows.indexOf(r) + 1}: expediente "${codeRaw}" no existe en BD`);
           skipped++;
           continue;
         }
@@ -1147,11 +1174,173 @@ async function main() {
             created++;
           }
         } catch (e: any) {
-          log(`   ! pago @ ${codeRaw}: ${e.message}`);
+          skipReasons.push(`fila ${rows.indexOf(r) + 1}: ${codeRaw} → ${e.message}`);
           skipped++;
         }
       }
       log(`   pagos: ${created} creados/actualizados, ${skipped} omitidos`);
+      if (skipReasons.length) {
+        log(`   omitidos detalle:`);
+        for (const reason of skipReasons) log(`     · ${reason}`);
+      }
+    });
+  }
+
+  // -------------------- 10.5) PLANES DE PAGO (FRACCIONAMIENTOS) --------------------
+  if (want("installments")) {
+    await run("16_PlanesPago", async () => {
+      const rows = readSheet(wb, "16_PlanesPago");
+      let created = 0,
+        skipped = 0;
+      const skipReasons: string[] = [];
+
+      for (const r of rows) {
+        const rowNum = rows.indexOf(r) + 1;
+        const codeRaw = normCaseCode(r.codigo_caso);
+        const solicitanteEmail = normEmail(r.solicitante_email);
+        const reason = normStr(r.razon) || "Solicitud de fraccionamiento";
+        const totalCents = normCents(r.monto_total_centimos);
+        let nroCuotas = normInt(r.nro_cuotas);
+        const cuotaCents = normCents(r.monto_cuota_centimos);
+        const firstDue = excelDate(r.primera_fecha_vencimiento);
+        const status = (normStr(r.estado) || "PENDING").toUpperCase();
+        const requestedAt = excelDate(r.fecha_solicitud);
+
+        if (!codeRaw || !solicitanteEmail || !totalCents || !cuotaCents || !firstDue) {
+          skipReasons.push(`fila ${rowNum}: faltan campos requeridos (caso/email/montos/fecha)`);
+          skipped++;
+          continue;
+        }
+
+        // Si nro_cuotas está vacío, derivarlo de total / cuota
+        if (!nroCuotas || nroCuotas < 1) {
+          nroCuotas = Math.round(totalCents / cuotaCents);
+          if (nroCuotas < 1) {
+            skipReasons.push(`fila ${rowNum}: no se pudo derivar nro_cuotas`);
+            skipped++;
+            continue;
+          }
+        }
+
+        const caseId = caseByCode.get(normCodeKey(codeRaw));
+        if (!caseId) {
+          skipReasons.push(`fila ${rowNum}: expediente "${codeRaw}" no existe en BD`);
+          skipped++;
+          continue;
+        }
+
+        // Buscar usuario solicitante
+        const requester = await prisma.user.findUnique({
+          where: { email: solicitanteEmail },
+        });
+        if (!requester) {
+          skipReasons.push(`fila ${rowNum}: usuario "${solicitanteEmail}" no existe`);
+          skipped++;
+          continue;
+        }
+
+        // Buscar orden de pago coincidente del caso. Si el Excel trae
+        // numero_orden_pago lo usamos; si no, intentamos matchear por
+        // concepto detectado en la razón (honorarios → HONORARIOS_*,
+        // gastos administrativos → GASTOS_ADMINISTRATIVOS).
+        const numOrden = normStr(r.numero_orden_pago);
+        let paymentOrder: { id: string } | null = null;
+        if (numOrden) {
+          paymentOrder = await prisma.paymentOrder.findFirst({
+            where: { orderNumber: numOrden },
+            select: { id: true },
+          });
+        }
+        if (!paymentOrder) {
+          const reasonLower = reason.toLowerCase();
+          const conceptGuess =
+            reasonLower.includes("honorarios")
+              ? ["HONORARIOS_TRIBUNAL", "HONORARIOS_ARBITRO_UNICO"]
+              : reasonLower.includes("gastos")
+              ? ["GASTOS_ADMINISTRATIVOS"]
+              : null;
+          if (conceptGuess) {
+            paymentOrder = await prisma.paymentOrder.findFirst({
+              where: { caseId, concept: { in: conceptGuess as any } },
+              orderBy: { createdAt: "desc" },
+              select: { id: true },
+            });
+          }
+        }
+        if (!paymentOrder) {
+          skipReasons.push(`fila ${rowNum}: no se encontró orden de pago para "${reason.slice(0, 50)}"`);
+          skipped++;
+          continue;
+        }
+
+        if (DRY) {
+          log(`   [DRY] plan ${codeRaw} · ${nroCuotas} cuotas de ${cuotaCents/100} · total ${totalCents/100}`);
+          continue;
+        }
+
+        try {
+          // Deduplicar por caseId + paymentOrderId + totalAmountCents
+          const existing = await prisma.paymentInstallmentPlan.findFirst({
+            where: {
+              caseId,
+              paymentOrderId: paymentOrder.id,
+              totalAmountCents: totalCents,
+            },
+          });
+
+          if (existing) {
+            await prisma.paymentInstallmentPlan.update({
+              where: { id: existing.id },
+              data: {
+                reason,
+                numberOfInstallments: nroCuotas,
+                installmentAmountCents: cuotaCents,
+                firstDueDate: firstDue,
+                status: status as any,
+              },
+            });
+          } else {
+            const plan = await prisma.paymentInstallmentPlan.create({
+              data: {
+                caseId,
+                paymentOrderId: paymentOrder.id,
+                requestedById: requester.id,
+                requestedAt: requestedAt || new Date(),
+                reason,
+                totalAmountCents: totalCents,
+                numberOfInstallments: nroCuotas,
+                installmentAmountCents: cuotaCents,
+                firstDueDate: firstDue,
+                status: status as any,
+              },
+            });
+
+            // Generar cuotas mensuales escalonadas
+            for (let i = 0; i < nroCuotas; i++) {
+              const due = new Date(firstDue);
+              due.setMonth(due.getMonth() + i);
+              await prisma.paymentInstallment.create({
+                data: {
+                  planId: plan.id,
+                  installmentNumber: i + 1,
+                  amountCents: cuotaCents,
+                  dueAt: due,
+                  status: "PENDING",
+                },
+              });
+            }
+            created++;
+          }
+        } catch (e: any) {
+          skipReasons.push(`fila ${rowNum}: ${codeRaw} → ${e.message}`);
+          skipped++;
+        }
+      }
+      log(`   planes de pago: ${created} creados/actualizados, ${skipped} omitidos`);
+      if (skipReasons.length) {
+        log(`   omitidos detalle:`);
+        for (const reason of skipReasons) log(`     · ${reason}`);
+      }
     });
   }
 

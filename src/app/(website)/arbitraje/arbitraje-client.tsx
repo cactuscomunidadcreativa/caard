@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "@/lib/i18n";
 
-export function ArbitrajeClient() {
+export function ArbitrajeClient({ heroImageUrl }: { heroImageUrl?: string | null } = {}) {
   const { t } = useTranslation();
 
   const tiposArbitraje = [
@@ -134,6 +134,18 @@ export function ArbitrajeClient() {
     <>
       {/* Hero */}
       <section className="relative bg-gradient-to-br from-[#0B2A5B] via-[#0d3a7a] to-[#D66829] py-[10vh] md:py-[12vh] overflow-hidden">
+        {heroImageUrl && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={heroImageUrl}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-[#0B2A5B]/70" />
+          </>
+        )}
         <div className="absolute inset-0 bg-[url('/patterns/grid.svg')] opacity-10" />
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center text-white">

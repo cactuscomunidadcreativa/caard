@@ -103,7 +103,7 @@ export default async function FraccionamientosPage() {
     redirect("/auth/login");
   }
 
-  const allowedRoles = ["SUPER_ADMIN", "ADMIN", "SECRETARIA"];
+  const allowedRoles = ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "FINANZAS"];
   if (!allowedRoles.includes(session.user.role)) {
     redirect("/dashboard");
   }

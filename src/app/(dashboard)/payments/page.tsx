@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   description: "Gestión de pagos y cobros del sistema de arbitraje",
 };
 
-const FULL_ACCESS_ROLES: Role[] = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"];
+const FULL_ACCESS_ROLES: Role[] = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA", "FINANZAS"];
 
 function safeSerialize(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;

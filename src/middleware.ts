@@ -125,7 +125,12 @@ export default auth((req) => {
 
   // Verificar acceso a rutas de admin
   if (adminRoutes.some((route) => pathname.startsWith(route))) {
-    const adminAllowedRoles = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"];
+    // FINANZAS sólo puede entrar a /admin/pagos* y /admin/finanzas*
+    const isFinanzasArea =
+      pathname.startsWith("/admin/pagos") || pathname.startsWith("/admin/finanzas");
+    const adminAllowedRoles = isFinanzasArea
+      ? ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "FINANZAS"]
+      : ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"];
     if (!adminAllowedRoles.includes(userRole)) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }

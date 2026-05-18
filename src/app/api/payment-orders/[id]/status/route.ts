@@ -12,7 +12,7 @@ export async function PATCH(
   try {
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"].includes(session.user.role)) {
+    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF", "FINANZAS"].includes(session.user.role)) {
       return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
     }
     const { id } = await params;

@@ -56,9 +56,15 @@ async function getHomePageData() {
 
 // Renderer defensivo: si una sección concreta del CMS revienta el render
 // (por contenido inválido o cambio de schema), no derribamos toda la home.
-function SafeSection({ section }: { section: any }) {
+function SafeSection({
+  section,
+  fallbackHeroImage,
+}: {
+  section: any;
+  fallbackHeroImage?: string | null;
+}) {
   try {
-    return <SectionRenderer section={section} />;
+    return <SectionRenderer section={section} fallbackHeroImage={fallbackHeroImage} />;
   } catch (e) {
     console.error("[home] section render error", section?.id, e);
     return null;
@@ -111,7 +117,11 @@ export default async function HomePage() {
       {hasCMSContent ? (
         <>
           {page.sections.map((section) => (
-            <SafeSection key={section.id} section={section} />
+            <SafeSection
+              key={section.id}
+              section={section}
+              fallbackHeroImage={heroImage}
+            />
           ))}
         </>
       ) : (

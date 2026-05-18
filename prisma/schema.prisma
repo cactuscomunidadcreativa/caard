@@ -18,6 +18,7 @@ enum Role {
   ADMIN           // Administrador general del centro
   CENTER_STAFF    // Personal del centro (staff administrativo)
   SECRETARIA      // Secretaría arbitral
+  FINANZAS        // Personal de finanzas (verifica vouchers, edita montos/fechas)
   ARBITRO         // Árbitro
   ABOGADO         // Abogado (puede representar demandantes o demandados)
   DEMANDANTE      // Parte demandante

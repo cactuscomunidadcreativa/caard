@@ -26,7 +26,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     }
 
     // Solo admins pueden verificar
-    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA"].includes(session.user.role)) {
+    if (!["SUPER_ADMIN", "ADMIN", "SECRETARIA", "FINANZAS"].includes(session.user.role)) {
       return NextResponse.json(
         { error: "No tiene permisos para esta acción" },
         { status: 403 }

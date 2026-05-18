@@ -76,7 +76,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 // Roles con acceso administrativo
-const ADMIN_ROLES: Role[] = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"];
+const ADMIN_ROLES: Role[] = ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA", "FINANZAS"];
 
 // Configuración de estados de pago
 const PAYMENT_STATUS_CONFIG: Record<PaymentStatus, {

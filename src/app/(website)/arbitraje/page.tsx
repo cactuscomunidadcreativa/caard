@@ -4,7 +4,7 @@
  */
 
 import { Metadata } from "next";
-import { getCmsPage } from "@/lib/cms";
+import { getCmsPage, getHeroImage } from "@/lib/cms";
 import { SectionRenderer } from "@/components/cms/section-renderer";
 import { ArbitrajeClient } from "./arbitraje-client";
 
@@ -19,18 +19,19 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function ArbitrajePage() {
   const { page, hasCmsContent } = await getCmsPage("arbitraje");
+  const heroImage = await getHeroImage("arbitraje");
 
   // Si hay contenido CMS, renderizarlo
   if (hasCmsContent && page) {
     return (
       <>
         {page.sections.map((section) => (
-          <SectionRenderer key={section.id} section={section} />
+          <SectionRenderer key={section.id} section={section} fallbackHeroImage={heroImage} />
         ))}
       </>
     );
   }
 
   // Fallback: Contenido estático con traducciones
-  return <ArbitrajeClient />;
+  return <ArbitrajeClient heroImageUrl={heroImage} />;
 }

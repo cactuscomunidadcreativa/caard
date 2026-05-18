@@ -22,6 +22,7 @@ import {
   Clock,
   Loader2,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -129,6 +130,14 @@ export function EscritosSection({
   const [descripcion, setDescripcion] = useState("");
   const [uploading, setUploading] = useState(false);
 
+  // Presentar con IA
+  const [showAi, setShowAi] = useState(false);
+  const [aiTipo, setAiTipo] = useState("Orden Procesal");
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiDraft, setAiDraft] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiSubmitting, setAiSubmitting] = useState(false);
+
   // Proveer
   const [proveerEscrito, setProveerEscrito] = useState<Escrito | null>(null);
   const [proveerText, setProveerText] = useState("");
@@ -187,6 +196,66 @@ export function EscritosSection({
       setError(e.message);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const generateDraft = async () => {
+    if (!aiPrompt.trim()) {
+      setError("Describe qué quieres redactar");
+      return;
+    }
+    setAiGenerating(true);
+    setError(null);
+    try {
+      const r = await fetch(`/api/cases/${caseId}/escritos/ai-draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentType: aiTipo, prompt: aiPrompt }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Error generando borrador");
+      setAiDraft(d.text || "");
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const submitAiDraft = async () => {
+    if (!aiDraft.trim()) {
+      setError("El borrador está vacío");
+      return;
+    }
+    setAiSubmitting(true);
+    setError(null);
+    try {
+      // Convertir el texto generado en un archivo .txt y subirlo por el
+      // endpoint estándar de escritos (mismo flujo: Drive, cargo, notificación).
+      const blob = new Blob([aiDraft], { type: "text/plain;charset=utf-8" });
+      const safeTipo = aiTipo.replace(/[^a-zA-Z0-9-]/g, "-");
+      const filename = `${safeTipo}-${new Date().toISOString().slice(0, 10)}.txt`;
+      const fd = new FormData();
+      fd.append("file", new File([blob], filename, { type: "text/plain" }));
+      fd.append("documentType", aiTipo);
+      fd.append("description", `Generado con IA — prompt: ${aiPrompt.slice(0, 200)}`);
+      const r = await fetch(`/api/cases/${caseId}/escritos`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        throw new Error(d.error || "Error al presentar escrito");
+      }
+      setShowAi(false);
+      setAiPrompt("");
+      setAiDraft("");
+      setAiTipo("Orden Procesal");
+      await load();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setAiSubmitting(false);
     }
   };
 
@@ -257,13 +326,23 @@ export function EscritosSection({
           Escritos del expediente
         </CardTitle>
         {canPresentar && (
-          <Button
-            onClick={() => setShowUpload(true)}
-            className="bg-[#D66829] hover:bg-[#c45a22]"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Presentar escrito
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowAi(true)}
+              variant="outline"
+              className="border-[#0B2A5B] text-[#0B2A5B] hover:bg-[#0B2A5B]/5"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Generar con IA
+            </Button>
+            <Button
+              onClick={() => setShowUpload(true)}
+              className="bg-[#D66829] hover:bg-[#c45a22]"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Presentar escrito
+            </Button>
+          </div>
         )}
       </CardHeader>
       <CardContent>
@@ -472,6 +551,134 @@ export function EscritosSection({
                 <>
                   <Send className="h-4 w-4 mr-2" />
                   Presentar
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Generar con IA */}
+      <Dialog
+        open={showAi}
+        onOpenChange={(v) => {
+          setShowAi(v);
+          if (!v) {
+            setAiPrompt("");
+            setAiDraft("");
+            setError(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-[#0B2A5B]" />
+              Redactar escrito con IA
+            </DialogTitle>
+            <DialogDescription>
+              La IA genera un borrador a partir de tus indicaciones. Revisalo y
+              editalo antes de presentarlo — al confirmar se sube al expediente
+              {" "}{caseCode} con el mismo flujo de cargo, proveído y
+              notificación que un escrito normal.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>Tipo de documento</Label>
+                <Select value={aiTipo} onValueChange={setAiTipo}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIPO_OPTIONS.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Indicaciones para la IA</Label>
+              <Textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                rows={4}
+                placeholder="Ej. Redacta una Orden Procesal Nº 3 fijando la fecha de la audiencia de fijación de puntos controvertidos para el 15 de junio a las 10:00, en sala virtual."
+              />
+              <p className="text-xs text-muted-foreground">
+                Tip: incluí fechas, nombres y montos relevantes. Lo que falte, la
+                IA lo dejará entre [corchetes] para que lo completes.
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={generateDraft}
+                disabled={aiGenerating || !aiPrompt.trim()}
+                variant="outline"
+                className="border-[#0B2A5B] text-[#0B2A5B] hover:bg-[#0B2A5B]/5"
+              >
+                {aiGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generando...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {aiDraft ? "Regenerar" : "Generar borrador"}
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {aiDraft && (
+              <div className="space-y-1">
+                <Label>Borrador (editable)</Label>
+                <Textarea
+                  value={aiDraft}
+                  onChange={(e) => setAiDraft(e.target.value)}
+                  rows={18}
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Revisá los marcadores [ENTRE_CORCHETES] y completalos antes de
+                  presentar.
+                </p>
+              </div>
+            )}
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAi(false)}
+              disabled={aiGenerating || aiSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={submitAiDraft}
+              disabled={aiSubmitting || !aiDraft.trim()}
+              className="bg-[#D66829] hover:bg-[#c45a22]"
+            >
+              {aiSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Presentando...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Presentar escrito
                 </>
               )}
             </Button>
