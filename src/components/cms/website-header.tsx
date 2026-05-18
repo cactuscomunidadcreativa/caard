@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Menu, X, ChevronDown, Phone, Mail, ArrowRight } from "lucide-react";
@@ -55,6 +55,41 @@ export function WebsiteHeader({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { t } = useTranslation();
+
+  // Procesa los items del menú dinámico:
+  //   1) filtra duplicado "Consulta de Expedientes" porque ya hay un
+  //      botón blanco con esa función a la derecha del nav.
+  //   2) garantiza que "Eventos" y "Artículos" aparezcan en el menú,
+  //      añadiéndolos como items estáticos si no están en el CMS.
+  const processedMenuItems = useMemo<MenuItem[]>(() => {
+    const filtered = (menuItems || []).filter(
+      (it) => !/consulta\s*(de)?\s*expedientes?|file\s*consult/i.test(it.label || "")
+    );
+    const hasEventos = filtered.some((i) => /^eventos$|^events$/i.test(i.label || ""));
+    const hasArticulos = filtered.some((i) =>
+      /^art[ií]culos$|^articles$|^blog$/i.test(i.label || "")
+    );
+    const extras: MenuItem[] = [];
+    if (!hasEventos) {
+      extras.push({
+        id: "__static-eventos",
+        label: "Eventos",
+        url: "/eventos",
+        pageSlug: null,
+        children: [],
+      });
+    }
+    if (!hasArticulos) {
+      extras.push({
+        id: "__static-articulos",
+        label: "Artículos",
+        url: "/blog",
+        pageSlug: null,
+        children: [],
+      });
+    }
+    return [...filtered, ...extras];
+  }, [menuItems]);
 
   // Sistema de mapeo para traducir labels del menú dinámico
   const menuTranslations: Record<string, string> = {
@@ -210,7 +245,7 @@ export function WebsiteHeader({
             <nav className="hidden lg:flex items-center gap-1">
               <NavigationMenu>
                 <NavigationMenuList className="gap-1">
-                  {menuItems.map((item) => (
+                  {processedMenuItems.map((item) => (
                     <NavigationMenuItem key={item.id}>
                       {item.children && item.children.length > 0 ? (
                         <>
@@ -297,7 +332,7 @@ export function WebsiteHeader({
           >
             <nav className="border-t border-white/10 pt-4">
               <ul className="space-y-1">
-                {menuItems.map((item) => (
+                {processedMenuItems.map((item) => (
                   <li key={item.id}>
                     {item.children && item.children.length > 0 ? (
                       <details className="group">

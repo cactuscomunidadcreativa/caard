@@ -1593,6 +1593,10 @@ model CmsMedia {
   caption     String?
   folder      String?   // Carpeta organizativa
 
+  // Configuración visual para heros (position, fit, overlayOpacity, etc.)
+  // Solo se usa cuando folder = "heroes".
+  metadata    Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -9,7 +9,7 @@
  * resultado se sube por el flujo estándar de escritos (cargo de
  * recibido, proveído, notificación a partes).
  */
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -49,7 +49,17 @@ interface Case {
 
 const TIPO_OPTIONS = ["Orden Procesal", "Resolución"];
 
+// useSearchParams() obliga a envolver en Suspense para que Next.js
+// pueda prerenderar la página sin error.
 export default function NuevaOrdenProcesalPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto py-12 text-center text-muted-foreground">Cargando...</div>}>
+      <NuevaOrdenProcesalInner />
+    </Suspense>
+  );
+}
+
+function NuevaOrdenProcesalInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const presetCaseId = searchParams.get("caseId") || "";

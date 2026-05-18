@@ -16,22 +16,26 @@ async function main() {
     return;
   }
 
-  // ¿Ya existe el valor?
+  // ¿Ya existe el valor del enum?
   const existing: Array<{ enumlabel: string }> = await prisma.$queryRawUnsafe(
     `SELECT enumlabel FROM pg_enum
      WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'Role')
        AND enumlabel = 'FINANZAS'`
   );
-  if (existing.length > 0) {
-    console.log("✓ Rol FINANZAS ya existe en el enum, nada que hacer.");
-    return;
+  if (existing.length === 0) {
+    console.log("➕ Agregando FINANZAS al enum Role…");
+    await prisma.$executeRawUnsafe(`ALTER TYPE "Role" ADD VALUE 'FINANZAS'`);
+    console.log("✓ Enum Role actualizado.");
+  } else {
+    console.log("✓ Rol FINANZAS ya existe en el enum.");
   }
 
-  console.log("➕ Agregando FINANZAS al enum Role…");
-  // ALTER TYPE en transacción del cliente Prisma no funciona; usamos
-  // unsafe directo sobre la conexión.
-  await prisma.$executeRawUnsafe(`ALTER TYPE "Role" ADD VALUE 'FINANZAS'`);
-  console.log("✓ Listo.");
+  // Columna CmsMedia.metadata (JSONB) — guarda config visual del hero.
+  console.log("➕ Asegurando columna CmsMedia.metadata…");
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE "CmsMedia" ADD COLUMN IF NOT EXISTS "metadata" JSONB`
+  );
+  console.log("✓ Columna OK.");
 }
 
 main()

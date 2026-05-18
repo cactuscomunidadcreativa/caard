@@ -62,6 +62,17 @@ interface CmsSection {
   padding: string | null;
 }
 
+// Configuración visual del hero, viene de cmsMedia.metadata cuando el
+// admin la edita en /admin/cms/hero-images.
+export interface HeroImageConfig {
+  // object-position vertical: "top" | "center" | "bottom" | "20%" etc.
+  position?: string;
+  // object-fit: cover | contain | fill
+  fit?: "cover" | "contain" | "fill";
+  // 0..100 - opacidad del overlay encima de la imagen
+  overlayOpacity?: number;
+}
+
 interface SectionRendererProps {
   section: CmsSection;
   // Imagen hero configurada en /admin/cms/hero-images para este slug.
@@ -69,6 +80,7 @@ interface SectionRendererProps {
   // como fallback. Así los heros del CMS se integran con el sistema
   // hero-images sin que el admin tenga que duplicar el upload.
   fallbackHeroImage?: string | null;
+  heroConfig?: HeroImageConfig | null;
 }
 
 // Mapeo de iconos extendido
@@ -111,14 +123,14 @@ const PADDING_CLASSES: Record<string, string> = {
   xl: "py-[10vh] md:py-[12vh]",
 };
 
-export function SectionRenderer({ section, fallbackHeroImage }: SectionRendererProps) {
+export function SectionRenderer({ section, fallbackHeroImage, heroConfig }: SectionRendererProps) {
   const paddingClass = PADDING_CLASSES[section.padding || "md"] || "py-16";
   const bgStyle = section.bgColor ? { backgroundColor: section.bgColor } : {};
   const textStyle = section.textColor ? { color: section.textColor } : {};
 
   switch (section.type) {
     case "HERO":
-      return <HeroSection section={section} fallbackHeroImage={fallbackHeroImage} />;
+      return <HeroSection section={section} fallbackHeroImage={fallbackHeroImage} heroConfig={heroConfig} />;
     case "SLIDER":
     case "BANNER":
       return <SliderSection section={section} />;
@@ -165,9 +177,11 @@ export function SectionRenderer({ section, fallbackHeroImage }: SectionRendererP
 function HeroSection({
   section,
   fallbackHeroImage,
+  heroConfig,
 }: {
   section: CmsSection;
   fallbackHeroImage?: string | null;
+  heroConfig?: HeroImageConfig | null;
 }) {
   const content = section.content || {};
   const buttons = content.buttons || [];
@@ -177,24 +191,37 @@ function HeroSection({
   // admin no subió nada para este slug, se cae al backgroundImage del
   // CMS, y si tampoco hay, queda solo el gradiente.
   const bgImage = fallbackHeroImage || content.backgroundImage || null;
+  const objectPosition = heroConfig?.position || "center";
+  const objectFit = heroConfig?.fit || "cover";
+  // 0..100; default 40 (suave, mantiene legibilidad del texto blanco)
+  const overlayPct =
+    typeof heroConfig?.overlayOpacity === "number"
+      ? Math.max(0, Math.min(100, heroConfig.overlayOpacity))
+      : 40;
+  const overlayAlpha = (overlayPct / 100).toFixed(2);
 
   return (
-    <section
-      className="relative min-h-[500px] md:min-h-[600px] lg:min-h-[700px] flex items-center justify-center overflow-hidden"
-      style={{
-        backgroundImage: bgImage ? `url(${bgImage})` : undefined,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
-      {/* Gradient overlay — más sutil cuando hay imagen para que se vea
-          la foto detrás (mismo criterio que HomePageClient: ~60% azul).
-          Sin imagen, el gradiente sólido sirve de fondo. */}
+    <section className="relative min-h-[500px] md:min-h-[600px] lg:min-h-[700px] flex items-center justify-center overflow-hidden">
+      {/* La imagen como <img> para poder usar object-fit / object-position
+          dinámicos. Si no hay imagen, se ve solo el gradiente. */}
+      {bgImage && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={bgImage}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 w-full h-full"
+          style={{ objectFit, objectPosition }}
+        />
+      )}
+      {/* Overlay: cuando hay imagen el gradiente se vuelve más sutil
+          y respeta el % de opacidad configurado por el admin. Sin
+          imagen, gradiente sólido como fondo. */}
       <div
         className="absolute inset-0"
         style={{
           background: bgImage
-            ? `linear-gradient(135deg, #0B2A5B99 0%, #0B2A5B66 50%, ${bgColor}80 100%)`
+            ? `linear-gradient(135deg, rgba(11,42,91,${overlayAlpha}) 0%, rgba(11,42,91,${(overlayPct * 0.6 / 100).toFixed(2)}) 50%, rgba(214,104,41,${(overlayPct * 0.6 / 100).toFixed(2)}) 100%)`
             : `linear-gradient(135deg, ${bgColor} 0%, #c45a22 50%, #0B2A5B 100%)`,
         }}
       />
