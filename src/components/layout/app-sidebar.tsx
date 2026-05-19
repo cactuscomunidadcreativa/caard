@@ -638,6 +638,12 @@ function useNavigationItems() {
       roles: ["SUPER_ADMIN", "ADMIN"],
     },
     {
+      title: "Auditoría",
+      href: "/admin/auditoria",
+      icon: Shield,
+      roles: ["SUPER_ADMIN", "ADMIN"],
+    },
+    {
       title: t.sidebar.centers,
       href: "/admin/centers",
       icon: Building2,

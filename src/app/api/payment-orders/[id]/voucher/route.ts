@@ -1,11 +1,14 @@
 /**
  * POST /api/payment-orders/[id]/voucher
- * Sube voucher de pago o voucher de detracción a Drive
+ * Sube voucher de pago o voucher de detracción a Drive bajo la carpeta
+ * "09. Pagos" del expediente (mismo árbol que el resto de documentos).
+ * DELETE: borra el archivo y limpia la URL en BD.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { google } from "googleapis";
+import { ensureCaseDriveFolders } from "@/lib/drive-case-folders";
 
 export async function POST(
   req: NextRequest,
@@ -24,11 +27,29 @@ export async function POST(
     const kind = (formData.get("kind") as string) || "voucher"; // voucher | detraction
     if (!file) return NextResponse.json({ error: "Falta archivo" }, { status: 400 });
 
-    const order = await prisma.paymentOrder.findUnique({ where: { id }, include: { case: { select: { code: true } } } });
+    const order = await prisma.paymentOrder.findUnique({
+      where: { id },
+      include: {
+        case: {
+          select: { id: true, code: true, centerId: true, driveFolderId: true },
+        },
+      },
+    });
     if (!order) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
 
-    // Subir a Google Drive
-    const center = await prisma.center.findFirst({ select: { notificationSettings: true } });
+    // Asegurar que el caso tenga su árbol de carpetas en Drive (idempotente)
+    await ensureCaseDriveFolders(order.case.id);
+
+    // Releer caseFolder "09_Pagos" después de ensure
+    const pagosFolder = await prisma.caseFolder.findFirst({
+      where: { caseId: order.case.id, key: "09_Pagos" },
+      select: { driveFolderId: true, id: true },
+    });
+
+    const center = await prisma.center.findUnique({
+      where: { id: order.case.centerId },
+      select: { notificationSettings: true },
+    });
     const rt = (center?.notificationSettings as any)?.googleRefreshToken;
     if (!rt) return NextResponse.json({ error: "Google no conectado" }, { status: 500 });
 
@@ -40,25 +61,22 @@ export async function POST(
     oauth.setCredentials({ refresh_token: rt });
     const drive = google.drive({ version: "v3", auth: oauth });
 
-    // Carpeta: CAARD_VOUCHERS / {caseCode}
-    async function findOrCreate(name: string, parent?: string): Promise<string> {
-      const q = `name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false${parent ? ` and '${parent}' in parents` : " and 'root' in parents"}`;
-      const r = await drive.files.list({ q, fields: "files(id)" });
-      if (r.data.files?.[0]?.id) return r.data.files[0].id;
-      const c = await drive.files.create({
-        requestBody: { name, mimeType: "application/vnd.google-apps.folder", ...(parent ? { parents: [parent] } : {}) },
-        fields: "id",
-      });
-      return c.data.id!;
+    // Si por algún motivo ensureCaseDriveFolders no pudo crear la subcarpeta
+    // (Drive lento, error transitorio), caemos al folder del caso como fallback.
+    const targetFolderId = pagosFolder?.driveFolderId || order.case.driveFolderId;
+    if (!targetFolderId) {
+      return NextResponse.json(
+        { error: "No se pudo localizar la carpeta del expediente en Drive" },
+        { status: 500 }
+      );
     }
-    const rootId = await findOrCreate("CAARD_VOUCHERS");
-    const caseFolderId = await findOrCreate(order.case.code.replace(/[\/\\:*?"<>|]/g, "-"), rootId);
 
     const { Readable } = await import("stream");
     const buf = Buffer.from(await file.arrayBuffer());
-    const filename = `${kind === "detraction" ? "DETRACCION" : "VOUCHER"}-${order.orderNumber}-${Date.now()}-${file.name}`;
+    const safeOriginal = file.name.replace(/[\/\\:*?"<>|]/g, "-");
+    const filename = `${kind === "detraction" ? "DETRACCION" : "VOUCHER"}-${order.orderNumber}-${Date.now()}-${safeOriginal}`;
     const up = await drive.files.create({
-      requestBody: { name: filename, parents: [caseFolderId] },
+      requestBody: { name: filename, parents: [targetFolderId] },
       media: { mimeType: file.type, body: Readable.from(buf) },
       fields: "id",
     });
@@ -73,6 +91,21 @@ export async function POST(
       where: { id },
       data: kind === "detraction" ? { detractionVoucherUrl: viewUrl } : { voucherUrl: viewUrl },
     });
+
+    // Audit log
+    await prisma.auditLog
+      .create({
+        data: {
+          centerId: order.case.centerId,
+          caseId: order.case.id,
+          userId: session.user.id,
+          action: "CREATE",
+          entity: "PaymentOrder.voucher",
+          entityId: order.id,
+          meta: { kind, orderNumber: order.orderNumber, filename, url: viewUrl },
+        },
+      })
+      .catch(() => null);
 
     return NextResponse.json({ success: true, url: viewUrl });
   } catch (e: any) {
