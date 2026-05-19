@@ -77,7 +77,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarClock, Trash2 } from "lucide-react";
+import { CalendarClock, Trash2, Pencil } from "lucide-react";
 
 // Status configuration
 const STATUS_CONFIG = {
@@ -219,6 +219,56 @@ export function FraccionamientosClient({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [forceDelete, setForceDelete] = useState(false);
+
+  // Editar plan existente
+  const [editPlan, setEditPlan] = useState<InstallmentPlan | null>(null);
+  const [editNumber, setEditNumber] = useState(3);
+  const [editTotalSoles, setEditTotalSoles] = useState("");
+  const [editFirstDue, setEditFirstDue] = useState("");
+  const [editReason, setEditReason] = useState("");
+  const [editStatus, setEditStatus] = useState<string>("PENDING");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEditDialog = (plan: InstallmentPlan) => {
+    setEditPlan(plan);
+    setEditNumber(plan.numberOfInstallments);
+    setEditTotalSoles((plan.totalAmountCents / 100).toFixed(2));
+    const firstDue = plan.installments?.[0]?.dueAt;
+    setEditFirstDue(firstDue ? new Date(firstDue as any).toISOString().slice(0, 10) : "");
+    setEditReason(plan.reason || "");
+    setEditStatus(plan.status);
+    setEditError(null);
+  };
+
+  const handleEditSave = async () => {
+    if (!editPlan) return;
+    setEditError(null);
+    setEditSaving(true);
+    try {
+      const totalCents = Math.round(parseFloat(editTotalSoles) * 100);
+      const body: any = {
+        reason: editReason,
+        numberOfInstallments: editNumber,
+        totalAmountCents: totalCents,
+        status: editStatus,
+      };
+      if (editFirstDue) body.firstDueDate = new Date(editFirstDue).toISOString();
+      const r = await fetch(`/api/payments/installments/${editPlan.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data?.error || "Error");
+      setEditPlan(null);
+      router.refresh();
+    } catch (e: any) {
+      setEditError(e?.message || "Error al guardar");
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!planToDelete) return;
@@ -649,6 +699,16 @@ export function FraccionamientosClient({
                                 Prorrogar
                               </Button>
                             )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-[#0B2A5B] border-[#0B2A5B]/30 hover:bg-[#0B2A5B]/5"
+                              onClick={() => openEditDialog(plan)}
+                              title="Editar fraccionamiento"
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
+                              Editar
+                            </Button>
                             <Button
                               size="sm"
                               variant="outline"
@@ -1324,6 +1384,131 @@ export function FraccionamientosClient({
                   <Trash2 className="h-4 w-4 mr-2" />
                   {forceDelete ? "Eliminar igual" : "Eliminar"}
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Editar plan de fraccionamiento */}
+      <Dialog open={!!editPlan} onOpenChange={(v) => !v && setEditPlan(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5" />
+              Editar fraccionamiento
+            </DialogTitle>
+            <DialogDescription>
+              {editPlan?.case?.code} —{" "}
+              {editPlan && editPlan.installments?.some((i) => i.status === "PAID") ? (
+                <span className="text-amber-700">
+                  Hay cuotas pagadas: solo podés editar la razón / estado.
+                </span>
+              ) : (
+                "Podés cambiar monto, número de cuotas y fechas. Las cuotas se regeneran."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {editPlan && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Monto total (S/.)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    inputMode="decimal"
+                    className="no-spinner"
+                    value={editTotalSoles}
+                    onChange={(e) => setEditTotalSoles(e.target.value)}
+                    disabled={editPlan.installments?.some((i) => i.status === "PAID")}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Número de cuotas</Label>
+                  <Input
+                    type="number"
+                    min={2}
+                    max={24}
+                    className="no-spinner"
+                    value={editNumber}
+                    onChange={(e) => setEditNumber(parseInt(e.target.value || "0", 10) || 2)}
+                    disabled={editPlan.installments?.some((i) => i.status === "PAID")}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>1ª fecha de vencimiento</Label>
+                  <Input
+                    type="date"
+                    value={editFirstDue}
+                    onChange={(e) => setEditFirstDue(e.target.value)}
+                    disabled={editPlan.installments?.some((i) => i.status === "PAID")}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Estado</Label>
+                  <Select value={editStatus} onValueChange={setEditStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PENDING">Pendiente</SelectItem>
+                      <SelectItem value="APPROVED">Aprobado</SelectItem>
+                      <SelectItem value="ACTIVE">En curso</SelectItem>
+                      <SelectItem value="REJECTED">Rechazado</SelectItem>
+                      <SelectItem value="COMPLETED">Completado</SelectItem>
+                      <SelectItem value="DEFAULTED">Incumplido</SelectItem>
+                      <SelectItem value="CANCELLED">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label>Motivo / Notas</Label>
+                <textarea
+                  className="w-full min-h-[80px] rounded-md border bg-transparent px-3 py-2 text-sm"
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                />
+              </div>
+
+              {editPlan.installments?.some((i) => i.status === "PAID") && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 text-amber-900 text-xs p-3">
+                  Este fraccionamiento tiene cuotas pagadas — el cronograma
+                  está bloqueado. Para cambiar montos / fechas, primero
+                  habría que revertir esos pagos.
+                </div>
+              )}
+
+              {editError && (
+                <p className="text-sm text-red-600">{editError}</p>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditPlan(null)}
+              disabled={editSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleEditSave}
+              disabled={editSaving}
+              className="bg-[#0B2A5B] hover:bg-[#0d3570]"
+            >
+              {editSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar cambios"
               )}
             </Button>
           </DialogFooter>
