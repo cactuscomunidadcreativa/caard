@@ -43,6 +43,69 @@ async function findOrCreateFolder(
 }
 
 /**
+ * Mueve un archivo del Drive a una subcarpeta "_eliminados" del expediente,
+ * en lugar de borrarlo definitivamente. Mantiene la trazabilidad para el
+ * mega admin: lo que se muestra al usuario es el estado actual (sin el
+ * archivo), pero el original sigue accesible en Drive y en AuditLog.
+ *
+ * Renombra con prefijo "[ELIMINADO YYYY-MM-DD HH:mm] {nombre original}"
+ * para que el orden cronológico sea claro. Devuelve la nueva URL viewable.
+ */
+export async function archiveDriveFile(
+  centerId: string,
+  caseId: string,
+  fileId: string,
+  reason?: string
+): Promise<string | null> {
+  try {
+    const drive = await getDriveClient(centerId);
+    if (!drive) return null;
+
+    const caso = await prisma.case.findUnique({
+      where: { id: caseId },
+      select: { driveFolderId: true, code: true },
+    });
+    if (!caso?.driveFolderId) return null;
+
+    // Buscar/crear subcarpeta "_eliminados" en la raíz del caso
+    const trashFolderId = await findOrCreateFolder(
+      drive,
+      "_eliminados",
+      caso.driveFolderId
+    );
+
+    // Leer metadata del archivo para preservar el nombre original
+    const meta = await drive.files
+      .get({ fileId, fields: "id,name,parents" })
+      .catch(() => null);
+    if (!meta?.data?.id) return null;
+
+    const originalName = meta.data.name || "archivo";
+    const ts = new Date()
+      .toISOString()
+      .replace("T", " ")
+      .replace(/\..*/, "")
+      .replace(":", "-");
+    const newName = `[ELIMINADO ${ts}]${reason ? ` (${reason.slice(0, 30)})` : ""} ${originalName}`;
+
+    // Mover + renombrar
+    const oldParents = (meta.data.parents || []).join(",");
+    await drive.files.update({
+      fileId,
+      addParents: trashFolderId,
+      removeParents: oldParents || undefined,
+      requestBody: { name: newName },
+      fields: "id",
+    });
+
+    return `https://drive.google.com/file/d/${fileId}/view`;
+  } catch (err: any) {
+    console.error("archiveDriveFile error:", err?.message || err);
+    return null;
+  }
+}
+
+/**
  * Crea (o reutiliza) la estructura de carpetas del caso en Drive
  * y actualiza Case.driveFolderId + CaseFolder.driveFolderId.
  * Tolerante a fallos: si Drive no responde, no lanza.

@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { google } from "googleapis";
-import { ensureCaseDriveFolders } from "@/lib/drive-case-folders";
+import { ensureCaseDriveFolders, archiveDriveFile } from "@/lib/drive-case-folders";
 
 export async function POST(
   req: NextRequest,
@@ -115,8 +115,13 @@ export async function POST(
 }
 
 /**
- * DELETE /api/payment-orders/[id]/voucher?kind=voucher|detraction
- * Borra la URL del voucher (no toca el archivo en Drive — opcional)
+ * DELETE /api/payment-orders/[id]/voucher?kind=voucher|detraction[&reason=...]
+ *
+ * NO borra el archivo en Drive — lo mueve a la subcarpeta "_eliminados"
+ * del expediente (con prefijo [ELIMINADO timestamp]) y limpia la URL
+ * en BD. La trazabilidad queda intacta: el AuditLog guarda la URL
+ * original + la URL archivada, y el archivo sigue accesible para
+ * el centro / mega admin.
  */
 export async function DELETE(
   req: NextRequest,
@@ -132,10 +137,13 @@ export async function DELETE(
     const { id } = await params;
     const { searchParams } = new URL(req.url);
     const kind = searchParams.get("kind") || "voucher";
+    const reason = searchParams.get("reason") || undefined;
 
     const order = await prisma.paymentOrder.findUnique({
       where: { id },
-      select: { id: true, voucherUrl: true, detractionVoucherUrl: true, caseId: true, orderNumber: true },
+      include: {
+        case: { select: { id: true, centerId: true } },
+      },
     });
     if (!order) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
 
@@ -144,26 +152,17 @@ export async function DELETE(
       return NextResponse.json({ error: "No hay voucher para eliminar" }, { status: 400 });
     }
 
-    // Intentar borrar el archivo en Drive también (best effort: si falla, sigue
-    // limpiando la BD igual). Extraer el file id de la URL drive.com/file/d/{id}/view.
+    // Archivar en Drive (mover a _eliminados, NO borrar) para preservar
+    // trazabilidad. Best effort: si Drive falla, igual limpiamos BD.
+    let archivedUrl: string | null = null;
     const m = currentUrl.match(/\/d\/([^/]+)\//);
     if (m) {
-      try {
-        const center = await prisma.center.findFirst({ select: { notificationSettings: true } });
-        const rt = (center?.notificationSettings as any)?.googleRefreshToken;
-        if (rt) {
-          const oauth = new google.auth.OAuth2(
-            process.env.GOOGLE_CLIENT_ID,
-            process.env.GOOGLE_CLIENT_SECRET,
-            `${process.env.NEXTAUTH_URL || "https://caardpe.com"}/api/integrations/google/callback`
-          );
-          oauth.setCredentials({ refresh_token: rt });
-          const drive = google.drive({ version: "v3", auth: oauth });
-          await drive.files.delete({ fileId: m[1] }).catch(() => null);
-        }
-      } catch (e) {
-        // best effort: ignorar
-      }
+      archivedUrl = await archiveDriveFile(
+        order.case.centerId,
+        order.case.id,
+        m[1],
+        reason || `voucher${kind === "detraction" ? " detracción" : ""} OP ${order.orderNumber}`
+      );
     }
 
     await prisma.paymentOrder.update({
@@ -171,21 +170,33 @@ export async function DELETE(
       data: kind === "detraction" ? { detractionVoucherUrl: null } : { voucherUrl: null },
     });
 
-    // Audit log
+    // Audit log — preserva URL original Y la nueva ubicación archivada
     await prisma.auditLog
       .create({
         data: {
-          centerId: (await prisma.case.findUnique({ where: { id: order.caseId }, select: { centerId: true } }))?.centerId || "",
+          centerId: order.case.centerId,
+          caseId: order.case.id,
           userId: session.user.id,
           action: "DELETE",
           entity: "PaymentOrder.voucher",
           entityId: order.id,
-          meta: { kind, orderNumber: order.orderNumber, removedUrl: currentUrl },
+          meta: {
+            kind,
+            orderNumber: order.orderNumber,
+            removedUrl: currentUrl,
+            archivedUrl,
+            archived: !!archivedUrl,
+            reason: reason || null,
+          },
         },
       })
       .catch(() => null);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      archived: !!archivedUrl,
+      archivedUrl,
+    });
   } catch (e: any) {
     console.error("delete voucher error:", e?.message);
     return NextResponse.json({ error: e?.message || "Error" }, { status: 500 });

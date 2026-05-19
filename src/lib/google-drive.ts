@@ -216,7 +216,14 @@ export class GoogleDriveService {
   }
 
   /**
-   * Elimina un archivo
+   * Elimina un archivo PERMANENTEMENTE. Evitar — la regla del centro es
+   * preservar trazabilidad. Para "eliminar" desde la UI, usar
+   * `archiveDriveFile()` de `@/lib/drive-case-folders` que mueve el
+   * archivo a la subcarpeta "_eliminados" del expediente con prefijo
+   * [ELIMINADO timestamp]. Este método queda solo para limpiezas
+   * administrativas explícitas.
+   *
+   * @deprecated Usar archiveDriveFile en su lugar.
    */
   async deleteFile(fileId: string): Promise<void> {
     await this.drive.files.delete({ fileId });
