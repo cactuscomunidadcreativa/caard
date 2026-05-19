@@ -18,6 +18,7 @@ import {
 import { toast } from "sonner";
 import {
   ArrowLeft, DollarSign, Pencil, Save, X, Loader2, Check,
+  Trash2, Upload, ExternalLink,
 } from "lucide-react";
 
 const conceptLabels: Record<string, string> = {
@@ -146,6 +147,22 @@ export default function PaymentOrderDetailPage() {
       toast.success(kind === "voucher" ? "Voucher subido" : "Voucher detracción subido");
       window.location.reload();
     } catch { toast.error("Error al subir archivo"); }
+  }
+
+  async function handleDeleteVoucher(kind: "voucher" | "detraction") {
+    const label = kind === "detraction" ? "voucher de detracción" : "voucher de pago";
+    if (!confirm(`¿Eliminar el ${label}? El archivo se borra de Drive y queda libre para volver a subir uno correcto.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/payment-orders/${id}/voucher?kind=${kind}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Error");
+      toast.success("Voucher eliminado");
+      window.location.reload();
+    } catch (e: any) {
+      toast.error(e?.message || "Error al eliminar");
+    }
   }
 
   if (loading) return <div className="flex justify-center py-24"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -359,42 +376,88 @@ export default function PaymentOrderDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle>Comprobantes de Pago</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Podés subir, sustituir o eliminar cualquier comprobante en
+            cualquier momento. Al eliminar se borra también de Drive.
+          </p>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label>Voucher de pago principal</Label>
-            {order.voucherUrl ? (
-              <div className="flex items-center gap-2 mt-1">
-                <a href={order.voucherUrl} target="_blank" rel="noopener noreferrer" className="text-[#D66829] hover:underline text-sm">
-                  Ver voucher subido
-                </a>
-              </div>
-            ) : (
-              <Input
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={(e) => e.target.files?.[0] && handleUploadVoucher(e.target.files[0], "voucher")}
-              />
-            )}
-          </div>
-          <div>
-            <Label>Voucher de detracción (si aplica)</Label>
-            {order.detractionVoucherUrl ? (
-              <div className="flex items-center gap-2 mt-1">
-                <a href={order.detractionVoucherUrl} target="_blank" rel="noopener noreferrer" className="text-[#D66829] hover:underline text-sm">
-                  Ver voucher de detracción
-                </a>
-              </div>
-            ) : (
-              <Input
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={(e) => e.target.files?.[0] && handleUploadVoucher(e.target.files[0], "detraction")}
-              />
-            )}
-          </div>
+        <CardContent className="space-y-6">
+          <VoucherSlot
+            label="Voucher de pago principal"
+            url={order.voucherUrl}
+            onUpload={(f) => handleUploadVoucher(f, "voucher")}
+            onDelete={() => handleDeleteVoucher("voucher")}
+          />
+          <VoucherSlot
+            label="Voucher de detracción (si aplica)"
+            url={order.detractionVoucherUrl}
+            onUpload={(f) => handleUploadVoucher(f, "detraction")}
+            onDelete={() => handleDeleteVoucher("detraction")}
+          />
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function VoucherSlot({
+  label,
+  url,
+  onUpload,
+  onDelete,
+}: {
+  label: string;
+  url: string | null;
+  onUpload: (file: File) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {url ? (
+        <div className="flex items-center justify-between gap-3 rounded-md border bg-slate-50 p-3">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-[#D66829] hover:underline text-sm font-medium"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Ver archivo
+          </a>
+          <div className="flex gap-2">
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
+              />
+              <Button size="sm" variant="outline" asChild>
+                <span>
+                  <Upload className="h-3 w-3 mr-1" />
+                  Sustituir
+                </span>
+              </Button>
+            </label>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onDelete}
+              className="text-red-600 border-red-300 hover:bg-red-50"
+            >
+              <Trash2 className="h-3 w-3 mr-1" />
+              Eliminar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Input
+          type="file"
+          accept="image/*,application/pdf"
+          onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
+        />
+      )}
     </div>
   );
 }
