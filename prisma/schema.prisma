@@ -502,6 +502,25 @@ model UserPermissionOverride {
   @@index([permission])
 }
 
+// Override de permisos a nivel de rol (afecta a todos los usuarios con
+// ese rol). Si `granted=true` agrega el permiso al rol; si `granted=false`
+// lo revoca. Lo que NO está en esta tabla queda con el default de
+// ROLE_DEFAULT_PERMISSIONS en src/lib/permissions.ts.
+model RolePermissionOverride {
+  id         String   @id @default(cuid())
+  role       Role
+  permission String   // ej. "hearings.create"
+  granted    Boolean
+  reason     String?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([role, permission])
+  @@index([role])
+}
+
 model Account {
   id                 String  @id @default(cuid())
   userId             String

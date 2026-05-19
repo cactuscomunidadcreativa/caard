@@ -22,7 +22,7 @@ import {
   X
 } from "lucide-react";
 import { Role } from "@prisma/client";
-import { PERMISSIONS, ROLE_DEFAULT_PERMISSIONS, type Permission } from "@/lib/permissions";
+import { PermissionMatrix } from "./permission-matrix";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -193,72 +193,6 @@ const ROLE_ICONS: Record<string, any> = {
   User,
 };
 
-// Etiquetas legibles por módulo de permiso para la matriz detallada.
-const PERMISSION_GROUPS: { key: string; label: string; description?: string }[] = [
-  { key: "cases", label: "Expedientes" },
-  { key: "members", label: "Miembros del caso" },
-  { key: "documents", label: "Documentos y escritos" },
-  { key: "deadlines", label: "Plazos procesales" },
-  { key: "hearings", label: "Audiencias" },
-  { key: "payments", label: "Pagos / Órdenes de pago" },
-  { key: "installments", label: "Fraccionamientos" },
-  { key: "liquidations", label: "Liquidaciones" },
-  { key: "emergencies", label: "Arbitraje de emergencia" },
-  { key: "recusations", label: "Recusaciones" },
-  { key: "sanctions", label: "Sanciones" },
-  { key: "arbitrators", label: "Árbitros (registro)" },
-  { key: "users", label: "Usuarios" },
-  { key: "cms", label: "CMS / Contenido público" },
-  { key: "notifications", label: "Notificaciones" },
-  { key: "reports", label: "Reportes" },
-  { key: "ai", label: "Inteligencia artificial" },
-  { key: "integrations", label: "Integraciones" },
-  { key: "system", label: "Configuración del sistema" },
-  { key: "audit", label: "Auditoría" },
-];
-
-const PERMISSION_LABELS: Record<string, string> = {
-  view: "Ver",
-  read: "Leer detalle",
-  create: "Crear",
-  update: "Editar",
-  delete: "Eliminar",
-  download: "Descargar",
-  proveer: "Proveer (resolver)",
-  refund: "Reembolsar",
-  confirm: "Confirmar",
-  approve: "Aprobar",
-  verify: "Verificar",
-  designate: "Designar",
-  respond: "Responder",
-  decide: "Decidir",
-  publish: "Publicar",
-  templates: "Plantillas",
-  export: "Exportar",
-  send: "Enviar",
-  impersonate: "Suplantar",
-  assign_arbitrator: "Asignar árbitro",
-  block: "Bloquear",
-  sanction: "Sancionar",
-  use: "Usar",
-  admin: "Administrar",
-  manage: "Gestionar",
-  rules: "Reglas",
-  tariffs: "Tarifas",
-  holidays: "Feriados",
-  center: "Datos del centro",
-};
-
-function prettyPermLabel(perm: string): string {
-  // perm = "modulo.accion" → toma la acción y la traduce
-  const action = perm.split(".")[1] || perm;
-  return PERMISSION_LABELS[action] || action;
-}
-
-function hasPerm(role: Role, perm: Permission): boolean {
-  const list = ROLE_DEFAULT_PERMISSIONS[role] || [];
-  return list.includes("*" as Permission) || list.includes(perm);
-}
 
 async function getRolesData() {
   // Obtener configuraciones de roles guardadas
@@ -554,87 +488,10 @@ export default async function RolesPage() {
         </CardContent>
       </Card>
 
-      {/* Matriz de permisos detallados (granular) */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Matriz de permisos detallados
-          </CardTitle>
-          <CardDescription>
-            Esta es la lista completa de permisos granulares por rol —
-            la misma que aplica el sistema en runtime. SUPER_ADMIN tiene
-            comodín <code className="text-xs">*</code> y por eso aparece con todo. Los demás
-            roles tienen permisos específicos por módulo según lo
-            configurado en <code className="text-xs">src/lib/permissions.ts</code>.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {PERMISSION_GROUPS.map((group) => {
-            const groupPerms = Object.values(PERMISSIONS).filter(
-              (p) => p.startsWith(`${group.key}.`)
-            );
-            if (groupPerms.length === 0) return null;
-            return (
-              <div key={group.key}>
-                <h3 className="text-sm font-semibold text-[#0B2A5B] mb-2 flex items-center gap-2">
-                  {group.label}
-                  <Badge variant="outline" className="text-xs font-normal">
-                    {groupPerms.length} {groupPerms.length === 1 ? "permiso" : "permisos"}
-                  </Badge>
-                </h3>
-                <div className="overflow-x-auto rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-slate-50">
-                        <TableHead className="min-w-[180px] font-medium">
-                          Permiso
-                        </TableHead>
-                        {roles.map((r) => (
-                          <TableHead
-                            key={r.role}
-                            className="text-center text-xs font-medium whitespace-nowrap"
-                            title={r.displayName}
-                          >
-                            {r.role}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {groupPerms.map((perm) => (
-                        <TableRow key={perm} className="hover:bg-slate-50/60">
-                          <TableCell className="text-sm">
-                            <div className="font-medium">{prettyPermLabel(perm)}</div>
-                            <div className="text-[11px] text-muted-foreground font-mono">
-                              {perm}
-                            </div>
-                          </TableCell>
-                          {roles.map((r) => (
-                            <TableCell key={r.role} className="text-center">
-                              {hasPerm(r.role, perm as Permission) ? (
-                                <Check className="h-4 w-4 text-green-600 mx-auto" />
-                              ) : (
-                                <X className="h-4 w-4 text-slate-300 mx-auto" />
-                              )}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            );
-          })}
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
-            <strong>Total: {Object.keys(PERMISSIONS).length} permisos granulares</strong> agrupados
-            en {PERMISSION_GROUPS.length} módulos. Cada llamada a la API
-            chequea estos permisos individuales — los toggles "Admin/CMS/IA"
-            de la tabla de arriba son solo etiquetas de presentación.
-          </div>
-        </CardContent>
-      </Card>
+      {/* Matriz de permisos detallados (editable) */}
+      <PermissionMatrix
+        roles={roles.map((r) => ({ role: r.role, displayName: r.displayName }))}
+      />
 
       {/* Info Cards */}
       <div className="mt-4 sm:mt-6 space-y-3">

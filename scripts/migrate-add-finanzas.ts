@@ -36,6 +36,29 @@ async function main() {
     `ALTER TABLE "CmsMedia" ADD COLUMN IF NOT EXISTS "metadata" JSONB`
   );
   console.log("✓ Columna OK.");
+
+  // Tabla RolePermissionOverride — para editar permisos por rol desde
+  // /admin/roles. Idempotente, segura para re-correr en cada build.
+  console.log("➕ Asegurando tabla RolePermissionOverride…");
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "RolePermissionOverride" (
+      "id" TEXT PRIMARY KEY,
+      "role" "Role" NOT NULL,
+      "permission" TEXT NOT NULL,
+      "granted" BOOLEAN NOT NULL,
+      "reason" TEXT,
+      "createdById" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await prisma.$executeRawUnsafe(
+    `CREATE UNIQUE INDEX IF NOT EXISTS "RolePermissionOverride_role_permission_key" ON "RolePermissionOverride"("role", "permission")`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "RolePermissionOverride_role_idx" ON "RolePermissionOverride"("role")`
+  );
+  console.log("✓ Tabla OK.");
 }
 
 main()

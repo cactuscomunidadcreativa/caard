@@ -472,7 +472,8 @@ function defaultsForRole(role: Role): string[] {
 
 /**
  * Resuelve los permisos efectivos para un usuario combinando:
- *  - Defaults por rol
+ *  - Defaults por rol (ROLE_DEFAULT_PERMISSIONS)
+ *  - RolePermissionOverride (afecta a TODOS los usuarios con ese rol)
  *  - UserPermissionOverride (granted=true añade, granted=false revoca)
  *  - Filtro por fecha de expiración (si expiresAt <= ahora, se ignora)
  *
@@ -485,21 +486,60 @@ export async function computeEffectivePermissions(
   const defaults = defaultsForRole(role);
   if (defaults.includes("*")) return ["*"];
 
-  let overrides: Array<{ permission: string; granted: boolean }> = [];
+  let roleOverrides: Array<{ permission: string; granted: boolean }> = [];
+  let userOverrides: Array<{ permission: string; granted: boolean }> = [];
   try {
-    overrides = await prisma.userPermissionOverride.findMany({
-      where: {
-        userId,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-      },
-      select: { permission: true, granted: true },
-    });
+    [roleOverrides, userOverrides] = await Promise.all([
+      prisma.rolePermissionOverride.findMany({
+        where: { role },
+        select: { permission: true, granted: true },
+      }),
+      prisma.userPermissionOverride.findMany({
+        where: {
+          userId,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        select: { permission: true, granted: true },
+      }),
+    ]);
   } catch {
-    overrides = [];
+    /* tabla no existe aún en algunos entornos */
   }
 
   const set = new Set(defaults);
-  for (const o of overrides) {
+  // 1) Aplicar overrides de rol (afectan a todos los usuarios con ese rol)
+  for (const o of roleOverrides) {
+    if (o.granted) set.add(o.permission);
+    else set.delete(o.permission);
+  }
+  // 2) Aplicar overrides de usuario (más específicos, ganan)
+  for (const o of userOverrides) {
+    if (o.granted) set.add(o.permission);
+    else set.delete(o.permission);
+  }
+  return [...set];
+}
+
+/**
+ * Permisos efectivos para un rol (sin tocar usuarios individuales).
+ * Útil para la vista admin de /admin/roles.
+ */
+export async function getEffectiveRolePermissions(role: Role): Promise<string[]> {
+  const defaults = defaultsForRole(role);
+  if (defaults.includes("*")) return ["*"];
+
+  let roleOverrides: Array<{ permission: string; granted: boolean }> = [];
+  try {
+    roleOverrides = await prisma.rolePermissionOverride.findMany({
+      where: { role },
+      select: { permission: true, granted: true },
+    });
+  } catch {
+    /* tabla no existe */
+  }
+
+  const set = new Set(defaults);
+  for (const o of roleOverrides) {
     if (o.granted) set.add(o.permission);
     else set.delete(o.permission);
   }
