@@ -275,13 +275,13 @@ function useNavigationItems() {
       roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA"],
     },
     {
-      title: "Audiencias",
+      title: t.sidebar.hearingsNav,
       href: "/secretaria/audiencias",
       icon: Calendar,
       roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"],
     },
     {
-      title: "Órdenes Procesales",
+      title: t.sidebar.proceduralOrders,
       href: "/staff/ordenes-procesales",
       icon: Gavel,
       roles: ["SUPER_ADMIN", "ADMIN", "SECRETARIA", "CENTER_STAFF"],
@@ -638,7 +638,7 @@ function useNavigationItems() {
       roles: ["SUPER_ADMIN", "ADMIN"],
     },
     {
-      title: "Auditoría",
+      title: t.sidebar.audit,
       href: "/admin/auditoria",
       icon: Shield,
       roles: ["SUPER_ADMIN", "ADMIN"],
@@ -671,6 +671,12 @@ function useNavigationItems() {
       title: t.sidebar.systemRules,
       href: "/admin/rules",
       icon: Cog,
+      roles: ["SUPER_ADMIN", "ADMIN"],
+    },
+    {
+      title: "Plazos reglamentarios",
+      href: "/admin/plazos-config",
+      icon: Clock,
       roles: ["SUPER_ADMIN", "ADMIN"],
     },
     {
@@ -801,7 +807,7 @@ function useNavigationItems() {
     { id: "cases", label: t.sidebar.cases, icon: FileText, items: casesItems },
     { id: "procesal", label: t.sidebar.procesal, icon: ClipboardList, items: procesalItems, showForRoles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA"] },
     { id: "documents", label: t.sidebar.documents, icon: Folder, items: documentsItems },
-    { id: "finance", label: t.sidebar.finance, icon: Wallet, items: financeItems },
+    { id: "finance", label: t.sidebar.finance, icon: Wallet, items: financeItems, showForRoles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF", "SECRETARIA", "FINANZAS", "DEMANDANTE", "DEMANDADO"] },
     { id: "notifications", label: t.sidebar.notifications, icon: Bell, items: notificationsItems },
     { id: "cms", label: t.sidebar.website, icon: Globe, items: cmsItems, showForRoles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"], dividerBefore: true },
     { id: "store", label: "Tienda", icon: ShoppingBag, items: storeItems, showForRoles: ["SUPER_ADMIN", "ADMIN", "CENTER_STAFF"] },

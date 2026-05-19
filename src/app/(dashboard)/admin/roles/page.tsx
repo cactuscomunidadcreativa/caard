@@ -130,7 +130,7 @@ const ROLE_DEFAULTS: Record<Role, {
     canAccessAI: true,
     canManageUsers: false,
     canManageCases: false,
-    sortOrder: 5,
+    sortOrder: 6,
   },
   ABOGADO: {
     displayName: "Abogado",
@@ -142,7 +142,7 @@ const ROLE_DEFAULTS: Record<Role, {
     canAccessAI: true,
     canManageUsers: false,
     canManageCases: false,
-    sortOrder: 6,
+    sortOrder: 7,
   },
   DEMANDANTE: {
     displayName: "Demandante",
@@ -154,7 +154,7 @@ const ROLE_DEFAULTS: Record<Role, {
     canAccessAI: true,
     canManageUsers: false,
     canManageCases: false,
-    sortOrder: 7,
+    sortOrder: 8,
   },
   DEMANDADO: {
     displayName: "Demandado",
@@ -166,7 +166,7 @@ const ROLE_DEFAULTS: Record<Role, {
     canAccessAI: true,
     canManageUsers: false,
     canManageCases: false,
-    sortOrder: 8,
+    sortOrder: 9,
   },
   ESTUDIANTE: {
     displayName: "Estudiante",
@@ -178,7 +178,7 @@ const ROLE_DEFAULTS: Record<Role, {
     canAccessAI: true,
     canManageUsers: false,
     canManageCases: false,
-    sortOrder: 9,
+    sortOrder: 10,
   },
 };
 

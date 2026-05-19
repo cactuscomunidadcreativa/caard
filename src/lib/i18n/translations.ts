@@ -1224,6 +1224,8 @@ export const translations = {
       // Gestión Procesal
       pendingRequests: "Solicitudes Pendientes",
       deadlines: "Plazos y Vencimientos",
+      hearingsNav: "Audiencias",
+      proceduralOrders: "Órdenes Procesales",
       emergencies: "Emergencias",
       arbitrators: "Árbitros",
       arbitratorRegistry: "Registro de Árbitros",
@@ -2896,6 +2898,8 @@ export const translations = {
       // Process Management
       pendingRequests: "Pending Requests",
       deadlines: "Deadlines",
+      hearingsNav: "Hearings",
+      proceduralOrders: "Procedural Orders",
       emergencies: "Emergencies",
       arbitrators: "Arbitrators",
       arbitratorRegistry: "Arbitrator Registry",
